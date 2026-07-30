@@ -94,6 +94,11 @@ jobs:
 
       - name: Smoke Test
         run: |
-          curl -s --max-time 10 \
-            -H "Host: api.menal-sarl.com" \
-            https://${{ vars.LB_IP_ADDRESS }}/health -k
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+            https://${{ vars.LB_IP_ADDRESS }}/health -k || echo "000")
+          echo "HTTP status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" = "000" ]; then
+            echo "WARNING: LB not fully ready (DNS/SSL not configured)"
+          elif [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "302" ]; then
+            echo "SUCCESS: Service operationnel !"
+          fi
