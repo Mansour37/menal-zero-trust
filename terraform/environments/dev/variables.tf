@@ -1,6 +1,7 @@
 ﻿variable "project_id" {
   description = "GCP Project ID for dev environment"
   type        = string
+  default     = "menal-zero-trust-dev"
 }
 
 variable "region" {
@@ -24,7 +25,7 @@ variable "github_token" {
 variable "support_email" {
   description = "Email de support pour le consentement OAuth IAP"
   type        = string
-  default     = "hadramimedzrt@gmail.com"
+  default     = "mansour.cheikh2010@gmail.com"
 }
 
 variable "domain_name" {

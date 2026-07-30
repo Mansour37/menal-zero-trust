@@ -11,9 +11,9 @@ def get_secret(secret_id: str, project_id: str) -> str:
 
 class Settings:
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "dev")
-    GCP_PROJECT_ID: str = os.getenv("GCP_PROJECT_ID", "menal-dev")
+    GCP_PROJECT_ID: str = os.getenv("GCP_PROJECT_ID", "menal-zero-trust-dev")
     CLOUD_SQL_CONNECTION_NAME: str = os.getenv(
-        "CLOUD_SQL_CONNECTION_NAME", "menal-dev:europe-west1:menal-db-dev"
+        "CLOUD_SQL_CONNECTION_NAME", "menal-zero-trust-dev:europe-west1:menal-db-dev"
     )
     DB_NAME: str = os.getenv("DB_NAME", "menal_db")
     DB_USER: str = os.getenv("DB_USER", "api_user")

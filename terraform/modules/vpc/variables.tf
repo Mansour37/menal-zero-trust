@@ -25,3 +25,9 @@ variable "vpc_cidr_private" {
   type        = string
   default     = "10.0.2.0/24"
 }
+
+variable "vpc_connector_cidr" {
+  description = "CIDR range for Serverless VPC Access connector"
+  type        = string
+  default     = "10.0.3.0/28"
+}

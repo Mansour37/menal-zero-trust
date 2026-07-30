@@ -14,6 +14,11 @@
       version = "~> 3.6"
     }
   }
+
+  backend "gcs" {
+    bucket = "menal-tf-state"
+    prefix = "env/dev"
+  }
 }
 
 provider "google" {
@@ -22,7 +27,7 @@ provider "google" {
 }
 
 provider "github" {
-  owner = "muhammedehab35"
+  owner = "Mansour37"
   token = var.github_token
 }
 
@@ -44,6 +49,8 @@ locals {
     "servicenetworking.googleapis.com",
     "iap.googleapis.com",
     "cloudscheduler.googleapis.com",
+    "vpcaccess.googleapis.com",
+    "iamcredentials.googleapis.com",
   ]
 }
 
@@ -64,8 +71,10 @@ module "vpc" {
 }
 
 module "iam" {
-  source     = "../../modules/iam"
-  project_id = var.project_id
+  source       = "../../modules/iam"
+  project_id   = var.project_id
+  github_owner = "Mansour37"
+  github_repo  = "menal-zero-trust"
 
   depends_on = [google_project_service.apis]
 }
@@ -100,6 +109,20 @@ module "kms" {
   depends_on = [google_project_service.apis, module.iam]
 }
 
+module "cloud_run" {
+  source                    = "../../modules/cloud-run"
+  project_id                = var.project_id
+  region                    = var.region
+  environment               = var.environment
+  service_name              = "menal-api-${var.environment}"
+  container_image           = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-api:latest"
+  api_service_account_email = module.iam.api_service_account_email
+  vpc_connector_id          = module.vpc.vpc_connector_id
+  cloudsql_instance_name    = "menal-db-${var.environment}"
+
+  depends_on = [google_project_service.apis, module.vpc, module.iam, module.cloud_sql]
+}
+
 module "load_balancer" {
   source                 = "../../modules/load-balancer"
   project_id             = var.project_id
@@ -109,7 +132,7 @@ module "load_balancer" {
   support_email          = var.support_email
   domain_name            = var.domain_name
 
-  depends_on = [google_project_service.apis]
+  depends_on = [google_project_service.apis, module.cloud_run]
 }
 
 # ── Phase 5 : Pipeline de données ──────────────────────────────────────────
@@ -183,4 +206,16 @@ resource "github_actions_variable" "lb_domain" {
   repository    = "menal-zero-trust"
   variable_name = "LB_DOMAIN"
   value         = var.domain_name
+}
+
+resource "github_actions_variable" "wif_provider_name" {
+  repository    = "menal-zero-trust"
+  variable_name = "WIF_PROVIDER_NAME"
+  value         = module.iam.wif_provider_name
+}
+
+resource "github_actions_variable" "cicd_sa_email" {
+  repository    = "menal-zero-trust"
+  variable_name = "CICD_SA_EMAIL"
+  value         = module.iam.cicd_service_account_email
 }
