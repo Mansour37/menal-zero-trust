@@ -90,7 +90,7 @@ jobs:
         run: |
           gcloud artifacts docker tags add \
             ${{ steps.build.outputs.image }} \
-            ${{ env.ARTIFACT_REGISTRY }}/menal-api:latest
+            ${{ env.ARTIFACT_REGISTRY }}/menal-api:latest || true
 
       - name: Smoke Test
         run: |
