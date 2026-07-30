@@ -1,4 +1,4 @@
-﻿# ── Dataset BigQuery (conteneur des tables de securite) ───────────────────────
+# ── Dataset BigQuery (conteneur des tables de securite) ───────────────────────
 resource "google_bigquery_dataset" "security" {
   dataset_id                 = "menal_security_${var.environment}"
   friendly_name              = "MENAL Security Analytics"
@@ -34,16 +34,16 @@ resource "google_bigquery_table" "access_logs" {
   }
 
   schema = jsonencode([
-    { name = "timestamp",    type = "TIMESTAMP", mode = "REQUIRED", description = "Heure de la requete" },
-    { name = "request_id",   type = "STRING",    mode = "NULLABLE", description = "ID unique de la requete" },
-    { name = "method",       type = "STRING",    mode = "REQUIRED", description = "Methode HTTP (GET/POST/...)" },
-    { name = "path",         type = "STRING",    mode = "REQUIRED", description = "Chemin de l endpoint" },
-    { name = "status_code",  type = "INTEGER",   mode = "REQUIRED", description = "Code HTTP de la reponse" },
-    { name = "user_id",      type = "STRING",    mode = "NULLABLE", description = "ID utilisateur (si authentifie)" },
-    { name = "user_role",    type = "STRING",    mode = "NULLABLE", description = "Role de l utilisateur" },
-    { name = "ip_address",   type = "STRING",    mode = "NULLABLE", description = "Adresse IP source" },
-    { name = "latency_ms",   type = "INTEGER",   mode = "NULLABLE", description = "Latence en millisecondes" },
-    { name = "service",      type = "STRING",    mode = "REQUIRED", description = "Service source (cloud-run/vpc/sql)" }
+    { name = "timestamp", type = "TIMESTAMP", mode = "REQUIRED", description = "Heure de la requete" },
+    { name = "request_id", type = "STRING", mode = "NULLABLE", description = "ID unique de la requete" },
+    { name = "method", type = "STRING", mode = "REQUIRED", description = "Methode HTTP (GET/POST/...)" },
+    { name = "path", type = "STRING", mode = "REQUIRED", description = "Chemin de l endpoint" },
+    { name = "status_code", type = "INTEGER", mode = "REQUIRED", description = "Code HTTP de la reponse" },
+    { name = "user_id", type = "STRING", mode = "NULLABLE", description = "ID utilisateur (si authentifie)" },
+    { name = "user_role", type = "STRING", mode = "NULLABLE", description = "Role de l utilisateur" },
+    { name = "ip_address", type = "STRING", mode = "NULLABLE", description = "Adresse IP source" },
+    { name = "latency_ms", type = "INTEGER", mode = "NULLABLE", description = "Latence en millisecondes" },
+    { name = "service", type = "STRING", mode = "REQUIRED", description = "Service source (cloud-run/vpc/sql)" }
   ])
 }
 
@@ -60,14 +60,125 @@ resource "google_bigquery_table" "security_events" {
   }
 
   schema = jsonencode([
-    { name = "timestamp",    type = "TIMESTAMP", mode = "REQUIRED", description = "Heure de l evenement" },
-    { name = "event_type",   type = "STRING",    mode = "REQUIRED", description = "Type d evenement (auth_failure/waf_block/rate_limit/...)" },
-    { name = "severity",     type = "STRING",    mode = "REQUIRED", description = "Niveau de severite (LOW/MEDIUM/HIGH/CRITICAL)" },
-    { name = "source_ip",    type = "STRING",    mode = "NULLABLE", description = "IP source de l attaque" },
-    { name = "target_path",  type = "STRING",    mode = "NULLABLE", description = "Endpoint cible" },
-    { name = "description",  type = "STRING",    mode = "NULLABLE", description = "Description detaillee" },
-    { name = "raw_log",      type = "STRING",    mode = "NULLABLE", description = "Log brut JSON" },
-    { name = "mitigated",    type = "BOOLEAN",   mode = "REQUIRED", description = "Evenement bloque automatiquement ?" }
+    { name = "timestamp", type = "TIMESTAMP", mode = "REQUIRED", description = "Heure de l evenement" },
+    { name = "event_type", type = "STRING", mode = "REQUIRED", description = "Type d evenement (auth_failure/waf_block/rate_limit/...)" },
+    { name = "severity", type = "STRING", mode = "REQUIRED", description = "Niveau de severite (LOW/MEDIUM/HIGH/CRITICAL)" },
+    { name = "source_ip", type = "STRING", mode = "NULLABLE", description = "IP source de l attaque" },
+    { name = "target_path", type = "STRING", mode = "NULLABLE", description = "Endpoint cible" },
+    { name = "description", type = "STRING", mode = "NULLABLE", description = "Description detaillee" },
+    { name = "raw_log", type = "STRING", mode = "NULLABLE", description = "Log brut JSON" },
+    { name = "mitigated", type = "BOOLEAN", mode = "REQUIRED", description = "Evenement bloque automatiquement ?" }
+  ])
+}
+
+# ── Table : raw_logs (sink F4 — logs bruts depuis Cloud Logging) ──────────────
+resource "google_bigquery_table" "raw_logs" {
+  dataset_id          = google_bigquery_dataset.security.dataset_id
+  table_id            = "raw_logs"
+  project             = var.project_id
+  deletion_protection = false
+
+  time_partitioning {
+    type  = "DAY"
+    field = "timestamp"
+  }
+
+  schema = jsonencode([
+    { name = "timestamp", type = "TIMESTAMP", mode = "REQUIRED", description = "Heure de l evenement" },
+    { name = "log_source", type = "STRING", mode = "REQUIRED", description = "Source (cloudrun/vpc/sql/armor)" },
+    { name = "json_payload", type = "JSON", mode = "NULLABLE", description = "Payload JSON brut du log" },
+    { name = "severity", type = "STRING", mode = "NULLABLE", description = "Niveau de severite" },
+    { name = "resource_type", type = "STRING", mode = "NULLABLE", description = "Type de ressource GCP" },
+    { name = "resource_name", type = "STRING", mode = "NULLABLE", description = "Nom de la ressource" },
+    { name = "insert_id", type = "STRING", mode = "NULLABLE", description = "ID d insertion unique" }
+  ])
+}
+
+# ── Table : detections (regles Sigma traduites en SQL + enrichies) ────────────
+resource "google_bigquery_table" "detections" {
+  dataset_id          = google_bigquery_dataset.security.dataset_id
+  table_id            = "detections"
+  project             = var.project_id
+  deletion_protection = false
+
+  time_partitioning {
+    type  = "DAY"
+    field = "timestamp"
+  }
+
+  schema = jsonencode([
+    { name = "timestamp", type = "TIMESTAMP", mode = "REQUIRED", description = "Heure de detection" },
+    { name = "rule_id", type = "STRING", mode = "REQUIRED", description = "Identifiant de la regle Sigma" },
+    { name = "rule_name", type = "STRING", mode = "REQUIRED", description = "Nom de la regle" },
+    { name = "severity", type = "STRING", mode = "REQUIRED", description = "CRITICAL/HIGH/MEDIUM/LOW" },
+    { name = "entity", type = "STRING", mode = "NULLABLE", description = "Entite concernee (IP, user, SA)" },
+    { name = "message", type = "STRING", mode = "NULLABLE", description = "Description de l alerte" },
+    { name = "source", type = "STRING", mode = "NULLABLE", description = "Source de la detection" },
+    { name = "raw_log", type = "STRING", mode = "NULLABLE", description = "Log brut associe" },
+    { name = "mitre_tactic", type = "STRING", mode = "NULLABLE", description = "Tactique MITRE ATT&CK" },
+    { name = "mitre_technique", type = "STRING", mode = "NULLABLE", description = "Technique MITRE ATT&CK" }
+  ])
+}
+
+# ── Table : alert_enrichment (sortie ML F5 — enrichissement semantique) ───────
+resource "google_bigquery_table" "alert_enrichment" {
+  dataset_id          = google_bigquery_dataset.security.dataset_id
+  table_id            = "alert_enrichment"
+  project             = var.project_id
+  deletion_protection = false
+
+  time_partitioning {
+    type  = "DAY"
+    field = "timestamp"
+  }
+
+  schema = jsonencode([
+    { name = "timestamp", type = "TIMESTAMP", mode = "REQUIRED", description = "Heure d enrichissement" },
+    { name = "detection_id", type = "STRING", mode = "REQUIRED", description = "ID de la detection source" },
+    { name = "technique_id", type = "STRING", mode = "NULLABLE", description = "ID technique MITRE ATT&CK" },
+    { name = "tactic", type = "STRING", mode = "NULLABLE", description = "Tactique MITRE associee" },
+    { name = "similarity", type = "FLOAT", mode = "NULLABLE", description = "Score de similarite semantique" },
+    { name = "status", type = "STRING", mode = "REQUIRED", description = "mapped / unmapped" },
+    { name = "model_version", type = "STRING", mode = "NULLABLE", description = "Version du modele ML" },
+    { name = "input_hash", type = "STRING", mode = "NULLABLE", description = "SHA-256 du texte encode" }
+  ])
+}
+
+# ── Table : pending_embeddings (file d attente pour le pipeline ML) ───────────
+resource "google_bigquery_table" "pending_embeddings" {
+  dataset_id          = google_bigquery_dataset.security.dataset_id
+  table_id            = "pending_embeddings"
+  project             = var.project_id
+  deletion_protection = false
+
+  schema = jsonencode([
+    { name = "detection_id", type = "STRING", mode = "REQUIRED", description = "ID de la detection" },
+    { name = "text", type = "STRING", mode = "REQUIRED", description = "Texte a encoder" },
+    { name = "created_at", type = "TIMESTAMP", mode = "REQUIRED", description = "Date de creation" }
+  ])
+}
+
+# ── Table : cve_findings (boucle F6 — CVEs du pipeline vers le SIEM) ─────────
+resource "google_bigquery_table" "cve_findings" {
+  dataset_id          = google_bigquery_dataset.security.dataset_id
+  table_id            = "cve_findings"
+  project             = var.project_id
+  deletion_protection = false
+
+  time_partitioning {
+    type  = "DAY"
+    field = "scan_date"
+  }
+
+  schema = jsonencode([
+    { name = "scan_date", type = "DATE", mode = "REQUIRED", description = "Date du scan" },
+    { name = "cve_id", type = "STRING", mode = "REQUIRED", description = "Identifiant CVE" },
+    { name = "severity", type = "STRING", mode = "REQUIRED", description = "CRITICAL/HIGH/MEDIUM/LOW" },
+    { name = "package", type = "STRING", mode = "NULLABLE", description = "Paquet concerne" },
+    { name = "installed_version", type = "STRING", mode = "NULLABLE", description = "Version installee" },
+    { name = "fixed_version", type = "STRING", mode = "NULLABLE", description = "Version corrective" },
+    { name = "image_digest", type = "STRING", mode = "NULLABLE", description = "Digest de l image" },
+    { name = "mitre_technique", type = "STRING", mode = "NULLABLE", description = "Technique MITRE associee (F6)" }
   ])
 }
 
@@ -84,14 +195,14 @@ resource "google_bigquery_table" "api_metrics" {
   }
 
   schema = jsonencode([
-    { name = "hour",              type = "TIMESTAMP", mode = "REQUIRED", description = "Heure d agregation" },
-    { name = "total_requests",    type = "INTEGER",   mode = "REQUIRED", description = "Nombre total de requetes" },
-    { name = "success_count",     type = "INTEGER",   mode = "REQUIRED", description = "Requetes 2xx" },
-    { name = "error_count",       type = "INTEGER",   mode = "REQUIRED", description = "Requetes 4xx/5xx" },
-    { name = "auth_failures",     type = "INTEGER",   mode = "REQUIRED", description = "Echecs d authentification (401/403)" },
-    { name = "avg_latency_ms",    type = "FLOAT",     mode = "NULLABLE", description = "Latence moyenne" },
-    { name = "p99_latency_ms",    type = "FLOAT",     mode = "NULLABLE", description = "Latence P99" },
-    { name = "unique_ips",        type = "INTEGER",   mode = "NULLABLE", description = "Nombre d IPs uniques" },
-    { name = "waf_blocks",        type = "INTEGER",   mode = "REQUIRED", description = "Requetes bloquees par Cloud Armor" }
+    { name = "hour", type = "TIMESTAMP", mode = "REQUIRED", description = "Heure d agregation" },
+    { name = "total_requests", type = "INTEGER", mode = "REQUIRED", description = "Nombre total de requetes" },
+    { name = "success_count", type = "INTEGER", mode = "REQUIRED", description = "Requetes 2xx" },
+    { name = "error_count", type = "INTEGER", mode = "REQUIRED", description = "Requetes 4xx/5xx" },
+    { name = "auth_failures", type = "INTEGER", mode = "REQUIRED", description = "Echecs d authentification (401/403)" },
+    { name = "avg_latency_ms", type = "FLOAT", mode = "NULLABLE", description = "Latence moyenne" },
+    { name = "p99_latency_ms", type = "FLOAT", mode = "NULLABLE", description = "Latence P99" },
+    { name = "unique_ips", type = "INTEGER", mode = "NULLABLE", description = "Nombre d IPs uniques" },
+    { name = "waf_blocks", type = "INTEGER", mode = "REQUIRED", description = "Requetes bloquees par Cloud Armor" }
   ])
 }

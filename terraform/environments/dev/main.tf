@@ -1,4 +1,4 @@
-﻿terraform {
+terraform {
   required_version = ">= 1.7"
   required_providers {
     github = {
@@ -51,6 +51,7 @@ locals {
     "cloudscheduler.googleapis.com",
     "vpcaccess.googleapis.com",
     "iamcredentials.googleapis.com",
+    "bigquerydatatransfer.googleapis.com",
   ]
 }
 
@@ -89,21 +90,21 @@ module "artifact_registry" {
 }
 
 module "cloud_sql" {
-  source      = "../../modules/cloud-sql"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
-  vpc_id      = module.vpc.vpc_id
+  source                    = "../../modules/cloud-sql"
+  project_id                = var.project_id
+  region                    = var.region
+  environment               = var.environment
+  vpc_id                    = module.vpc.vpc_id
   api_service_account_email = module.iam.api_service_account_email
 
   depends_on = [google_project_service.apis, module.vpc, module.iam]
 }
 
 module "kms" {
-  source      = "../../modules/kms"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
+  source                    = "../../modules/kms"
+  project_id                = var.project_id
+  region                    = var.region
+  environment               = var.environment
   api_service_account_email = module.iam.api_service_account_email
 
   depends_on = [google_project_service.apis, module.iam]
@@ -170,10 +171,23 @@ module "workflow" {
 module "monitoring" {
   source      = "../../modules/monitoring"
   project_id  = var.project_id
+  region      = var.region
   environment = var.environment
   alert_email = var.support_email
+  domain_name = var.domain_name
 
   depends_on = [google_project_service.apis]
+}
+
+module "detection" {
+  source                         = "../../modules/detection"
+  project_id                     = var.project_id
+  region                         = var.region
+  environment                    = var.environment
+  bigquery_dataset_id            = module.bigquery.dataset_id
+  pipeline_service_account_email = module.iam.pipeline_service_account_email
+
+  depends_on = [google_project_service.apis, module.bigquery, module.iam]
 }
 
 # ── Variables GitHub Actions ────────────────────────────────────────────────
