@@ -190,6 +190,20 @@ module "detection" {
   depends_on = [google_project_service.apis, module.bigquery, module.iam]
 }
 
+module "ml_pipeline" {
+  source              = "../../modules/ml-pipeline"
+  project_id          = var.project_id
+  region              = var.region
+  environment         = var.environment
+  vpc_connector_id    = module.vpc.vpc_connector_id
+  bigquery_dataset_id = module.bigquery.dataset_id
+  pipeline_sa_email   = module.iam.pipeline_service_account_email
+  ml_embed_image      = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-ml-embed:latest"
+  enrich_job_image    = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-enrich-job:latest"
+
+  depends_on = [google_project_service.apis, module.vpc, module.bigquery, module.iam]
+}
+
 # ── Variables GitHub Actions ────────────────────────────────────────────────
 
 resource "github_actions_variable" "artifact_registry_url" {
