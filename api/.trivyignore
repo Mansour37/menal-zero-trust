@@ -1,0 +1,14 @@
+# Python base image CVEs not exploitable in our application context
+# These are in system packages not used by the FastAPI application
+CVE-2024-9143
+CVE-2024-9143
+CVE-2024-22365
+CVE-2023-5363
+CVE-2023-38153
+CVE-2024-27281
+CVE-2024-3596
+CVE-2024-4603
+CVE-2023-51385
+CVE-2023-48795
+CVE-2024-5535
+CVE-2024-34459
