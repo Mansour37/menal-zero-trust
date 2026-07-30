@@ -1,0 +1,1576 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ADST × RIM AI — L'intelligence artificielle, dans nos langues</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Noto+Kufi+Arabic:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFFFFF; --bg-elev:#FAFAFA; --card:#FFFFFF; --card-hover:#F5F5F5;
+    --ink:#0A0A0A; --ink-2:#4B5563; --ink-3:#9CA3AF;
+    --line:#E5E7EB; --line-2:#D1D5DB;
+    --green:#08DDB8; --green-2:#5EEAD4; --green-ink:#048a73; --green-soft:rgba(8,221,184,.12);
+    --nav-bg:rgba(255,255,255,.72);
+    --hero-grad:linear-gradient(180deg,#0A0A0A 0%,#3a3a3a 100%);
+    --orb-green:rgba(8,221,184,.06); --orb-neutral:rgba(10,10,10,.028);
+    --panel-grad:linear-gradient(160deg,#fff,#FAFAFA);
+    --r:18px; --maxw:1180px;
+    --shadow:0 1px 2px rgba(10,10,10,.04), 0 14px 44px rgba(10,10,10,.07);
+  }
+  [data-theme="dark"]{
+    --bg:#0A0A0A; --bg-elev:#121212; --card:#141414; --card-hover:#1C1C1C;
+    --ink:#F5F5F5; --ink-2:#A1A1AA; --ink-3:#6E6E78;
+    --line:#262626; --line-2:#3A3A3A;
+    --green:#08DDB8; --green-2:#5EEAD4; --green-ink:#2ee6c6; --green-soft:rgba(8,221,184,.14);
+    --nav-bg:rgba(10,10,10,.72);
+    --hero-grad:linear-gradient(180deg,#FFFFFF 0%,#9CA3AF 100%);
+    --orb-green:rgba(8,221,184,.10); --orb-neutral:rgba(255,255,255,.035);
+    --panel-grad:linear-gradient(160deg,#171717,#0E0E0E);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 48px rgba(0,0,0,.55);
+  }
+  body{transition:background .35s ease,color .35s ease}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;overflow-x:hidden}
+  h1,h2,h3,.display{font-family:'Inter Tight','Inter',sans-serif;letter-spacing:-.03em;line-height:1.04}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  .ar{font-family:'Noto Kufi Arabic',sans-serif;direction:rtl}
+
+  /* ─── Nav ─── */
+  nav{position:fixed;top:0;left:0;right:0;z-index:50;backdrop-filter:blur(20px) saturate(140%);
+      background:var(--nav-bg);border-bottom:1px solid transparent;transition:border-color .3s, background .3s}
+  nav.scrolled{border-bottom:1px solid var(--line)}
+  .nav-in{display:flex;align-items:center;justify-content:space-between;height:66px;max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:'Inter Tight';font-weight:800;font-size:20px;letter-spacing:-.04em}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px var(--green-soft)}
+  .brand .x{color:var(--ink-3);font-weight:500;margin:0 1px}
+  .nav-links{display:flex;align-items:center;gap:30px}
+  .nav-links a{font-size:14px;color:var(--ink-2);font-weight:500;transition:color .2s}
+  .nav-links a:hover{color:var(--ink)}
+  @media(max-width:820px){.nav-links a:not(.btn){display:none}}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;font-weight:600;font-size:14px;border-radius:100px;
+       padding:11px 22px;transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .25s,background .2s;cursor:pointer;border:0}
+  .btn-primary{background:var(--ink);color:#fff}
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(10,10,10,.22)}
+  .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line-2)}
+  .btn-ghost:hover{background:var(--card-hover);border-color:var(--ink)}
+  .btn-lg{padding:15px 30px;font-size:15px}
+  .arrow{transition:transform .2s}
+  .btn:hover .arrow{transform:translateX(3px)}
+  [data-theme="dark"] .btn-primary{background:#F5F5F5;color:#0A0A0A}
+  [data-theme="dark"] .btn-primary:hover{box-shadow:0 10px 28px rgba(0,0,0,.5)}
+
+  /* theme toggle */
+  .theme-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line-2);background:var(--card);color:var(--ink);
+    display:grid;place-items:center;cursor:pointer;transition:background .2s,border-color .2s,transform .2s;flex:0 0 auto}
+  .theme-btn:hover{background:var(--card-hover);transform:translateY(-1px)}
+  .theme-btn svg{width:18px;height:18px}
+  .ic-sun{display:none}
+  [data-theme="dark"] .ic-moon{display:none}
+  [data-theme="dark"] .ic-sun{display:block}
+
+  /* ─── Hero ─── */
+  header{position:relative;padding:172px 0 78px;text-align:center;overflow:hidden}
+  header .wrap{position:relative;z-index:1}
+  .h-glow{position:absolute;z-index:0;top:-170px;left:50%;transform:translateX(-50%);width:900px;height:560px;pointer-events:none;
+    background:radial-gradient(closest-side, var(--green-soft), transparent 72%);filter:blur(16px)}
+  h1{position:relative}
+  .rotw{display:inline-block;position:relative;color:var(--green-ink);vertical-align:bottom;overflow:hidden}
+  .rotw .w{display:inline-block;transition:opacity .42s cubic-bezier(.2,.8,.2,1),transform .42s cubic-bezier(.2,.8,.2,1);will-change:opacity,transform}
+  .rotw::after{content:'';position:absolute;left:0;bottom:.08em;width:100%;height:.09em;border-radius:2px;background:var(--green);opacity:.85}
+  .mesh{position:absolute;inset:0;z-index:0;pointer-events:none}
+  .hero-dots{position:absolute;inset:0;z-index:0;width:100%;height:100%;pointer-events:none;
+    mask-image:radial-gradient(ellipse 85% 70% at 50% 35%,#000 0%,transparent 80%);
+    -webkit-mask-image:radial-gradient(ellipse 85% 70% at 50% 35%,#000 0%,transparent 80%)}
+  .hero-orb{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);
+    width:min(520px,72vw);height:min(520px,72vw);z-index:0;pointer-events:none;opacity:.92}
+  [data-theme="light"] .hero-orb{opacity:.5}
+  /* TTS — modèle en création */
+  #tts .tts-stage{display:flex;align-items:center;justify-content:center;margin:56px 0 28px}
+  .loader-wrapper{font-family:'Inter Tight',sans-serif;font-size:1.35em;font-weight:500;
+    position:relative;display:flex;align-items:center;justify-content:center;
+    width:220px;height:220px;border-radius:50%;color:#fff;user-select:none}
+  .loader{position:absolute;inset:0;border-radius:50%;z-index:0;background:transparent;
+    animation:tts-rotate 2s linear infinite}
+  @keyframes tts-rotate{
+    0%{transform:rotate(90deg);box-shadow:0 22px 44px 0 #fff inset,0 44px 66px 0 #5EEAD4 inset,0 132px 132px 0 #069f84 inset}
+    50%{transform:rotate(270deg);box-shadow:0 22px 44px 0 #fff inset,0 44px 22px 0 #08DDB8 inset,0 88px 132px 0 #064f43 inset}
+    100%{transform:rotate(450deg);box-shadow:0 22px 44px 0 #fff inset,0 44px 66px 0 #5EEAD4 inset,0 132px 132px 0 #069f84 inset}}
+  .loader-letter{display:inline-block;opacity:.4;z-index:1;animation:tts-pulse 2s infinite}
+  .loader-letter:nth-child(1){animation-delay:0s}
+  .loader-letter:nth-child(2){animation-delay:.1s}
+  .loader-letter:nth-child(3){animation-delay:.2s}
+  .loader-letter:nth-child(4){animation-delay:.3s}
+  .loader-letter:nth-child(5){animation-delay:.4s}
+  .loader-letter:nth-child(6){animation-delay:.5s}
+  .loader-letter:nth-child(7){animation-delay:.6s}
+  .loader-letter:nth-child(8){animation-delay:.7s}
+  .loader-letter:nth-child(9){animation-delay:.8s}
+  .loader-letter:nth-child(10){animation-delay:.9s}
+  .loader-letter:nth-child(11){animation-delay:1s}
+  .loader-letter:nth-child(12){animation-delay:1.1s}
+  .loader-letter:nth-child(13){animation-delay:1.2s}
+  .loader-letter:nth-child(14){animation-delay:1.3s}
+  @keyframes tts-pulse{0%,100%{opacity:.4;transform:translateY(0)}20%{opacity:1;transform:scale(1.15)}40%{opacity:.7;transform:translateY(0)}}
+  .tts-status{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-2);
+    border:1px solid var(--line);border-radius:999px;padding:8px 16px;background:var(--card)}
+  #tts .loader-wrapper.word-out .loader-letter{animation:none;opacity:0;transition:opacity .35s ease}
+  .orb{position:absolute;border-radius:50%;filter:blur(64px);opacity:.55}
+  .orb.a{width:640px;height:460px;background:var(--orb-green);top:-160px;left:50%;transform:translateX(-50%)}
+  .orb.b{width:380px;height:380px;background:var(--orb-neutral);top:120px;left:-90px;animation:float 9s ease-in-out infinite}
+  .orb.c{width:320px;height:320px;background:var(--orb-neutral);top:40px;right:-70px;animation:float 11s ease-in-out infinite reverse}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-26px)}}
+  .grid-bg{position:absolute;inset:0;z-index:0;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:56px 56px;opacity:.4;
+    mask-image:radial-gradient(ellipse 80% 60% at 50% 28%,#000 0%,transparent 75%);
+    -webkit-mask-image:radial-gradient(ellipse 80% 60% at 50% 28%,#000 0%,transparent 75%)}
+  header .wrap{position:relative;z-index:1}
+
+  .kicker{font-size:13px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:28px}
+  .poweredby{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:30px;color:var(--ink-3);font-size:13px;font-weight:500}
+  .poweredby img{height:30px;opacity:.92}
+  .team{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;margin-top:48px}
+  .team .flag{display:inline-flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:100px;padding:10px 20px;font-size:14px;font-weight:600;color:var(--ink);background:var(--card);transition:transform .25s,box-shadow .25s,border-color .25s}
+  .team .flag:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--line-2)}
+  .team .flag .e{font-size:19px;line-height:1}
+  .creds{margin-top:60px;display:flex;flex-direction:column;gap:38px}
+  .cred-label{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:20px}
+  .cred-label span{color:var(--green-ink)}
+  .cred-chips{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+  .lw-track{display:flex;align-items:center;width:max-content}
+  .cred-chips:hover .lw-track{animation-play-state:paused}
+  @keyframes lw{to{transform:translateX(-50%)}}
+  .cred{flex:0 0 auto;margin-right:12px;white-space:nowrap;font-family:'Inter Tight';font-weight:600;font-size:13px;letter-spacing:-.01em;color:var(--ink-2);border:1px solid var(--line);border-radius:9px;padding:8px 14px;background:var(--card);transition:border-color .25s,color .25s}
+  .cred:hover{border-color:var(--green);color:var(--ink)}
+  .cred.co{background:var(--bg-elev)}
+  .logo{flex:0 0 auto;margin-right:12px;display:inline-flex;align-items:center;justify-content:center;height:42px;padding:0 18px;background:var(--card);border:1px solid var(--line);border-radius:10px;transition:border-color .25s,background .3s}
+  .logo:hover{border-color:var(--line-2)}
+  .logo img{height:20px;max-width:94px;object-fit:contain;filter:grayscale(1) opacity(.75);transition:filter .25s}
+  .logo:hover img{filter:grayscale(0) opacity(1)}
+  .logo b{display:none;font-family:'Inter Tight';font-weight:700;font-size:13px;letter-spacing:-.01em;color:var(--ink)}
+  .logo.failed b{display:inline}
+  .logo.failed img{display:none}
+  .logo.named{gap:9px}
+  .logo.named img{height:18px;width:18px;max-width:18px;border-radius:4px}
+  .logo.named b{display:inline-flex;align-items:center;color:var(--ink-2);font-weight:600}
+  .logo.named:hover b{color:var(--ink)}
+  /* dark mode: keep logos visible on dark tiles */
+  [data-theme="dark"] .logo.co img{filter:grayscale(1) brightness(0) invert(1) opacity(.85)}
+  [data-theme="dark"] .logo.co:hover img{filter:none;opacity:1}
+  /* world-map backdrop for the team section */
+  #equipe{position:relative;overflow:hidden}
+  #equipe .wrap{position:relative;z-index:1}
+  .worldbg{position:absolute;inset:0;z-index:0;pointer-events:none;
+    -webkit-mask-image:linear-gradient(#000 72%,transparent);mask-image:linear-gradient(#000 72%,transparent)}
+  .worldmap{position:absolute;inset:0;color:var(--green);opacity:.3;
+    background-image:radial-gradient(currentColor 1.05px,transparent 1.4px);background-size:9px 9px;
+    -webkit-mask:url("/assets/world-map.svg") center/contain no-repeat;
+    mask:url("/assets/world-map.svg") center/contain no-repeat}
+  [data-theme="dark"] .worldmap{opacity:.42}
+  .net{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .netline{fill:none;stroke:var(--green);stroke-width:1.6;opacity:.5;stroke-dasharray:5 9;animation:netflow 1.1s linear infinite}
+  @keyframes netflow{to{stroke-dashoffset:-28}}
+  .netnode{fill:var(--green)}
+  .netpulse{fill:none;stroke:var(--green);stroke-width:1.6}
+
+  h1{font-size:clamp(2.6rem,7vw,5rem);font-weight:800;max-width:15ch;margin:0 auto 22px}
+  h1 .grad{background:var(--hero-grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .lead{font-size:clamp(1.05rem,2vw,1.25rem);color:var(--ink-2);max-width:680px;margin:0 auto 38px;font-weight:450}
+  .cta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+  /* ─── Marquee ─── */
+  .marquee{margin-top:60px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:22px 0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+  .track{display:flex;gap:0;width:max-content;animation:scroll 28s linear infinite}
+  .track span{font-family:'Inter Tight';font-weight:700;font-size:26px;color:var(--ink-3);letter-spacing:-.02em;white-space:nowrap;display:flex;align-items:center;gap:46px;padding-right:46px}
+  .track .ar{font-family:'Noto Kufi Arabic';font-size:24px}
+  .track .sep{color:var(--line-2);font-size:10px;transform:translateY(-2px)}
+  @keyframes scroll{to{transform:translateX(-50%)}}
+
+  /* ─── Live stream (ElevenLabs-style voice cards) ─── */
+  .stream{margin-top:50px;overflow:hidden;display:flex;flex-direction:column;gap:18px;
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+  .srow{display:flex;gap:18px;width:max-content;will-change:transform}
+  .srow.ltr{animation:streamLTR 64s linear infinite}
+  .srow.rtl{animation:streamRTL 78s linear infinite}
+  .stream:hover .srow{animation-play-state:paused}
+  @keyframes streamLTR{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+  @keyframes streamRTL{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  .vcard{width:316px;flex:0 0 auto;border:1px solid var(--line);border-radius:16px;background:var(--card);
+    padding:18px 18px 17px;transition:border-color .25s,box-shadow .25s,transform .25s}
+  .vcard:hover{border-color:var(--line-2);box-shadow:var(--shadow);transform:translateY(-3px)}
+  .vcard.playing{border-color:var(--green);box-shadow:0 0 0 1px var(--green),0 12px 32px rgba(8,221,184,.14)}
+  .vc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .vc-lang{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--green-ink)}
+  .vc-code{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;color:var(--ink-3);display:flex;align-items:center;gap:7px}
+  .vc-code .live{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--green-soft);animation:pulse2 2s infinite}
+  @keyframes pulse2{0%{box-shadow:0 0 0 0 rgba(8,221,184,.5)}70%{box-shadow:0 0 0 6px rgba(8,221,184,0)}100%{box-shadow:0 0 0 0 rgba(8,221,184,0)}}
+  .vc-src{font-size:12.5px;color:var(--ink-3);margin-bottom:5px}
+  .vc-tgt{font-family:'Inter Tight';font-weight:700;font-size:1.2rem;letter-spacing:-.02em;margin-bottom:16px;min-height:1.5em}
+  .vc-tgt.ar{font-family:'Noto Kufi Arabic';direction:rtl;text-align:right;font-size:1.15rem}
+  .vc-audio{display:flex;align-items:center;gap:12px}
+  .play{width:40px;height:40px;border-radius:50%;background:var(--ink);color:var(--bg);border:0;cursor:pointer;
+    display:grid;place-items:center;flex:0 0 auto;transition:transform .15s,background .2s}
+  .play:hover{transform:scale(1.07)}
+  .play svg{width:15px;height:15px}
+  .i-pause{display:none}
+  .vcard.playing .i-play{display:none}
+  .vcard.playing .i-pause{display:block}
+  .wave{display:flex;align-items:center;gap:2px;height:34px;flex:1;overflow:hidden}
+  .wave span{flex:1;min-width:2px;border-radius:2px;background:var(--line-2);transform-origin:center;transition:background .1s}
+  .wave span.on{background:var(--green)}
+  .vcard.playing .wave span{animation:eq .8s ease-in-out infinite alternate}
+  @keyframes eq{from{transform:scaleY(.55)}to{transform:scaleY(1)}}
+  .vc-dur{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;flex:0 0 auto}
+
+  /* ─── Featured player ─── */
+  .player{position:relative;display:grid;grid-template-columns:.85fr 1.15fr;gap:44px;align-items:center;
+    border:1px solid var(--line);border-radius:24px;background:var(--panel-grad);padding:38px;box-shadow:var(--shadow);overflow:hidden;margin-top:48px}
+  @media(max-width:820px){.player{grid-template-columns:1fr;gap:30px;padding:28px}}
+  .player.playing{border-color:var(--green)}
+  .pl-glow{position:absolute;width:340px;height:240px;background:var(--green-soft);filter:blur(70px);top:-60px;right:-40px;opacity:0;transition:opacity .4s}
+  .player.playing .pl-glow{opacity:1}
+  .pl-left,.pl-right{position:relative;z-index:1}
+  .pl-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+  .pl-chip{font-size:13px;font-weight:600;padding:7px 15px;border-radius:100px;border:1px solid var(--line-2);color:var(--ink-2);cursor:pointer;background:transparent;transition:background .2s,color .2s,border-color .2s}
+  .pl-chip:hover{border-color:var(--ink);color:var(--ink)}
+  .pl-chip.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .pl-src{font-size:14px;color:var(--ink-3);margin-bottom:10px}
+  .pl-tgt{font-family:'Inter Tight';font-weight:800;font-size:clamp(1.8rem,3.4vw,2.6rem);letter-spacing:-.03em;line-height:1.12;min-height:1.2em;overflow-wrap:anywhere;word-break:break-word}
+  .pl-tgt::after{content:'';display:inline-block;width:2px;height:1em;background:var(--green);margin-left:3px;vertical-align:-2px;animation:caret 1s step-end infinite}
+  .pl-tgt.done::after{display:none}
+  .pl-tgt.ar{font-family:'Noto Kufi Arabic';direction:rtl;text-align:right}
+  @keyframes caret{50%{opacity:0}}
+  .pl-meta{margin-top:16px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12.5px;color:var(--ink-3);display:flex;align-items:center;gap:8px}
+  .pl-meta .live{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--green-soft);animation:pulse2 2s infinite}
+  .pl-wave-wrap{display:flex;align-items:center;gap:18px}
+  .pl-play{width:56px;height:56px;border-radius:50%;background:var(--ink);color:var(--bg);border:0;cursor:pointer;display:grid;place-items:center;flex:0 0 auto;transition:transform .15s}
+  .pl-play:hover{transform:scale(1.06)}
+  .pl-play svg{width:20px;height:20px}
+  .pl-i-pause{display:none}
+  .player.playing .pl-i-play{display:none}
+  .player.playing .pl-i-pause{display:block}
+  .pl-wave{flex:1;min-width:0;height:88px;width:100%;cursor:pointer;display:block}
+  .pl-time{margin-top:2px;font-family:ui-monospace,monospace;font-size:12.5px;color:var(--ink-3);text-align:right;font-variant-numeric:tabular-nums}
+  @media(max-width:560px){
+    .player{padding:20px;gap:22px;border-radius:18px}
+    .pl-chips{gap:6px;margin-bottom:18px}
+    .pl-chip{font-size:11.5px;padding:6px 11px}
+    .pl-src{font-size:13px;margin-bottom:8px}
+    .pl-tgt{font-size:1.45rem;line-height:1.2}
+    .pl-wave-wrap{gap:12px}
+    .pl-play{width:46px;height:46px}.pl-play svg{width:17px;height:17px}
+    .pl-wave{height:58px}
+    .pl-meta{font-size:11.5px;flex-wrap:wrap}
+    .marquee{margin-top:44px}
+    .marquee .track span{font-size:18px;gap:26px;padding-right:26px}
+    .vcard{width:230px;padding:14px}
+    .vc-tgt{font-size:1.05rem}
+    .vc-src{font-size:12px}
+  }
+
+  /* ════════ PIPELINE (data journey) ════════ */
+  .pipe{margin-top:36px;position:relative}
+  .pipe-svg{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible}
+  .pipe-svg .track{stroke:var(--line);stroke-width:2;fill:none}
+  .stages{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-items:stretch;position:relative;z-index:1}
+  @media(max-width:980px){.stages{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.stages{grid-template-columns:1fr}}
+  .stage{position:relative;border:1px solid var(--line);border-radius:18px;background:var(--card);padding:18px;transition:border-color .25s,box-shadow .25s,transform .25s}
+  .stage:hover{border-color:var(--green);box-shadow:var(--shadow);transform:translateY(-3px)}
+  .stage .num{font-family:'Inter Tight';font-weight:800;font-size:11px;letter-spacing:.14em;color:var(--green-ink)}
+  .stage h4{font-family:'Inter Tight';font-weight:700;font-size:1.04rem;margin:7px 0 7px;letter-spacing:-.01em}
+  .stage p{font-size:.84rem;color:var(--ink-2);line-height:1.5}
+  .viz{height:86px;border-radius:12px;background:var(--bg-elev);border:1px solid var(--line);margin-bottom:15px;display:grid;place-items:center;overflow:hidden;position:relative}
+
+  /* 1 — collecte (mini wave) */
+  .mv-wave{display:flex;align-items:center;gap:3px;height:42px}
+  .mv-wave i{width:3px;border-radius:2px;background:var(--green);animation:mvbar 1.1s ease-in-out infinite alternate}
+  @keyframes mvbar{from{height:7px;opacity:.45}to{height:38px;opacity:1}}
+
+  /* 2 — vote consensus */
+  .mv-vote{display:flex;align-items:center;gap:12px}
+  .mv-dots{display:flex;gap:5px}
+  .mv-dots i{width:15px;height:15px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;color:#fff;background:var(--line-2);animation:voteon 4s ease-in-out infinite}
+  @keyframes voteon{0%,8%{background:var(--line-2);transform:scale(1)}14%{transform:scale(1.25)}22%,86%{background:var(--green);transform:scale(1)}100%{background:var(--line-2)}}
+  .mv-dots i.no{animation:voteno 4s ease-in-out infinite}
+  @keyframes voteno{0%,8%{background:var(--line-2)}22%,86%{background:var(--ink-3)}100%{background:var(--line-2)}}
+  .mv-ring{position:relative;width:40px;height:40px}
+  .mv-ring svg{transform:rotate(-90deg)}
+  .mv-ring .pct{position:absolute;inset:0;display:grid;place-items:center;font-family:'Inter Tight';font-weight:800;font-size:12px;color:var(--ink)}
+  .mv-ring circle.fg{stroke-dasharray:101;stroke-dashoffset:101;animation:ring 4s ease-in-out infinite}
+  @keyframes ring{0%,8%{stroke-dashoffset:101}30%,86%{stroke-dashoffset:20}100%{stroke-dashoffset:101}}
+
+  /* 3 — review interne (scan + stamp) */
+  .mv-doc{position:relative;width:54px;height:60px;border-radius:7px;background:var(--card);border:1px solid var(--line-2);overflow:hidden}
+  .mv-doc .ln{height:4px;border-radius:3px;background:var(--line);margin:8px 8px 0}
+  .mv-doc .ln:first-child{margin-top:10px;width:60%}
+  .mv-doc .scan{position:absolute;left:0;right:0;height:14px;top:-14px;background:linear-gradient(var(--green-soft),transparent);border-top:1.5px solid var(--green);animation:scan 2.6s ease-in-out infinite}
+  @keyframes scan{0%{top:-14px}55%{top:60px}100%{top:60px}}
+  .mv-stamp{position:absolute;right:-6px;bottom:-4px;width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:13px;transform:scale(0);animation:stamp 2.6s ease-in-out infinite}
+  @keyframes stamp{0%,60%{transform:scale(0) rotate(-20deg);opacity:0}72%{transform:scale(1.2) rotate(0);opacity:1}90%,100%{transform:scale(1);opacity:1}}
+
+  /* 4 — data engineering (scatter → grid) */
+  .mv-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;width:58px}
+  .mv-grid i{width:9px;height:9px;border-radius:2.5px;background:var(--green);animation:settle 3.4s cubic-bezier(.5,0,.2,1) infinite}
+  .mv-grid i.noise{background:var(--ink-3);animation:noise 3.4s ease-in-out infinite}
+  @keyframes settle{0%{transform:translate(var(--dx,8px),var(--dy,-6px));opacity:.3}55%{opacity:1}80%,100%{transform:translate(0,0);opacity:1}}
+  @keyframes noise{0%{transform:translate(var(--dx,6px),var(--dy,5px)) scale(1);opacity:.6}45%{opacity:.6}70%,100%{transform:translate(0,0) scale(0);opacity:0}}
+
+  /* 5 — infrastructure / GPU */
+  .mv-gpu{display:flex;align-items:flex-end;gap:4px;height:44px}
+  .mv-gpu i{width:7px;border-radius:2px;background:linear-gradient(var(--green),var(--green-2));animation:gpu .9s ease-in-out infinite alternate}
+  @keyframes gpu{from{height:10px;opacity:.5}to{height:42px;opacity:1}}
+  .mv-core{width:14px;height:14px;border-radius:4px;background:var(--ink);margin-left:6px;box-shadow:0 0 0 0 var(--green);animation:core 1.6s ease-in-out infinite}
+  @keyframes core{0%,100%{box-shadow:0 0 0 0 rgba(8,221,184,.5)}50%{box-shadow:0 0 0 7px rgba(8,221,184,0)}}
+
+  /* ── pipeline · LAB dark mode ── */
+  .lab{background:var(--bg-elev);color:var(--ink);position:relative;overflow:hidden;transition:background .3s,color .3s}
+  .lab::before{content:'';position:absolute;top:-130px;left:50%;transform:translateX(-50%);width:780px;height:400px;background:rgba(8,221,184,.10);filter:blur(95px);pointer-events:none}
+  .lab .wrap{position:relative;z-index:1}
+  .lab .h2{color:var(--ink)}
+  .lab .sub{color:var(--ink-2)}
+  .lab .eyebrow{color:var(--green-ink)}
+  .lab .stage{background:var(--card);border-color:var(--line);cursor:pointer}
+  .lab .stage:hover{border-color:var(--green);box-shadow:var(--shadow);transform:translateY(-3px)}
+  .lab .stage.active{border-color:var(--green);box-shadow:0 0 0 1px var(--green),var(--shadow)}
+  .lab .stage h4{color:var(--ink)}
+  .lab .stage p{color:var(--ink-2)}
+  .lab .stage .num{color:var(--green-ink)}
+  .lab .viz{background:var(--bg-elev);border-color:var(--line)}
+  .lab .pipe-svg .track{stroke:var(--line)}
+  .lab .mv-dots i{background:var(--line-2)}
+  .lab .mv-doc{background:var(--bg-elev);border-color:var(--line-2)}
+  .lab .mv-doc .ln{background:var(--line-2)}
+  .lab .mv-grid i.noise{background:var(--ink-3)}
+  .lab .mv-ring .pct{color:var(--ink)}
+  .lab .mv-core{background:var(--ink)}
+  .stage .more-k{margin-top:13px;font-size:11.5px;font-weight:700;letter-spacing:.05em;color:#5EEAD4;display:inline-flex;align-items:center;gap:6px;user-select:none}
+  .stage .more-k .pl{display:inline-grid;place-items:center;width:15px;height:15px;border:1px solid currentColor;border-radius:5px;font-size:12px;line-height:1;transition:transform .25s}
+  .stage.active .more-k .pl{transform:rotate(45deg)}
+
+  /* ── traveling token packets ── */
+  .pkt{position:absolute;top:0;left:0;z-index:2;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;font-weight:600;
+    padding:4px 9px;border-radius:8px;background:var(--green);color:#06231d;white-space:nowrap;
+    box-shadow:0 4px 16px rgba(8,221,184,.4);offset-rotate:0deg;animation:pktmove 3s linear infinite}
+  @keyframes pktmove{0%{offset-distance:0%;opacity:0}12%{opacity:1}88%{opacity:1}100%{offset-distance:100%;opacity:0}}
+
+  /* ── lab detail panel ── */
+  .labdetail{margin-top:18px;border:1px solid var(--line);border-radius:18px;background:var(--card);padding:26px 28px;
+    display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:start;min-height:128px}
+  @media(max-width:600px){.labdetail{grid-template-columns:1fr;gap:12px;padding:22px}}
+  .labdetail .ld-num{font-family:'Inter Tight';font-weight:800;font-size:2.6rem;color:var(--line-2);line-height:.9;letter-spacing:-.04em}
+  .labdetail .ld-title{font-family:'Inter Tight';font-weight:700;font-size:1.22rem;color:var(--ink);margin-bottom:15px;letter-spacing:-.02em}
+  .labdetail ul{list-style:none;display:flex;flex-direction:column;gap:11px}
+  .labdetail li{position:relative;padding-left:22px;color:var(--ink-2);font-size:.93rem;line-height:1.5}
+  .labdetail li::before{content:'';position:absolute;left:0;top:7px;width:7px;height:7px;border-radius:2px;background:var(--green)}
+  .labdetail li b{color:var(--ink);font-weight:600}
+
+  /* ─── Section scaffolding ─── */
+  section{padding:104px 0}
+  .eyebrow{font-size:12.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--green-ink);margin-bottom:14px}
+  .h2{font-size:clamp(2rem,4.4vw,3.05rem);font-weight:800;max-width:20ch;margin-bottom:18px}
+  .sub{color:var(--ink-2);font-size:1.08rem;max-width:620px}
+  .center{text-align:center}.center .h2,.center .sub{margin-left:auto;margin-right:auto}
+
+  /* ─── Languages (equal billing) ─── */
+  .langs{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:54px}
+  @media(max-width:880px){.langs{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:520px){.langs{grid-template-columns:1fr}}
+  .lang{position:relative;border:1px solid var(--line);border-radius:var(--r);padding:28px 24px;background:var(--card);
+    overflow:hidden;transition:transform .3s cubic-bezier(.2,.8,.2,1),box-shadow .3s,border-color .3s}
+  .lang:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:var(--line-2)}
+  .lang .name{font-family:'Inter Tight';font-weight:800;font-size:1.5rem;letter-spacing:-.03em}
+  .lang .reg{color:var(--ink-3);font-size:.85rem;font-weight:500;margin-top:6px}
+  .lang .echo{position:absolute;right:14px;bottom:6px;font-family:'Inter Tight';font-weight:800;font-size:3.4rem;color:var(--ink);opacity:.05;letter-spacing:-.05em;line-height:1}
+  .lang .bar{width:24px;height:2px;border-radius:2px;background:var(--ink);margin-top:18px;opacity:.18}
+  .langs-note{text-align:center;color:var(--ink-3);font-size:.95rem;margin-top:26px}
+
+  /* ─── Pillars ─── */
+  .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:52px}
+  @media(max-width:880px){.pillars{grid-template-columns:1fr;gap:18px}}
+  .pillar{position:relative;border:1px solid var(--line);border-radius:var(--r);padding:34px 30px 30px;background:linear-gradient(170deg,var(--card),var(--bg-elev));overflow:visible;
+    transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s,border-color .35s}
+  .pillar>:not(.spot){position:relative;z-index:1}
+  .pillar .spot{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity .35s;border-radius:var(--r);
+    background:radial-gradient(300px circle at var(--mx,50%) var(--my,50%), var(--green-soft), transparent 62%)}
+  .pillar:hover .spot{opacity:1}
+  .pillar::before{content:'';position:absolute;top:-1px;left:30px;right:30px;height:2px;border-radius:2px;background:var(--green);transform:scaleX(0);transform-origin:left;transition:transform .4s cubic-bezier(.2,.8,.2,1);z-index:2}
+  .pillar:hover{transform:translateY(-5px);box-shadow:var(--shadow);border-color:var(--green)}
+  .pillar:hover::before{transform:scaleX(1)}
+  .pillar:not(:last-child)::after{content:'';position:absolute;top:50%;right:-22px;transform:translateY(-50%);width:22px;height:22px;background-color:var(--ink-3);transition:background-color .3s;z-index:3;
+    -webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2024%2024%22%3E%3Cpath%20fill=%22black%22%20d=%22M9%204.5%2016.5%2012%209%2019.5%207.2%2017.7%2012.9%2012%207.2%206.3z%22/%3E%3C/svg%3E") center/contain no-repeat;
+    mask:url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2024%2024%22%3E%3Cpath%20fill=%22black%22%20d=%22M9%204.5%2016.5%2012%209%2019.5%207.2%2017.7%2012.9%2012%207.2%206.3z%22/%3E%3C/svg%3E") center/contain no-repeat}
+  .pillar:hover:not(:last-child)::after{background-color:var(--green)}
+  @media(max-width:880px){.pillar:not(:last-child)::after{display:none}}
+  .pillar .pnum{position:absolute;top:20px;right:24px;font-family:'Inter Tight';font-weight:800;font-size:2.4rem;line-height:1;letter-spacing:-.04em;color:var(--ink);opacity:.07;z-index:0!important}
+  .pillar .ic{width:48px;height:48px;border-radius:14px;background:var(--ink);color:var(--bg);display:grid;place-items:center;margin-bottom:22px;transition:background .3s,color .3s,transform .3s}
+  .pillar:hover .ic{background:var(--green);color:#06231d;transform:rotate(-5deg) scale(1.06)}
+  .pillar .ic svg{width:22px;height:22px}
+  .pillar .step-k{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green-ink);margin-bottom:10px}
+  .pillar h3{font-size:1.3rem;font-weight:700;margin-bottom:10px;min-height:2.5em;letter-spacing:-.01em}
+  .pillar p{color:var(--ink-2);font-size:.97rem}
+  .pillar .ptag{display:inline-flex;align-items:center;gap:7px;margin-top:18px;font-size:11.5px;font-weight:600;color:var(--ink-2);border:1px solid var(--line);border-radius:100px;padding:6px 13px;transition:border-color .3s,color .3s}
+  .pillar:hover .ptag{border-color:var(--green);color:var(--ink)}
+  .pillar .ptag::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green)}
+
+  /* ─── Split (Elson) ─── */
+  .split{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+  @media(max-width:880px){.split{grid-template-columns:1fr;gap:36px}}
+  .split .panel{border:1px solid var(--line);border-radius:24px;background:var(--panel-grad);padding:38px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .split .panel .pglow{position:absolute;width:280px;height:200px;background:rgba(8,221,184,.12);filter:blur(60px);top:-40px;right:-30px}
+  .chip{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:var(--bg);font-size:13px;font-weight:600;padding:8px 16px;border-radius:100px;position:relative}
+  .chip .d{width:7px;height:7px;border-radius:50%;background:var(--green-2)}
+  .panel .line{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line)}
+  .panel .line:last-child{border-bottom:0}
+  .panel .line .tick{width:22px;height:22px;border-radius:50%;background:var(--green-soft);color:var(--green-ink);display:grid;place-items:center;flex:0 0 auto}
+  .panel .line span{font-size:.98rem;color:var(--ink)}
+  .dsprog{margin-top:22px}
+  .dsprog-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;font-size:13px;color:var(--ink-2)}
+  .dsprog-top b{font-family:'Inter Tight';font-weight:800;font-size:19px;color:var(--ink);letter-spacing:-.03em}
+  .dsprog-top .goal{color:var(--ink-3)}
+  .dsbar{height:8px;border-radius:6px;background:var(--bg-elev);border:1px solid var(--line);overflow:hidden}
+  .dsbar span{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,var(--green),var(--green-2));box-shadow:0 0 14px rgba(8,221,184,.55);transition:width 1.6s cubic-bezier(.2,.8,.2,1)}
+  .reveal.in .dsbar span{width:6%}
+  .dsprog-sub{margin-top:10px;font-size:12px;color:var(--ink-3)}
+  .dsprog-sub b{color:var(--green-ink);font-weight:700}
+
+  /* ─── Dark band ─── */
+  .dark{background:var(--bg-elev);color:var(--ink);border:1px solid var(--line);border-radius:32px;margin:0 24px;padding:96px 40px;text-align:center;position:relative;overflow:hidden;transition:background .3s,color .3s}
+  .dark .glow{position:absolute;width:640px;height:320px;background:rgba(8,221,184,.16);filter:blur(84px);top:-90px;left:50%;transform:translateX(-50%)}
+  .dark .eyebrow{color:var(--green-ink)}
+  .dark .q{position:relative;z-index:1;font-family:'Inter Tight';font-weight:700;font-size:clamp(1.7rem,3.8vw,2.7rem);letter-spacing:-.03em;max-width:22ch;margin:0 auto;line-height:1.18;color:var(--ink)}
+  .dark .q .hl{color:var(--green-ink)}
+  .dark .qsub{position:relative;z-index:1;color:var(--ink-2);margin-top:22px;font-size:1.05rem;max-width:560px;margin-left:auto;margin-right:auto}
+
+  /* ─── CTA ─── */
+  .cta-final{text-align:center;padding:120px 0}
+  .cta-final h2{font-size:clamp(2.2rem,5vw,3.6rem);font-weight:800;margin-bottom:18px}
+  .cta-final p{color:var(--ink-2);font-size:1.1rem;margin-bottom:34px;max-width:560px;margin-left:auto;margin-right:auto}
+
+  /* ─── Footer ─── */
+  footer{border-top:1px solid var(--line);margin-top:96px;padding:46px 0;color:var(--ink-3);font-size:13.5px}
+  .foot-in{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:18px}
+  .foot-links{display:flex;gap:24px;flex-wrap:wrap}
+  @media(max-width:680px){
+    footer{margin-top:64px;padding:38px 0}
+    .foot-in{flex-direction:column;text-align:center;gap:22px}
+    .foot-links{justify-content:center;gap:16px 18px}
+  }
+  .foot-links a:hover{color:var(--ink)}
+
+  /* ─── Competition ─── */
+  .comp-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;margin-top:46px}
+  @media(max-width:820px){.comp-grid{grid-template-columns:1fr}}
+  .comp-card{border:1px solid var(--line);border-radius:22px;background:var(--card);padding:34px;display:flex;flex-direction:column;align-items:flex-start;transition:border-color .25s,box-shadow .25s,transform .25s}
+  .comp-card.live{background:linear-gradient(160deg,var(--card),var(--bg-elev))}
+  .comp-card:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:var(--line-2)}
+  .comp-card.soon{justify-content:space-between}
+  .comp-badge{display:inline-flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green-ink);background:var(--green-soft);padding:6px 13px;border-radius:100px;margin-bottom:20px}
+  .comp-badge .live{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--green-soft);animation:pulse2 2s infinite}
+  .comp-badge.up{color:var(--ink-3);background:transparent;border:1px solid var(--line)}
+  .comp-card h3{font-family:'Inter Tight';font-weight:800;font-size:1.5rem;letter-spacing:-.02em;margin-bottom:8px}
+  .comp-card p{color:var(--ink-2);font-size:.97rem;margin-bottom:24px}
+  .countdown{display:flex;gap:10px;margin-bottom:26px}
+  .cd-box{display:flex;flex-direction:column;align-items:center;gap:7px;min-width:66px;padding:14px 10px;border:1px solid var(--line);border-radius:14px;background:var(--bg-elev)}
+  .cd-box b{font-family:'Inter Tight';font-weight:800;font-size:1.95rem;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--ink);line-height:1}
+  .cd-box span{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3)}
+  .comp-soon{font-family:'Inter Tight';font-weight:800;font-size:2rem;letter-spacing:-.03em;color:var(--ink-3);margin:6px 0 26px;opacity:.75}
+
+  /* ─── Reveal ─── */
+  .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.2,.8,.2,1),transform .7s cubic-bezier(.2,.8,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+
+  /* ─── Language switcher ─── */
+  .lang-switch{display:inline-flex;border:1px solid var(--line-2);border-radius:100px;overflow:hidden;background:var(--card)}
+  .lang-btn{border:0;background:transparent;color:var(--ink-3);font-family:inherit;font-size:12.5px;font-weight:700;letter-spacing:.02em;padding:7px 11px;cursor:pointer;transition:color .2s,background .2s;line-height:1}
+  .lang-btn:hover{color:var(--ink)}
+  .lang-btn.active{background:var(--ink);color:var(--bg)}
+  .lang-btn[data-lang="ar"]{font-size:15px;padding:6px 11px}
+  @media(max-width:560px){.lang-switch{order:-1}}
+
+  /* ─── RTL (Arabic) ─── */
+  [dir="rtl"]{}
+  [dir="rtl"] body{font-family:'Noto Kufi Arabic','Inter',sans-serif}
+  [dir="rtl"] h1,[dir="rtl"] h2,[dir="rtl"] h3,[dir="rtl"] h4,[dir="rtl"] .display,[dir="rtl"] .pl-tgt,[dir="rtl"] .cd-box b,[dir="rtl"] .comp-soon,[dir="rtl"] .q,[dir="rtl"] .ld-title,[dir="rtl"] .ld-num,[dir="rtl"] .lang .name,[dir="rtl"] .vc-tgt,[dir="rtl"] .pl-chip,[dir="rtl"] .cred,[dir="rtl"] .pnum,[dir="rtl"] .step-k{font-family:'Noto Kufi Arabic','Inter Tight',sans-serif;letter-spacing:0}
+  [dir="rtl"] .track,[dir="rtl"] .lw-track,[dir="rtl"] .srow{direction:ltr}  /* keep marquees stable */
+  [dir="rtl"] .arrow{display:inline-block;transform:scaleX(-1)}
+  [dir="rtl"] .btn:hover .arrow{transform:scaleX(-1) translateX(3px)}
+  [dir="rtl"] .pillar,[dir="rtl"] .stage,[dir="rtl"] .vcard,[dir="rtl"] .pl-left,[dir="rtl"] .labdetail,[dir="rtl"] #elson .split>div:first-child,[dir="rtl"] .lang{text-align:right}
+  [dir="rtl"] .pillar .pnum{right:auto;left:24px}
+  [dir="rtl"] .pillar:not(:last-child)::after{right:auto;left:-22px;transform:translateY(-50%) scaleX(-1)}
+  [dir="rtl"] .lang .echo{right:auto;left:14px}
+  [dir="rtl"] .pl-time{text-align:left}
+  [dir="rtl"] .labdetail{grid-template-columns:1fr auto}
+  [dir="rtl"] .vc-src,[dir="rtl"] .pl-src{text-align:right}
+
+  /* ═══════════ RESPONSIVE — phones ═══════════ */
+  @media(max-width:900px){
+    section{padding:84px 0}
+    .h2{margin-bottom:14px}
+  }
+  @media(max-width:680px){
+    .wrap{padding:0 18px}
+    section{padding:72px 0}
+    header{padding:124px 0 54px}
+    .cta-final{padding:84px 0}
+    .nav-in{height:60px;padding:0 16px}
+    .brand img{height:34px!important}
+    .h-glow{width:560px;top:-120px}
+    h1{margin-bottom:18px}
+    .lead{margin-bottom:30px;font-size:1.02rem}
+    .cta-row{gap:10px;width:100%}
+    .btn-lg{padding:13px 22px;font-size:14px}
+    .marquee{margin-top:42px}
+    .poweredby{margin-top:24px}
+    .dark{margin:0 14px;padding:60px 22px;border-radius:24px}
+    .player{padding:22px}
+    .pl-play{width:48px;height:48px}
+    .pl-wave{height:70px}
+    .pl-tgt{font-size:1.55rem}
+    .vcard{width:264px;padding:16px}
+    .labdetail{padding:20px;gap:16px}
+    .labdetail .ld-num{font-size:2rem}
+    .stage{padding:18px 16px}
+    .pillar{padding:30px 24px 26px}
+    .split .panel{padding:28px}
+    .dark .q{font-size:clamp(1.45rem,6vw,1.9rem)}
+  }
+  @media(max-width:460px){
+    .nav-links .btn-primary{display:none}
+    h1{font-size:2.15rem;line-height:1.08}
+    .h2{font-size:1.7rem}
+    .lead{font-size:.98rem}
+    .pl-tgt{font-size:1.35rem}
+    .vcard{width:232px}
+    .lang .name{font-size:1.35rem}
+    .cred-label{font-size:11px}
+  }
+</style>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="nav-in">
+    <a class="brand" href="/"><img src="/assets/elson-logo.svg" alt="Elson" style="height:40px;display:block"/></a>
+    <div class="nav-links">
+      <a href="#langues" data-i18n="nav.langues">Langues</a>
+      <a href="#direct" data-i18n="nav.direct">En direct</a>
+      <a href="#competition" data-i18n="nav.competition">Compétition</a>
+      <a href="#pipeline" data-i18n="nav.methode">Méthode</a>
+      <a href="#equipe" data-i18n="nav.equipe">Équipe</a>
+      <a href="#ouvert" data-i18n="nav.ouverture">Ouverture</a>
+      <div class="lang-switch" role="group" aria-label="Langue">
+        <button class="lang-btn" data-lang="fr">FR</button>
+        <button class="lang-btn" data-lang="en">EN</button>
+        <button class="lang-btn" data-lang="ar">ع</button>
+      </div>
+      <button class="theme-btn" id="themeBtn" aria-label="Basculer le thème">
+        <svg class="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg class="ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M19.4 4.6l-1.8 1.8M6.4 17.6l-1.8 1.8"/></svg>
+      </button>
+      <a class="btn btn-primary" href="/login"><span data-i18n="nav.cta">Accéder à Elson</span> <span class="arrow">→</span></a>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <div class="mesh">
+    <canvas class="hero-orb" id="heroOrb" aria-hidden="true"></canvas>
+    <div class="grid-bg"></div>
+    <canvas class="hero-dots" id="heroDots" aria-hidden="true"></canvas>
+    <div class="h-glow"></div>
+  </div>
+  <div class="wrap">
+    <div class="kicker reveal" data-i18n="hero.kicker">Par ADST × RIM AI</div>
+    <h1 class="reveal"><span class="grad" data-i18n-html="hero.grad">L'intelligence artificielle,<br>qui parle </span><span class="rotw"><span class="w">hassaniya</span></span></h1>
+    <p class="lead reveal" data-i18n="hero.lead">Une équipe internationale, une expertise en data engineering et en IA, notre propre infrastructure de calcul GPU et la force d'une communauté — pour faire entrer le hassaniya, le pulaar, le soninké et le wolof dans l'intelligence artificielle. Et demain, bien d'autres.</p>
+    <div class="cta-row reveal">
+      <a class="btn btn-primary btn-lg" href="/login"><span data-i18n="hero.cta1">Rejoindre le projet</span> <span class="arrow">→</span></a>
+      <a class="btn btn-ghost btn-lg" href="#pipeline" data-i18n="hero.cta2">Notre approche</a>
+    </div>
+    <div class="poweredby reveal"><span data-i18n="hero.poweredby">Propulsé par</span> <img src="/assets/elson-logo.svg" alt="Elson"/></div>
+  </div>
+
+  <div class="marquee reveal">
+    <div class="track">
+      <span>Hassaniya<span class="sep">◆</span>Pulaar<span class="sep">◆</span>Soninké<span class="sep">◆</span>Wolof<span class="sep">◆</span><span class="ar">العربية</span><span class="sep">◆</span></span>
+      <span>Hassaniya<span class="sep">◆</span>Pulaar<span class="sep">◆</span>Soninké<span class="sep">◆</span>Wolof<span class="sep">◆</span><span class="ar">العربية</span><span class="sep">◆</span></span>
+    </div>
+  </div>
+</header>
+
+<section id="langues">
+  <div class="wrap center">
+    <div class="eyebrow reveal" data-i18n="lng.eyebrow">Nos langues</div>
+    <h2 class="h2 reveal" data-i18n="lng.h2">Quatre langues. La même ambition.</h2>
+    <p class="sub reveal" data-i18n="lng.sub">Longtemps invisibles pour les machines, nos langues prennent leur place dans l'IA — à égalité, sans hiérarchie.</p>
+    <div class="langs">
+      <div class="lang reveal"><div class="name" data-i18n="lng.n1">Hassaniya</div><div class="reg" data-i18n="lng.r1">Mauritanie · Sahara</div><div class="bar"></div><div class="echo">H</div></div>
+      <div class="lang reveal"><div class="name" data-i18n="lng.n2">Pulaar</div><div class="reg" data-i18n="lng.r2">Mauritanie · vallée du fleuve</div><div class="bar"></div><div class="echo">P</div></div>
+      <div class="lang reveal"><div class="name" data-i18n="lng.n3">Soninké</div><div class="reg" data-i18n="lng.r3">Mauritanie · Guidimakha</div><div class="bar"></div><div class="echo">S</div></div>
+      <div class="lang reveal"><div class="name" data-i18n="lng.n4">Wolof</div><div class="reg" data-i18n="lng.r4">Mauritanie · sud-ouest</div><div class="bar"></div><div class="echo">W</div></div>
+    </div>
+    <p class="langs-note reveal" data-i18n="lng.note">Et la liste s'allongera — chaque dialecte mérite sa voix numérique.</p>
+  </div>
+</section>
+
+<section id="direct">
+  <div class="wrap center">
+    <div class="eyebrow reveal" data-i18n="dir.eyebrow">En direct</div>
+    <h2 class="h2 reveal" data-i18n="dir.h2">La communauté, en ce moment même.</h2>
+    <p class="sub reveal" data-i18n-html="dir.sub">De vrais enregistrements de la compétition, en hassaniya — contributions <b>anonymisées</b>, nettoyées. Clique pour écouter une voix réelle.</p>
+  </div>
+
+  <div class="wrap">
+    <div class="player reveal">
+      <div class="pl-glow"></div>
+      <div class="pl-left">
+        <div class="pl-chips" id="plChips"></div>
+        <div class="pl-src" id="plSrc"></div>
+        <div class="pl-tgt" id="plTgt"></div>
+        <div class="pl-meta"><span class="live"></span>#<span id="plCode"></span> · <span data-i18n="pl.anon">anonymisé</span> · <span data-i18n="pl.meta">contribution vocale</span></div>
+      </div>
+      <div class="pl-right">
+        <div class="pl-wave-wrap">
+          <button class="pl-play" id="plPlay" aria-label="Lecture">
+            <svg class="pl-i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="pl-i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+          </button>
+          <canvas class="pl-wave" id="plWave"></canvas>
+        </div>
+        <div class="pl-time" id="plTime">0:00 / 0:03</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stream reveal">
+    <div class="srow ltr" id="row1"></div>
+    <div class="srow rtl" id="row2"></div>
+  </div>
+</section>
+
+<section id="tts">
+  <div class="wrap center">
+    <div class="eyebrow reveal" data-i18n="tts.eyebrow">En création</div>
+    <h2 class="h2 reveal" data-i18n="tts.h2">Bientôt, une voix synthétique en hassaniya.</h2>
+    <p class="sub reveal" data-i18n-html="tts.sub">À partir des voix de la communauté, nous entraînons notre modèle de synthèse vocale (TTS) — pour que l'IA ne se contente pas de <b>comprendre</b> nos langues, mais qu'elle les <b>parle</b>. Le premier modèle hassaniya est en cours de création.</p>
+    <div class="tts-stage reveal">
+      <div class="loader-wrapper" aria-label="Modèle TTS en cours d'entraînement" data-i18n-aria-label="tts.loaderLabel">
+        <span class="loader-letter">V</span>
+        <span class="loader-letter">o</span>
+        <span class="loader-letter">c</span>
+        <span class="loader-letter">a</span>
+        <span class="loader-letter">l</span>
+        <span class="loader-letter">i</span>
+        <span class="loader-letter">s</span>
+        <span class="loader-letter">a</span>
+        <span class="loader-letter">t</span>
+        <span class="loader-letter">i</span>
+        <span class="loader-letter">o</span>
+        <span class="loader-letter">n</span>
+        <div class="loader"></div>
+      </div>
+    </div>
+    <div class="tts-status reveal"><span class="live"></span> <span data-i18n="tts.status">Modèle en entraînement · première voix attendue prochainement</span></div>
+  </div>
+</section>
+
+<section id="pipeline" class="lab">
+  <div class="wrap center">
+    <div class="eyebrow reveal" data-i18n="mth.eyebrow">La méthode</div>
+    <h2 class="h2 reveal" data-i18n="mth.h2">Du locuteur au modèle.</h2>
+    <p class="sub reveal" data-i18n="mth.sub">Chaque donnée suit un parcours rigoureux — la discipline d'un laboratoire de recherche, à chaque étape.</p>
+  </div>
+  <div class="wrap">
+    <div class="pipe reveal">
+      <svg class="pipe-svg" id="pipeSvg" aria-hidden="true"></svg>
+      <div class="stages">
+        <div class="stage reveal">
+          <div class="viz"><div class="mv-wave">
+            <i style="animation-delay:0s"></i><i style="animation-delay:.1s"></i><i style="animation-delay:.25s"></i><i style="animation-delay:.4s"></i><i style="animation-delay:.15s"></i><i style="animation-delay:.5s"></i><i style="animation-delay:.3s"></i><i style="animation-delay:.6s"></i><i style="animation-delay:.2s"></i><i style="animation-delay:.45s"></i>
+          </div></div>
+          <div class="num">01</div><h4 data-i18n="mth.s1t">Collecte</h4>
+          <p data-i18n="mth.s1p">La communauté écrit et enregistre sa langue via Elson — texte et voix, par ceux qui la parlent.</p>
+        </div>
+        <div class="stage reveal">
+          <div class="viz"><div class="mv-vote">
+            <div class="mv-dots">
+              <i style="animation-delay:0s">✓</i><i style="animation-delay:.12s">✓</i><i class="no" style="animation-delay:.24s">✕</i><i style="animation-delay:.36s">✓</i><i style="animation-delay:.48s">✓</i>
+            </div>
+            <div class="mv-ring"><svg width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" fill="none" stroke="var(--line)" stroke-width="4"/><circle class="fg" cx="20" cy="20" r="16" fill="none" stroke="var(--green)" stroke-width="4" stroke-linecap="round"/></svg><span class="pct">80%</span></div>
+          </div></div>
+          <div class="num">02</div><h4 data-i18n="mth.s2t">Vote &amp; qualité</h4>
+          <p data-i18n="mth.s2p">Plusieurs évaluateurs notent chaque contribution. Le consensus tranche, un score de qualité est calculé.</p>
+        </div>
+        <div class="stage reveal">
+          <div class="viz"><div class="mv-doc"><div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="scan"></div><div class="mv-stamp">✓</div></div></div>
+          <div class="num">03</div><h4 data-i18n="mth.s3t">Revue interne</h4>
+          <p data-i18n="mth.s3p">Nos évaluateurs internes contrôlent les cas limites et garantissent la fiabilité du corpus.</p>
+        </div>
+        <div class="stage reveal">
+          <div class="viz"><div class="mv-grid">
+            <i style="--dx:10px;--dy:-7px;animation-delay:0s"></i><i style="--dx:-8px;--dy:6px;animation-delay:.1s"></i><i class="noise" style="--dx:5px;--dy:4px"></i><i style="--dx:9px;--dy:5px;animation-delay:.2s"></i>
+            <i style="--dx:-6px;--dy:-8px;animation-delay:.15s"></i><i style="--dx:7px;--dy:7px;animation-delay:.05s"></i><i style="--dx:-9px;--dy:3px;animation-delay:.25s"></i><i class="noise" style="--dx:-4px;--dy:-5px"></i>
+            <i style="--dx:6px;--dy:-6px;animation-delay:.12s"></i><i style="--dx:-7px;--dy:7px;animation-delay:.22s"></i><i style="--dx:8px;--dy:4px;animation-delay:.08s"></i><i style="--dx:-5px;--dy:-7px;animation-delay:.18s"></i>
+          </div></div>
+          <div class="num">04</div><h4 data-i18n="mth.s4t">Data engineering</h4>
+          <p data-i18n="mth.s4p">Nos pipelines nettoient, dédupliquent et structurent la donnée brute à l'état de l'art.</p>
+        </div>
+        <div class="stage reveal">
+          <div class="viz"><div class="mv-gpu">
+            <i style="animation-delay:0s"></i><i style="animation-delay:.18s"></i><i style="animation-delay:.36s"></i><i style="animation-delay:.1s"></i><i style="animation-delay:.28s"></i><span class="mv-core"></span>
+          </div></div>
+          <div class="num">05</div><h4 data-i18n="mth.s5t">Infrastructure &amp; GPU</h4>
+          <p data-i18n="mth.s5p">Nous entraînons nos modèles sur notre propre capacité de calcul, en souveraineté.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="approche">
+  <div class="wrap">
+    <div class="center">
+      <div class="eyebrow reveal" data-i18n="app.eyebrow">Notre approche</div>
+      <h2 class="h2 reveal" data-i18n="app.h2">La communauté apporte la langue. Notre ingénierie en fait de l'IA.</h2>
+      <p class="sub reveal" data-i18n="app.sub">Trois étapes, une même exigence : transformer la voix d'une communauté en une intelligence artificielle fiable.</p>
+    </div>
+    <div class="pillars">
+      <div class="pillar reveal">
+        <span class="spot"></span>
+        <div class="pnum">01</div>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="step-k" data-i18n="app.p1k">La communauté</div>
+        <h3 data-i18n="app.p1h">Une langue vivante, par ses locuteurs</h3>
+        <p data-i18n="app.p1p">Via Elson, des locuteurs écrivent, enregistrent et valident leur langue. La matière vient de ceux qui la parlent réellement.</p>
+        <div class="ptag" data-i18n="app.p1tag">Texte + Voix</div>
+      </div>
+      <div class="pillar reveal">
+        <span class="spot"></span>
+        <div class="pnum">02</div>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg></div>
+        <div class="step-k" data-i18n="app.p2k">Data engineering</div>
+        <h3 data-i18n="app.p2h">Une donnée nettoyée à l'état de l'art</h3>
+        <p data-i18n="app.p2p">Nos pipelines de data engineering transforment la donnée brute de la communauté en corpus fiables, structurés et prêts pour l'entraînement.</p>
+        <div class="ptag" data-i18n="app.p2tag">Nettoyage · Déduplication</div>
+      </div>
+      <div class="pillar reveal">
+        <span class="spot"></span>
+        <div class="pnum">03</div>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/></svg></div>
+        <div class="step-k" data-i18n="app.p3k">Infrastructure &amp; GPU</div>
+        <h3 data-i18n="app.p3h">Notre propre puissance de calcul</h3>
+        <p data-i18n="app.p3p">Une infrastructure et une capacité GPU qui nous appartiennent : nous entraînons nos modèles nous-mêmes, en souveraineté, sans dépendance.</p>
+        <div class="ptag" data-i18n="app.p3tag">Calcul souverain</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="elson" style="padding-top:0">
+  <div class="wrap split">
+    <div>
+      <div class="eyebrow reveal" data-i18n="els.eyebrow">L'initiative</div>
+      <h2 class="h2 reveal" data-i18n="els.h2">Elson, construit par ADST &amp; RIM AI.</h2>
+      <p class="sub reveal" style="margin-bottom:22px" data-i18n-html="els.p">Initié par RIM AI il y a trois ans, Elson est le projet des <b>dialectes nationaux à faibles ressources</b> : une <b>plateforme de crowdsourcing</b> qui rassemble la communauté, et des <b>modèles de langue (LLM) low-resource</b> entraînés pour ces langues longtemps absentes du numérique. Une initiative née en Mauritanie, portée par ses chercheurs et ses locuteurs.</p>
+      <div class="cta-row reveal"><a class="btn btn-primary" href="/login"><span data-i18n="els.cta">Rejoindre Elson</span> <span class="arrow">→</span></a></div>
+    </div>
+    <div class="panel reveal">
+      <div class="pglow"></div>
+      <div class="chip"><span class="d"></span><span data-i18n="els.chip">ADST × RIM AI · depuis 3 ans</span></div>
+      <div style="margin-top:22px">
+        <div class="line"><span class="tick">✓</span><span data-i18n="els.c1">Data engineering &amp; IA de pointe</span></div>
+        <div class="line"><span class="tick">✓</span><span data-i18n="els.c2">Infrastructure &amp; calcul GPU souverains</span></div>
+        <div class="line"><span class="tick">✓</span><span data-i18n="els.c3">Communauté de locuteurs engagée</span></div>
+        <div class="line"><span class="tick">✓</span><span data-i18n="els.c4">Quatre langues traitées à égalité</span></div>
+        <div class="line"><span class="tick">✓</span><span data-i18n="els.c5">Expériences internationales, ouverte au monde</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="competition">
+  <div class="wrap center">
+    <div class="eyebrow reveal" data-i18n="cmp.eyebrow">La compétition</div>
+    <h2 class="h2 reveal" data-i18n="cmp.h2">Une compétition en cours. D'autres arrivent.</h2>
+    <p class="sub reveal" data-i18n="cmp.sub">La communauté s'affronte langue par langue. Le hassaniya d'abord — le pulaar ensuite.</p>
+  </div>
+  <div class="wrap">
+    <div class="comp-grid">
+      <div class="comp-card live reveal">
+        <div class="comp-badge"><span class="live"></span> <span data-i18n="cmp.live">En cours</span></div>
+        <h3 data-i18n="cmp.livetitle">Elson Hassaniya Challenge</h3>
+        <p data-i18n="cmp.livedesc">Traduire, enregistrer, valider — et grimper au classement.</p>
+        <div class="countdown">
+          <div class="cd-box"><b id="cdD">00</b><span data-i18n="cmp.cdD">jours</span></div>
+          <div class="cd-box"><b id="cdH">00</b><span data-i18n="cmp.cdH">heures</span></div>
+          <div class="cd-box"><b id="cdM">00</b><span data-i18n="cmp.cdM">min</span></div>
+          <div class="cd-box"><b id="cdS">00</b><span data-i18n="cmp.cdS">sec</span></div>
+        </div>
+        <a class="btn btn-primary" href="/login"><span data-i18n="cmp.participer">Participer</span> <span class="arrow">→</span></a>
+      </div>
+      <div class="comp-card soon reveal">
+        <div class="comp-badge up" data-i18n="cmp.soon">À venir</div>
+        <h3 data-i18n="cmp.soontitle">Compétition Pulaar</h3>
+        <p data-i18n="cmp.soondesc">La prochaine langue à rejoindre l'aventure.</p>
+        <div class="comp-soon" data-i18n="cmp.soonval">Bientôt</div>
+        <a class="btn btn-ghost" href="https://wa.me/13138047312" target="_blank" rel="noopener" data-i18n="cmp.notify">Être notifié·e</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════ WINNERS / CHAMPIONS ════ -->
+<style>
+  #gagnants{padding-top:0}
+  #gagnants .win-wrap{max-width:920px;margin:0 auto}
+  #gagnants .champ{position:relative;overflow:hidden;border-radius:26px;padding:40px 30px 34px;text-align:center;max-width:560px;margin:0 auto 20px;
+    background:linear-gradient(180deg,rgba(245,179,1,.10),var(--card));border:1px solid rgba(245,179,1,.4);box-shadow:0 30px 80px -30px rgba(245,179,1,.4)}
+  #gagnants .champ::after{content:"";position:absolute;inset:0 auto 0 0;width:38%;pointer-events:none;
+    background:linear-gradient(100deg,transparent 20%,rgba(245,179,1,.22),transparent 80%);transform:translateX(-140%) skewX(-18deg);animation:winsheen 5s ease-in-out infinite}
+  @keyframes winsheen{0%{transform:translateX(-140%) skewX(-18deg)}55%,100%{transform:translateX(260%) skewX(-18deg)}}
+  @keyframes winfloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+  #gagnants .crown{font-size:3.2rem;line-height:1;margin-bottom:8px;display:inline-block;animation:winfloat 3s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(245,179,1,.45))}
+  #gagnants .ribbon{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:100px;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#B8860B;margin-bottom:16px;background:rgba(245,179,1,.14);border:1px solid rgba(245,179,1,.34)}
+  [data-theme="dark"] #gagnants .ribbon{color:#F5D67B}
+  #gagnants .champ-name{font-size:clamp(1.7rem,4.6vw,2.4rem);font-weight:800;line-height:1.14;margin-bottom:4px;background:linear-gradient(180deg,#C9971A,#F5B301);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  [data-theme="dark"] #gagnants .champ-name{background:linear-gradient(180deg,#FDE68A,#F5B301);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  #gagnants .acct{font-size:14px;color:var(--ink-3);font-weight:600;margin-bottom:22px}
+  #gagnants .prize{display:inline-flex;flex-direction:column;align-items:center;padding:15px 40px;border-radius:18px;background:rgba(245,179,1,.08);border:1px solid rgba(245,179,1,.2)}
+  #gagnants .prize b{font-size:clamp(2.3rem,6vw,3.1rem);font-weight:800;letter-spacing:-.04em;line-height:1;color:#C9971A;direction:ltr}
+  [data-theme="dark"] #gagnants .prize b{color:#FDE68A}
+  #gagnants .prize span{font-size:13px;font-weight:700;letter-spacing:.16em;color:#B8860B;margin-top:7px}
+  [data-theme="dark"] #gagnants .prize span{color:#F5B301}
+  #gagnants .win-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:16px;max-width:560px;margin:0 auto}
+  #gagnants .win-card{border:1px solid var(--line);border-radius:20px;background:var(--card);padding:26px 22px 24px;text-align:center;transition:transform .25s,border-color .25s}
+  #gagnants .win-card:hover{transform:translateY(-3px)}
+  #gagnants .win-card.silver{border-color:rgba(148,163,184,.42)}
+  #gagnants .win-card.bronze{border-color:rgba(205,127,50,.42)}
+  #gagnants .medal{font-size:2.5rem;line-height:1;margin-bottom:10px;display:inline-block;animation:winfloat 4.2s ease-in-out infinite}
+  #gagnants .rank{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:14px}
+  #gagnants .win-card.silver .rank{color:#94a3b8}
+  #gagnants .win-card.bronze .rank{color:#cd7f32}
+  #gagnants .win-name{font-size:1.02rem;font-weight:700;line-height:1.3;color:var(--ink)}
+  #gagnants .win-name + .win-name{margin-top:5px}
+  #gagnants .chip{display:inline-block;margin-top:12px;font-size:13px;color:var(--ink-3);font-weight:600;padding:4px 13px;border-radius:100px;background:var(--bg-elev);border:1px solid var(--line)}
+  #gagnants .thanks{text-align:center;font-size:13px;color:var(--ink-3);margin-top:28px;letter-spacing:.02em}
+  /* — enhanced celebration — */
+  #gagnants{position:relative;overflow:hidden}
+  #gagnants .aura{position:absolute;top:4%;left:50%;transform:translateX(-50%);width:600px;height:380px;pointer-events:none;z-index:0;background:radial-gradient(ellipse at center,rgba(245,179,1,.16),transparent 68%);filter:blur(22px);animation:winbreathe 5.5s ease-in-out infinite}
+  @keyframes winbreathe{0%,100%{opacity:.6;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.08)}}
+  #gagnants .win-wrap{position:relative;z-index:1}
+  #gagnants .champ{animation:champrise .8s cubic-bezier(.22,1,.36,1) both}
+  @keyframes champrise{from{opacity:0;transform:translateY(22px) scale(.96)}to{opacity:1;transform:none}}
+  #gagnants .champ::before{content:"";position:absolute;inset:0;border-radius:26px;padding:1.5px;pointer-events:none;z-index:0;background:conic-gradient(from 0deg,transparent 0deg,rgba(245,179,1,.75) 42deg,transparent 120deg,transparent 240deg,rgba(245,179,1,.75) 300deg,transparent 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:winspin 7s linear infinite;opacity:.55}
+  #gagnants .champ>*{position:relative;z-index:1}
+  @keyframes winspin{to{transform:rotate(360deg)}}
+  #gagnants .crown{font-size:3.5rem}
+  #gagnants .medal{filter:drop-shadow(0 5px 12px rgba(0,0,0,.18))}
+  #gagnants .win-prize{margin-top:16px;font-weight:800;letter-spacing:-.02em}
+  #gagnants .win-prize b{font-size:1.75rem;direction:ltr}
+  #gagnants .win-prize span{font-size:11px;font-weight:700;letter-spacing:.14em;margin-inline-start:6px;opacity:.85}
+  #gagnants .silver-prize b{background:linear-gradient(180deg,#64748b,#cbd5e1);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  [data-theme="dark"] #gagnants .silver-prize b{background:linear-gradient(180deg,#e2e8f0,#94a3b8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  #gagnants .silver-prize span{color:#94a3b8}
+  #gagnants .bronze-prize b{background:linear-gradient(180deg,#b45309,#e08d3c);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  [data-theme="dark"] #gagnants .bronze-prize b{background:linear-gradient(180deg,#fbbf24,#d97706);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  #gagnants .bronze-prize span{color:#cd7f32}
+  #gagnants .confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+  #gagnants .confetti i{position:absolute;top:-16px;width:8px;height:14px;border-radius:2px;opacity:0;animation:conffall linear infinite}
+  @keyframes conffall{0%{opacity:0}8%{opacity:.9}100%{transform:translateY(760px) rotate(600deg);opacity:0}}
+</style>
+<section id="gagnants">
+  <div class="confetti" aria-hidden="true"></div>
+  <div class="aura" aria-hidden="true"></div>
+  <div class="wrap center">
+    <div class="eyebrow reveal" style="color:#C9971A" data-i18n="win.eyebrow">🏆 Les gagnants</div>
+    <h2 class="h2 reveal" data-i18n="win.h2">Nos Champions</h2>
+    <p class="sub reveal" data-i18n="win.sub">Bravo et merci pour votre engagement exceptionnel 🎉</p>
+  </div>
+  <div class="wrap win-wrap" style="margin-top:36px">
+    <div class="champ reveal">
+      <div class="crown">👑</div>
+      <div class="ribbon"><span data-i18n="win.grand">Grand Prix</span> · <span data-i18n="win.first">1ère place</span></div>
+      <div class="champ-name">Jemila Mohamed Salem</div>
+      <div class="acct">@Jami</div>
+      <div class="prize"><b class="win-amount" data-count="600000">600&thinsp;000</b><span>MRO</span></div>
+    </div>
+    <div class="win-grid">
+      <div class="win-card silver reveal">
+        <div class="medal">🥈</div>
+        <div class="rank" data-i18n="win.second">2ème place</div>
+        <div class="win-name">Mohamed Mahmoud Said</div>
+        <div class="win-name">Sidi Aly Med Lemin Sidi Oumar</div>
+        <div class="chip">@Sidialy</div>
+        <div class="win-prize silver-prize"><b class="win-amount" data-count="300000">300&thinsp;000</b><span>MRO</span></div>
+      </div>
+      <div class="win-card bronze reveal">
+        <div class="medal">🥉</div>
+        <div class="rank" data-i18n="win.third">3ème place</div>
+        <div class="win-name">Muhammed Moulay</div>
+        <div class="win-name">Mohamed Yenge</div>
+        <div class="chip">@Muhammed</div>
+        <div class="win-prize bronze-prize"><b class="win-amount" data-count="100000">100&thinsp;000</b><span>MRO</span></div>
+      </div>
+    </div>
+    <p class="thanks reveal" data-i18n="win.thanks">Lauréats de la compétition Elson Hassaniya</p>
+  </div>
+</section>
+<script>
+(function(){
+  var sec=document.getElementById('gagnants'); if(!sec) return;
+  var cf=sec.querySelector('.confetti'), cols=['#F5B301','#08DDB8','#e2e8f0','#cd7f32','#FDE68A'];
+  if(cf){for(var i=0;i<18;i++){var s=document.createElement('i');s.style.left=(Math.random()*100)+'%';s.style.background=cols[i%cols.length];s.style.animationDuration=(3.6+Math.random()*3)+'s';s.style.animationDelay=(Math.random()*5.5)+'s';cf.appendChild(s);}}
+  var fmt=function(n){try{return n.toLocaleString('fr-FR');}catch(e){return ''+n;}};
+  var run=function(el){var t=+el.getAttribute('data-count')||0,st=null;var step=function(ts){if(!st)st=ts;var p=Math.min((ts-st)/1400,1),e=1-Math.pow(1-p,3);el.textContent=fmt(Math.round(t*e));if(p<1)requestAnimationFrame(step);};requestAnimationFrame(step);};
+  if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){run(en.target);io.unobserve(en.target);}});},{threshold:.4});sec.querySelectorAll('.win-amount').forEach(function(el){io.observe(el);});}
+})();
+</script>
+
+<section id="equipe" style="padding-top:0">
+  <div class="worldbg" aria-hidden="true">
+    <div class="worldmap"></div>
+    <svg class="net" viewBox="30.767 241.591 784.077 458.627" preserveAspectRatio="xMidYMid meet">
+      <path class="netline" d="M250 405 Q335 345 423 379"/>
+      <path class="netline" d="M423 379 Q411 405 399 440"/>
+      <path class="netline" d="M423 379 Q427 392 430 411"/>
+      <path class="netline" d="M399 440 Q395 447 391 453"/>
+      <circle class="netnode" cx="250" cy="405" r="3"/>
+      <circle class="netnode" cx="423" cy="379" r="3"/>
+      <circle class="netnode" cx="430" cy="411" r="2.6"/>
+      <circle class="netnode" cx="399" cy="440" r="2.6"/>
+      <circle class="netnode" cx="391" cy="453" r="3.6"/>
+      <circle class="netpulse" cx="391" cy="453" r="3"><animate attributeName="r" values="3;15" dur="2.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.7;0" dur="2.8s" repeatCount="indefinite"/></circle>
+      <circle class="netpulse" cx="423" cy="379" r="3"><animate attributeName="r" values="3;12" dur="2.8s" begin="1.3s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.6;0" dur="2.8s" begin="1.3s" repeatCount="indefinite"/></circle>
+    </svg>
+  </div>
+  <div class="wrap center">
+    <div class="eyebrow reveal" data-i18n="eq.eyebrow">L'équipe</div>
+    <h2 class="h2 reveal" data-i18n="eq.h2">Une équipe aux expériences internationales.</h2>
+    <p class="sub reveal" data-i18n="eq.sub">Des chercheurs et ingénieurs réunis autour d'un même projet, sur trois continents.</p>
+    <div class="team">
+      <span class="flag reveal" data-i18n="eq.c1">France</span>
+      <span class="flag reveal" data-i18n="eq.c2">États-Unis</span>
+      <span class="flag reveal" data-i18n="eq.c3">Mauritanie</span>
+      <span class="flag reveal" data-i18n="eq.c4">Tunisie</span>
+      <span class="flag reveal" data-i18n="eq.c5">Maroc</span>
+    </div>
+
+    <div class="creds">
+      <div class="reveal">
+        <div class="cred-label" data-i18n="eq.formes">Formés à</div>
+        <div class="cred-chips">
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=telecom-paris.fr" alt="" loading="lazy" onerror="this.style.display='none'"><b>Télécom Paris</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=ip-paris.fr" alt="" loading="lazy" onerror="this.style.display='none'"><b>Institut Polytechnique de Paris</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=polytechnique.edu" alt="" loading="lazy" onerror="this.style.display='none'"><b>École Polytechnique (X)</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=centralesupelec.fr" alt="" loading="lazy" onerror="this.style.display='none'"><b>CentraleSupélec</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=iae-france.fr" alt="" loading="lazy" onerror="this.style.display='none'"><b>IAE</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=u-paris.fr" alt="" loading="lazy" onerror="this.style.display='none'"><b>Université Paris Diderot</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=sorbonne-universite.fr" alt="" loading="lazy" onerror="this.style.display='none'"><b>Sorbonne Université</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=epita.fr" alt="" loading="lazy" onerror="this.style.display='none'"><b>EPITA</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=tbs-education.fr" alt="" loading="lazy" onerror="this.style.display='none'"><b>Toulouse Business School</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=esprit.tn" alt="" loading="lazy" onerror="this.style.display='none'"><b>ESPRIT Tunisie</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=um5.ac.ma" alt="" loading="lazy" onerror="this.style.display='none'"><b>Université Mohammed V</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=una.mr" alt="" loading="lazy" onerror="this.style.display='none'"><b>Université de Nouakchott</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=upn.mr" alt="" loading="lazy" onerror="this.style.display='none'"><b>École Polytechnique de Nouakchott</b></span>
+          <span class="logo named"><img src="https://www.google.com/s2/favicons?sz=64&domain=supnum.mr" alt="" loading="lazy" onerror="this.style.display='none'"><b>Supnum Nouakchott</b></span>
+        </div>
+      </div>
+      <div class="reveal">
+        <div class="cred-label" data-i18n="eq.experience">Expérience chez</div>
+        <div class="cred-chips">
+          <span class="logo named co"><img src="https://cdn.simpleicons.org/paypal" alt="PayPal" loading="lazy" onerror="this.closest('.logo').classList.add('failed')"><b>PayPal</b></span>
+          <span class="logo named co"><img src="https://cdn.simpleicons.org/deloitte" alt="Deloitte" loading="lazy" onerror="this.closest('.logo').classList.add('failed')"><b>Deloitte</b></span>
+          <span class="logo named co"><img src="https://cdn.simpleicons.org/pwc" alt="PwC" loading="lazy" onerror="this.closest('.logo').classList.add('failed')"><b>PwC</b></span>
+          <span class="logo named co"><img src="https://cdn.simpleicons.org/valeo" alt="Valeo" loading="lazy" onerror="this.closest('.logo').classList.add('failed')"><b>Valeo</b></span>
+          <span class="logo named co"><img src="https://cdn.simpleicons.org/canalplus" alt="Canal+" loading="lazy" onerror="this.closest('.logo').classList.add('failed')"><b>Canal+</b></span>
+          <span class="logo named co"><img src="https://cdn.simpleicons.org/bnpparibas" alt="BNP Paribas" loading="lazy" onerror="this.closest('.logo').classList.add('failed')"><b>BNP Paribas</b></span>
+          <span class="logo named co"><img src="https://cdn.simpleicons.org/creditagricole" alt="Crédit Agricole" loading="lazy" onerror="this.closest('.logo').classList.add('failed')"><b>Crédit Agricole</b></span>
+          <span class="logo named co"><img src="https://cdn.simpleicons.org/banquedefrance" alt="Banque de France" loading="lazy" onerror="this.closest('.logo').classList.add('failed')"><b>Banque de France</b></span>
+          <span class="logo named co"><img src="https://cdn.simpleicons.org/matmut" alt="Matmut" loading="lazy" onerror="this.closest('.logo').classList.add('failed')"><b>Matmut</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="dark reveal" id="ouvert">
+  <div class="glow"></div>
+  <div class="eyebrow" style="position:relative;z-index:1" data-i18n="drk.eyebrow">Ouvert au monde</div>
+  <p class="q" data-i18n-html="drk.q">Demain, ces dialectes — longtemps absents du numérique — seront <span class="hl">accessibles à tous</span>.</p>
+  <p class="qsub" data-i18n="drk.qsub">Développeurs, chercheurs, institutions, diaspora : une IA construite ici, et offerte au monde entier.</p>
+</div>
+
+
+<footer>
+  <div class="wrap foot-in">
+    <div style="display:flex;align-items:center;gap:12px"><img src="/assets/elson-logo.svg" alt="Elson" style="height:30px"/><span style="color:var(--ink-3)" data-i18n="ft.by">par ADST&nbsp;×&nbsp;RIM&nbsp;AI</span></div>
+    <div class="foot-links">
+      <a href="#langues" data-i18n="nav.langues">Langues</a><a href="#competition" data-i18n="nav.competition">Compétition</a><a href="#pipeline" data-i18n="nav.methode">Méthode</a><a href="#equipe" data-i18n="nav.equipe">Équipe</a><a href="https://wa.me/13138047312" target="_blank" rel="noopener" data-i18n="ft.contact">Contact</a>
+    </div>
+    <div>© 2026 ADST × RIM AI · Nouakchott · Paris · Tunis</div>
+  </div>
+</footer>
+
+<script>
+  // theme toggle (persisted + respects OS preference)
+  const root=document.documentElement;
+  const saved=localStorage.getItem('theme');
+  if(saved!=='light')root.setAttribute('data-theme','dark'); // dark par défaut
+  document.getElementById('themeBtn').addEventListener('click',()=>{
+    const dark=root.getAttribute('data-theme')==='dark';
+    root.setAttribute('data-theme',dark?'light':'dark');
+    localStorage.setItem('theme',dark?'light':'dark');
+  });
+
+  const nav=document.getElementById('nav');
+  addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>8));
+
+  // ── rotating language word in the hero ──
+  (function(){const el=document.querySelector('.rotw .w'); if(!el)return;
+    let i=0; const L=()=>window.__rotw||['hassaniya'];
+    setInterval(()=>{
+      el.style.opacity='0';el.style.transform='translateY(-0.45em)';
+      setTimeout(()=>{i=(i+1)%L().length;el.textContent=L()[i];
+        el.style.transition='none';el.style.transform='translateY(0.45em)';
+        requestAnimationFrame(()=>{el.style.transition='';el.style.opacity='1';el.style.transform='translateY(0)';});
+      },420);
+    },2600);
+  })();
+  const io=new IntersectionObserver((es)=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
+  document.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transitionDelay=(i%5*55)+'ms';io.observe(el)});
+
+  // ── Real competition contributions (credited contributors who consented) ──
+  const REAL=[
+   {name:'A7F3',  src:'ينبغي عليك أن تُبقي غرفتك نظيفة', tgt:'يالتك اتْخَلِ بيتك مصگول', file:'/assets/audio/a1.wav', dur:'0:03'},
+   {name:'4C19',      src:"If you have any questions, I'm here to help.", tgt:'ف حالتك عندك سؤال انا هون', file:'/assets/audio/a2.wav', dur:'0:03'},
+   {name:'9D2B',src:'أعجبتني رائحته.', tgt:'زيانت عندي رايحتو', file:'/assets/audio/a3.wav', dur:'0:03'},
+   {name:'6E0A',   src:'هل تشاهد الأخبار؟', tgt:'انت تخرص لخبار؟', file:'/assets/audio/a4.wav', dur:'0:02'},
+   {name:'B5C8',   src:'إنها جميلة يا رجل!', tgt:'يبوي ماهي معقولة بيها الزين', file:'/assets/audio/a5.wav', dur:'0:03'},
+   {name:'1F77', src:'العمال منهكين', tgt:'العمال فترانين', file:'/assets/audio/a6.wav', dur:'0:03'},
+   {name:'3BE8',   src:'الباب يغلق.', tgt:'الفم ينگفل.', file:'/assets/audio/a7.wav', dur:'0:02'},
+   {name:'C4A1', src:'هو من قال لها ذلك.', tgt:'هل ل گاللها ذاك', file:'/assets/audio/a8.wav', dur:'0:02'},
+  ];
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const cardHTML=c=>`<div class="vcard" data-file="${esc(c.file)}">
+    <div class="vc-top"><span class="vc-lang">Hassaniya</span><span class="vc-code"><span class="live"></span>#${esc(c.name)}</span></div>
+    <div class="vc-src" dir="auto">${esc(c.src)}</div>
+    <div class="vc-tgt ar">${esc(c.tgt)}</div>
+    <div class="vc-audio">
+      <button class="play" aria-label="Écouter la contribution">
+        <svg class="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg class="i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+      </button>
+      <div class="wave"></div>
+      <span class="vc-dur">${c.dur}</span>
+    </div></div>`;
+  const fill=(id,items)=>{const set=items.map(cardHTML).join('');document.getElementById(id).innerHTML=set+set;};
+  fill('row1',REAL.slice(0,4));
+  fill('row2',REAL.slice(4,8));
+
+  document.querySelectorAll('.wave').forEach(w=>{
+    const frag=document.createDocumentFragment();
+    for(let i=0;i<32;i++){const b=document.createElement('span');
+      b.style.height=(14+Math.round(Math.pow(Math.random(),1.5)*84))+'%';
+      b.style.animationDelay=(Math.random()*0.8).toFixed(2)+'s';
+      frag.appendChild(b);}
+    w.appendChild(frag);
+  });
+
+  // stream cards — play the REAL recording, bars track real playback time
+  const cardAudio=new Audio(); cardAudio.preload='none'; let curCard=null, cardRaf=0;
+  function cardStop(){if(curCard){curCard.classList.remove('playing');curCard.querySelectorAll('.wave span').forEach(b=>b.classList.remove('on'));} cancelAnimationFrame(cardRaf); cardAudio.pause(); curCard=null;}
+  function cardTick(card){const bars=card.querySelectorAll('.wave span');const d=cardAudio.duration||3;const p=Math.min((cardAudio.currentTime||0)/d,1);const k=Math.floor(p*bars.length);bars.forEach((b,i)=>b.classList.toggle('on',i<=k));if(!cardAudio.paused&&!cardAudio.ended)cardRaf=requestAnimationFrame(()=>cardTick(card));}
+  cardAudio.addEventListener('ended',cardStop);
+  document.querySelectorAll('.vcard').forEach(card=>{
+    card.querySelector('.play').addEventListener('click',()=>{
+      if(curCard===card){cardStop();return;}
+      cardStop(); curCard=card; card.classList.add('playing');
+      cardAudio.src=card.dataset.file;
+      cardAudio.play().then(()=>{cardRaf=requestAnimationFrame(()=>cardTick(card));}).catch(()=>cardStop());
+    });
+  });
+
+  // ════════ FEATURED PLAYER — real audio + canvas waveform ════════
+  const PFEAT=REAL.slice(0,6);
+  const $=id=>document.getElementById(id);
+  const cv=$('plWave'), c=cv.getContext('2d');
+  const player=document.querySelector('.player');
+  let cur=0, amps=[], W=0, H=0, grad=null, raf=0, playing=false;
+  const isDark=()=>document.documentElement.getAttribute('data-theme')==='dark';
+  const audio=new Audio(); audio.preload='metadata';
+
+  function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function genAmps(seed){const N=72,a=new Array(N).fill(0),rng=mulberry(seed),sy=4+Math.floor(rng()*3);
+    for(let s=0;s<sy;s++){const c0=rng()*N,w=N*(0.05+rng()*0.07),amp=0.5+rng()*0.5;
+      for(let i=0;i<N;i++)a[i]+=amp*Math.exp(-((i-c0)**2)/(2*w*w));}
+    let mx=0;for(let i=0;i<N;i++){a[i]+=rng()*0.1;mx=Math.max(mx,a[i]);}
+    for(let i=0;i<N;i++)a[i]=Math.max(0.06,a[i]/mx);return a;}
+  function sizeCanvas(){const r=cv.getBoundingClientRect();const dpr=Math.min(window.devicePixelRatio||1,2);
+    cv.width=Math.max(1,r.width*dpr);cv.height=Math.max(1,r.height*dpr);c.setTransform(dpr,0,0,dpr,0,0);
+    W=r.width;H=r.height;grad=c.createLinearGradient(0,0,W,0);grad.addColorStop(0,'#08DDB8');grad.addColorStop(1,'#5EEAD4');draw();}
+  function rr(x,y,w,h,r){r=Math.max(0,Math.min(r,Math.min(Math.abs(w),Math.abs(h))/2));if(w<=0||h<=0)return;c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();c.fill();}
+  const durS=()=>{const d=audio.duration;return d&&isFinite(d)?d:3;};
+  const frac=()=>Math.min((audio.currentTime||0)/durS(),1);
+  const fmt=t=>'0:'+String(Math.max(0,t|0)).padStart(2,'0');
+  function draw(){
+    if(!W)return;c.clearRect(0,0,W,H);
+    const N=amps.length,gap=2,bw=(W-(N-1)*gap)/N,mid=H/2,p=frac();
+    const k=p*N;
+    for(let i=0;i<N;i++){let a=amps[i];
+      if(playing){a=Math.min(1,a*(0.92+0.12*Math.sin(i*0.6 - k*1.1)));} // subtle life near the playhead
+      const h=Math.max(2,a*H*0.92),x=i*(bw+gap),played=(i/N)<=p;
+      c.fillStyle=played?grad:(isDark()?'rgba(255,255,255,.16)':'rgba(10,10,10,.13)');
+      rr(x,mid-h/2,bw,h,Math.min(bw/2,2.5));}
+    if(playing||p>0){const px=Math.max(2,Math.min(W-2,p*W));c.fillStyle='#08DDB8';c.fillRect(px-1,0,2,H);
+      c.beginPath();c.arc(px,mid,4,0,7);c.fill();}
+    $('plTime').textContent=fmt(audio.currentTime||0)+' / '+fmt(durS());
+  }
+  function loop(){if(!playing)return;draw();raf=requestAnimationFrame(loop);}
+  function play(){audio.play().then(()=>{playing=true;player.classList.add('playing');loop();}).catch(e=>{console.warn('audio play blocked',e);});}
+  function stop(){playing=false;player.classList.remove('playing');cancelAnimationFrame(raf);audio.pause();draw();}
+  audio.addEventListener('ended',()=>{playing=false;player.classList.remove('playing');cancelAnimationFrame(raf);audio.currentTime=0;draw();});
+  audio.addEventListener('loadedmetadata',draw);
+
+  function typeWord(el,txt){el.className='pl-tgt ar';el.textContent='';clearInterval(el._t);let i=0;
+    el._t=setInterval(()=>{el.textContent=txt.slice(0,++i);if(i>=txt.length){clearInterval(el._t);el.classList.add('done');}},42);}
+  function load(i){stop();cur=i;const f=PFEAT[i];
+    [...$('plChips').children].forEach((ch,j)=>ch.classList.toggle('active',j===i));
+    $('plSrc').textContent=f.src;$('plSrc').setAttribute('dir','auto');
+    $('plCode').textContent=f.name;
+    amps=genAmps(f.name.split('').reduce((a,ch)=>a+ch.charCodeAt(0),17)+i*97);
+    audio.src=f.file;audio.currentTime=0;
+    typeWord($('plTgt'),f.tgt);draw();}
+
+  PFEAT.forEach((f,i)=>{const b=document.createElement('button');b.className='pl-chip';b.textContent='#'+f.name;b.onclick=()=>load(i);$('plChips').appendChild(b);});
+  $('plPlay').addEventListener('click',()=>playing?stop():play());
+  cv.addEventListener('click',()=>playing?stop():play());
+  window.addEventListener('resize',sizeCanvas);
+  load(0);requestAnimationFrame(sizeCanvas);
+
+  // ── competition countdown ──
+  (function(){const T=Date.parse('2026-06-26T23:59:00Z');const D=document.getElementById('cdD');if(!D)return;
+    const H=document.getElementById('cdH'),M=document.getElementById('cdM'),S=document.getElementById('cdS');
+    const p2=n=>String(Math.max(0,n)).padStart(2,'0');
+    function tick(){let d=Math.max(0,T-Date.now());
+      D.textContent=p2(Math.floor(d/86400000));d%=86400000;
+      H.textContent=p2(Math.floor(d/3600000));d%=3600000;
+      M.textContent=p2(Math.floor(d/60000));d%=60000;
+      S.textContent=p2(Math.floor(d/1000));}
+    tick();setInterval(tick,1000);
+  })();
+
+  // ════════ i18n (FR / EN / AR + RTL) ════════
+  window.__rotw=['hassaniya','pulaar','soninké','wolof'];
+  const I18N={
+    fr:{
+      'win.eyebrow':'🏆 Les gagnants','win.h2':'Nos Champions','win.sub':'Bravo et merci pour votre engagement exceptionnel 🎉','win.grand':'Grand Prix','win.first':'1ère place','win.second':'2ème place','win.third':'3ème place','win.thanks':'Lauréats de la compétition Elson Hassaniya',
+      'nav.langues':'Langues','nav.direct':'En direct','nav.competition':'Compétition','nav.methode':'Méthode','nav.equipe':'Équipe','nav.ouverture':'Ouverture','nav.cta':'Accéder à Elson',
+      'hero.kicker':'Par ADST × RIM AI','hero.grad':"L'intelligence artificielle,<br>qui parle ",
+      'hero.lead':"Une équipe internationale, une expertise en data engineering et en IA, notre propre infrastructure de calcul GPU et la force d'une communauté — pour faire entrer le hassaniya, le pulaar, le soninké et le wolof dans l'intelligence artificielle. Et demain, bien d'autres.",
+      'hero.cta1':'Rejoindre le projet','hero.cta2':'Notre approche','hero.poweredby':'Propulsé par',
+      'lng.eyebrow':'Nos langues','lng.h2':'Quatre langues. La même ambition.','lng.sub':"Longtemps invisibles pour les machines, nos langues prennent leur place dans l'IA — à égalité, sans hiérarchie.",'lng.note':"Et la liste s'allongera — chaque dialecte mérite sa voix numérique.",
+      'tts.eyebrow':'En création','tts.h2':'Bientôt, une voix synthétique en hassaniya.','tts.sub':"À partir des voix de la communauté, nous entraînons notre modèle de synthèse vocale (TTS) — pour que l'IA ne se contente pas de <b>comprendre</b> nos langues, mais qu'elle les <b>parle</b>. Le premier modèle hassaniya est en cours de création.",'tts.status':'Modèle en entraînement · première voix attendue prochainement','tts.loaderLabel':"Modèle TTS en cours d'entraînement",
+      'lng.n1':'Hassaniya','lng.n2':'Pulaar','lng.n3':'Soninké','lng.n4':'Wolof',
+      'lng.r1':'Mauritanie · Sahara','lng.r2':'Mauritanie · vallée du fleuve','lng.r3':'Mauritanie · Guidimakha','lng.r4':'Mauritanie · sud-ouest',
+      'dir.eyebrow':'En direct','dir.h2':'La communauté, en ce moment même.','dir.sub':"De vrais enregistrements de la compétition, en hassaniya — contributions <b>anonymisées</b>, nettoyées. Clique pour écouter une voix réelle.",
+      'cmp.eyebrow':'La compétition','cmp.h2':"Une compétition en cours. D'autres arrivent.",'cmp.sub':"La communauté s'affronte langue par langue. Le hassaniya d'abord — le pulaar ensuite.",
+      'cmp.live':'En cours','cmp.livetitle':'Elson Hassaniya Challenge','cmp.livedesc':'Traduire, enregistrer, valider — et grimper au classement.','cmp.cdD':'jours','cmp.cdH':'heures','cmp.cdM':'min','cmp.cdS':'sec','cmp.participer':'Participer',
+      'cmp.soon':'À venir','cmp.soontitle':'Compétition Pulaar','cmp.soondesc':"La prochaine langue à rejoindre l'aventure.",'cmp.soonval':'Bientôt','cmp.notify':'Être notifié·e',
+      'mth.eyebrow':'La méthode','mth.h2':'Du locuteur au modèle.','mth.sub':"Chaque donnée suit un parcours rigoureux — la discipline d'un laboratoire de recherche, à chaque étape.",
+      'mth.s1t':'Collecte','mth.s1p':"La communauté écrit et enregistre sa langue via Elson — texte et voix, par ceux qui la parlent.",
+      'mth.s2t':'Vote & qualité','mth.s2p':"Plusieurs évaluateurs notent chaque contribution. Le consensus tranche, un score de qualité est calculé.",
+      'mth.s3t':'Revue interne','mth.s3p':"Nos évaluateurs internes contrôlent les cas limites et garantissent la fiabilité du corpus.",
+      'mth.s4t':'Data engineering','mth.s4p':"Nos pipelines nettoient, dédupliquent et structurent la donnée brute à l'état de l'art.",
+      'mth.s5t':'Infrastructure & GPU','mth.s5p':"Nous entraînons nos modèles sur notre propre capacité de calcul, en souveraineté.",'mth.more':"Détails de l'étape",
+      'app.eyebrow':'Notre approche','app.h2':"La communauté apporte la langue. Notre ingénierie en fait de l'IA.",'app.sub':"Trois étapes, une même exigence : transformer la voix d'une communauté en une intelligence artificielle fiable.",
+      'app.p1k':'La communauté','app.p1h':'Une langue vivante, par ses locuteurs','app.p1p':"Via Elson, des locuteurs écrivent, enregistrent et valident leur langue. La matière vient de ceux qui la parlent réellement.",'app.p1tag':'Texte + Voix',
+      'app.p2k':'Data engineering','app.p2h':"Une donnée nettoyée à l'état de l'art",'app.p2p':"Nos pipelines de data engineering transforment la donnée brute de la communauté en corpus fiables, structurés et prêts pour l'entraînement.",'app.p2tag':'Nettoyage · Déduplication',
+      'app.p3k':'Infrastructure & GPU','app.p3h':'Notre propre puissance de calcul','app.p3p':"Une infrastructure et une capacité GPU qui nous appartiennent : nous entraînons nos modèles nous-mêmes, en souveraineté, sans dépendance.",'app.p3tag':'Calcul souverain',
+      'els.eyebrow':"L'initiative",'els.h2':'Elson, construit par ADST & RIM AI.',
+      'els.p':"Initié par RIM AI il y a trois ans, Elson est le projet des <b>dialectes nationaux à faibles ressources</b> : une <b>plateforme de crowdsourcing</b> qui rassemble la communauté, et des <b>modèles de langue (LLM) low-resource</b> entraînés pour ces langues longtemps absentes du numérique. Une initiative née en Mauritanie, portée par ses chercheurs et ses locuteurs.",
+      'els.cta':'Rejoindre Elson','els.chip':'ADST × RIM AI · depuis 3 ans',
+      'els.c1':'Data engineering & IA de pointe','els.c2':'Infrastructure & calcul GPU souverains','els.c3':'Communauté de locuteurs engagée','els.c4':'Quatre langues traitées à égalité','els.c5':'Expériences internationales, ouverte au monde',
+      'eq.eyebrow':"L'équipe",'eq.h2':'Une équipe aux expériences internationales.','eq.sub':"Des chercheurs et ingénieurs réunis autour d'un même projet, sur trois continents.",
+      'eq.c1':'France','eq.c2':'États-Unis','eq.c3':'Mauritanie','eq.c4':'Tunisie','eq.c5':'Maroc','eq.formes':'Formés à','eq.experience':'Expérience chez',
+      'drk.eyebrow':'Ouvert au monde','drk.q':'Demain, ces dialectes — longtemps absents du numérique — seront <span class="hl">accessibles à tous</span>.','drk.qsub':"Développeurs, chercheurs, institutions, diaspora : une IA construite ici, et offerte au monde entier.",
+      'cta.h2':"Construisons l'IA de nos langues.",'cta.p':"Contributeur, chercheur, institution ou partenaire — il y a une place pour vous.",'cta.cta1':'Rejoindre Elson','cta.cta2':'Nous écrire',
+      'pl.meta':'contribution vocale','pl.anon':'anonymisé','ft.contact':'Contact','ft.by':'par ADST × RIM AI'
+    },
+    en:{
+      'win.eyebrow':'🏆 The winners','win.h2':'Our Champions','win.sub':'Congratulations and thank you for your outstanding dedication 🎉','win.grand':'Grand Prize','win.first':'1st place','win.second':'2nd place','win.third':'3rd place','win.thanks':'Winners of the Elson Hassaniya competition',
+      'nav.langues':'Languages','nav.direct':'Live','nav.competition':'Competition','nav.methode':'Method','nav.equipe':'Team','nav.ouverture':'Open','nav.cta':'Open Elson',
+      'hero.kicker':'By ADST × RIM AI','hero.grad':'Artificial intelligence,<br>that speaks ',
+      'hero.lead':"An international team, expertise in data engineering and AI, our own GPU compute infrastructure and the strength of a community — to bring Hassaniya, Pulaar, Soninke and Wolof into artificial intelligence. And tomorrow, many more.",
+      'hero.cta1':'Join the project','hero.cta2':'Our approach','hero.poweredby':'Powered by',
+      'lng.eyebrow':'Our languages','lng.h2':'Four languages. One ambition.','lng.sub':"Long invisible to machines, our languages are taking their place in AI — as equals, with no hierarchy.",'lng.note':"And the list will grow — every dialect deserves its digital voice.",
+      'tts.eyebrow':'In the making','tts.h2':'Soon, a synthetic voice in Hassaniya.','tts.sub':"From the community's voices, we're training our text-to-speech (TTS) model — so AI doesn't just <b>understand</b> our languages, but <b>speaks</b> them. The first Hassaniya model is in the making.",'tts.status':'Model in training · first voice expected soon','tts.loaderLabel':'TTS model currently training',
+      'lng.n1':'Hassaniya','lng.n2':'Pulaar','lng.n3':'Soninke','lng.n4':'Wolof',
+      'lng.r1':'Mauritania · Sahara','lng.r2':'Mauritania · River valley','lng.r3':'Mauritania · Guidimakha','lng.r4':'Mauritania · Southwest',
+      'dir.eyebrow':'Live','dir.h2':'The community, right now.','dir.sub':"Real recordings from the competition, in Hassaniya — <b>anonymized</b>, cleaned contributions. Click to hear a real voice.",
+      'cmp.eyebrow':'The competition','cmp.h2':'One competition live. More on the way.','cmp.sub':"The community competes language by language. Hassaniya first — Pulaar next.",
+      'cmp.live':'Live','cmp.livetitle':'Elson Hassaniya Challenge','cmp.livedesc':'Translate, record, validate — and climb the leaderboard.','cmp.cdD':'days','cmp.cdH':'hours','cmp.cdM':'min','cmp.cdS':'sec','cmp.participer':'Take part',
+      'cmp.soon':'Upcoming','cmp.soontitle':'Pulaar competition','cmp.soondesc':'The next language to join the adventure.','cmp.soonval':'Soon','cmp.notify':'Notify me',
+      'mth.eyebrow':'The method','mth.h2':'From speaker to model.','mth.sub':"Every data point follows a rigorous path — the discipline of a research lab, at each stage.",
+      'mth.s1t':'Collection','mth.s1p':"The community writes and records its language via Elson — text and voice, by those who speak it.",
+      'mth.s2t':'Vote & quality','mth.s2p':"Several evaluators rate each contribution. Consensus decides, and a quality score is computed.",
+      'mth.s3t':'Internal review','mth.s3p':"Our internal evaluators check edge cases and guarantee the reliability of the corpus.",
+      'mth.s4t':'Data engineering','mth.s4p':"Our pipelines clean, deduplicate and structure the raw data to the state of the art.",
+      'mth.s5t':'Infrastructure & GPU','mth.s5p':"We train our models on our own compute capacity, in sovereignty.",'mth.more':'Step details',
+      'app.eyebrow':'Our approach','app.h2':'The community brings the language. Our engineering turns it into AI.','app.sub':"Three steps, one standard: turning a community's voice into reliable artificial intelligence.",
+      'app.p1k':'The community','app.p1h':'A living language, by its speakers','app.p1p':"Via Elson, speakers write, record and validate their language. The material comes from those who actually speak it.",'app.p1tag':'Text + Voice',
+      'app.p2k':'Data engineering','app.p2h':'Data cleaned to the state of the art','app.p2p':"Our data-engineering pipelines turn the community's raw data into reliable, structured corpora ready for training.",'app.p2tag':'Cleaning · Deduplication',
+      'app.p3k':'Infrastructure & GPU','app.p3h':'Our own compute power','app.p3p':"Infrastructure and GPU capacity that we own: we train our models ourselves, in sovereignty, with no dependency.",'app.p3tag':'Sovereign compute',
+      'els.eyebrow':'The initiative','els.h2':'Elson, built by ADST & RIM AI.',
+      'els.p':"Initiated by RIM AI three years ago, Elson is the project for <b>low-resource national dialects</b>: a <b>crowdsourcing platform</b> that brings the community together, and <b>low-resource language models (LLMs)</b> trained for languages long absent from the digital world. An initiative born in Mauritania, carried by its researchers and speakers.",
+      'els.cta':'Join Elson','els.chip':'ADST × RIM AI · for 3 years',
+      'els.c1':'Cutting-edge data engineering & AI','els.c2':'Sovereign infrastructure & GPU compute','els.c3':'An engaged community of speakers','els.c4':'Four languages treated as equals','els.c5':'International experience, open to the world',
+      'eq.eyebrow':'The team','eq.h2':'A team with international experience.','eq.sub':"Researchers and engineers united around one project, across three continents.",
+      'eq.c1':'France','eq.c2':'United States','eq.c3':'Mauritania','eq.c4':'Tunisia','eq.c5':'Morocco','eq.formes':'Trained at','eq.experience':'Experience at',
+      'drk.eyebrow':'Open to the world','drk.q':'Tomorrow, these dialects — long absent from the digital world — will be <span class="hl">accessible to all</span>.','drk.qsub':"Developers, researchers, institutions, diaspora: an AI built here, and offered to the whole world.",
+      'cta.h2':"Let's build the AI of our languages.",'cta.p':"Contributor, researcher, institution or partner — there's a place for you.",'cta.cta1':'Join Elson','cta.cta2':'Contact us',
+      'pl.meta':'voice contribution','pl.anon':'anonymized','ft.contact':'Contact','ft.by':'by ADST × RIM AI'
+    },
+    ar:{
+      'win.eyebrow':'🏆 الفائزون','win.h2':'أبطالنا','win.sub':'مبروك وشكراً على جهودكم الاستثنائية 🎉','win.grand':'الجائزة الكبرى','win.first':'المركز الأول','win.second':'المركز الثاني','win.third':'المركز الثالث','win.thanks':'الفائزون في مسابقة إلسون الحسانية',
+      'nav.langues':'اللغات','nav.direct':'مباشر','nav.competition':'المسابقة','nav.methode':'المنهجية','nav.equipe':'الفريق','nav.ouverture':'الانفتاح','nav.cta':'الدخول إلى Elson',
+      'hero.kicker':'من تطوير ADST × RIM AI','hero.grad':'الذكاء الاصطناعي يتحدث ',
+      'hero.lead':"فريق دولي، خبرة عميقة في هندسة البيانات والذكاء الاصطناعي، بنية GPU خاصة بنا، وقوة مجتمع يؤمن بلغاته. نعمل على إدخال الحسانية، والبولارية، والسوننكية، والولوفية إلى عالم الذكاء الاصطناعي — واليوم نبدأ بهذه اللغات، وغداً نوسّع الدائرة إلى لغات أخرى.",
+      'hero.cta1':'انضم إلى المشروع','hero.cta2':'نهجنا','hero.poweredby':'مدعوم بـ',
+      'lng.eyebrow':'لغاتنا','lng.h2':'أربع لغات. هدف واحد.','lng.sub':"لغاتنا كانت غائبة لسنوات عن العالم الرقمي. اليوم، نعمل على منحها مكانها الطبيعي داخل الذكاء الاصطناعي — باحترام، وبنفس الأهمية، دون تفضيل لغة على أخرى.",'lng.note':"والقائمة ستكبر — لأن كل لغة تستحق أن يكون لها حضور رقمي وصوت في المستقبل.",
+      'tts.eyebrow':'قيد الإنشاء','tts.h2':'قريبًا، صوت اصطناعي بالحسانية.','tts.sub':"انطلاقًا من أصوات المجتمع، ندرّب نموذج تحويل النص إلى كلام (TTS) — حتى لا يكتفي الذكاء الاصطناعي بـ<b>فهم</b> لغاتنا، بل <b>ينطق</b> بها. النموذج الأول بالحسانية قيد الإنشاء.",'tts.status':'النموذج قيد التدريب · أول صوت متوقع قريبًا','tts.loaderLabel':'نموذج تحويل النص إلى كلام قيد التدريب',
+      'lng.n1':'الحسانية','lng.n2':'البولارية','lng.n3':'السوننكية','lng.n4':'الولوفية',
+      'lng.r1':'موريتانيا · الصحراء','lng.r2':'موريتانيا · وادي النهر','lng.r3':'موريتانيا · كيديماغا','lng.r4':'موريتانيا · الجنوب الغربي',
+      'dir.eyebrow':'مباشر','dir.h2':'أصوات من المجتمع، الآن.','dir.sub':"تسجيلات حقيقية من مسابقة الحسانية — مساهمات <b>مجهّلة</b>، مراجَعة ومنقّاة. اضغط للاستماع إلى صوت حقيقي من المنصة.",
+      'cmp.eyebrow':'المسابقة','cmp.h2':'مسابقة جارية. ومسابقات قادمة.','cmp.sub':"يتنافس المجتمع لغة بعد لغة. نبدأ بالحسانية، ثم نفتح الباب أمام البولارية وباقي اللغات.",
+      'cmp.live':'جارية','cmp.livetitle':'تحدي Elson للحسانية','cmp.livedesc':'ترجم، سجّل، قيّم — واصعد في الترتيب.','cmp.cdD':'يوم','cmp.cdH':'ساعة','cmp.cdM':'دقيقة','cmp.cdS':'ثانية','cmp.participer':'شارك',
+      'cmp.soon':'قريباً','cmp.soontitle':'مسابقة البولارية','cmp.soondesc':'اللغة التالية التي ستنضم إلى التجربة.','cmp.soonval':'قريباً','cmp.notify':'أعلِمني',
+      'mth.eyebrow':'المنهجية','mth.h2':'من المتحدث إلى النموذج.','mth.sub':"كل مساهمة تمر عبر مسار واضح ودقيق: من الجمع، إلى التقييم، ثم المراجعة، فهندسة البيانات، وصولاً إلى تدريب النماذج.",
+      'mth.s1t':'الجمع','mth.s1p':"يكتب أفراد المجتمع لغتهم ويسجّلونها عبر منصة Elson — نصاً وصوتاً — بأصوات من يتحدثونها فعلاً.",
+      'mth.s2t':'التقييم والجودة','mth.s2p':"تتم مراجعة كل مساهمة من طرف عدة مقيّمين مستقلين. وعبر التوافق بينهم، نحسب درجة جودة تحدد قبول المساهمة أو رفضها.",
+      'mth.s3t':'المراجعة الداخلية','mth.s3p':"يتولى فريقنا الداخلي مراجعة الحالات الحسّاسة أو غير الواضحة، لضمان جودة البيانات وموثوقيتها.",
+      'mth.s4t':'هندسة البيانات','mth.s4p':"نقوم بتنظيف البيانات، وإزالة التكرار، وتنظيم النصوص والتسجيلات الصوتية، حتى تصبح جاهزة لتدريب نماذج الذكاء الاصطناعي.",
+      'mth.s5t':'البنية التحتية وموارد GPU','mth.s5p':"نقوم بتدريب نماذجنا على بنية حوسبة خاصة بنا، بما يضمن التحكم الكامل في البيانات ومسار التطوير.",'mth.more':'تفاصيل المرحلة',
+      'app.eyebrow':'نهجنا','app.h2':'المجتمع يقدّم اللغة. ونحن نحوّلها إلى ذكاء اصطناعي.','app.sub':"ثلاث مراحل، ومعيار واحد: بناء نماذج موثوقة انطلاقاً من لغة الناس الحقيقية.",
+      'app.p1k':'المجتمع','app.p1h':'لغة حيّة، من أهلها.','app.p1p':"عبر Elson، يكتب المتحدثون بلغاتهم، ويسجّلونها، ويصادقون على مساهمات غيرهم. نحن لا نجمع اللغة من الكتب فقط، بل من الناس الذين يعيشونها يومياً.",'app.p1tag':'نص + صوت',
+      'app.p2k':'هندسة البيانات','app.p2h':'من مساهمات خام إلى بيانات جاهزة للتدريب.','app.p2p':"تحوّل خطوط هندسة البيانات لدينا مساهمات المجتمع إلى بيانات منظّمة، نظيفة، وموثوقة، قابلة للاستخدام في تدريب نماذج الذكاء الاصطناعي.",'app.p2tag':'تنظيف · إزالة التكرار · تنظيم',
+      'app.p3k':'البنية التحتية وموارد GPU','app.p3h':'قدرة حوسبة نتحكم بها.','app.p3p':"نمتلك بنية تقنية وموارد GPU خاصة بنا، مما يسمح لنا بتدريب النماذج بأنفسنا، دون الاعتماد الكامل على أطراف خارجية.",'app.p3tag':'تحكم كامل في البيانات والتدريب',
+      'els.eyebrow':'المبادرة','els.h2':'Elson، مشروع من تطوير ADST و RIM AI.',
+      'els.p':"بدأت فكرة Elson قبل ثلاث سنوات بمبادرة من RIM AI، بهدف خدمة <b>اللغات الوطنية محدودة الموارد</b>. اليوم، يجمع المشروع بين <b>منصة مجتمعية لجمع البيانات اللغوية</b>، و<b>نماذج ذكاء اصطناعي</b> تُدرّب خصيصاً للغات ظلت طويلاً خارج العالم الرقمي. هذه مبادرة وُلدت في موريتانيا، يقودها باحثون ومهندسون، ويصنعها المجتمع بلغاته وأصواته.",
+      'els.cta':'انضم إلى Elson','els.chip':'ADST × RIM AI · منذ 3 سنوات',
+      'els.c1':'هندسة بيانات وذكاء اصطناعي متقدم','els.c2':'بنية GPU خاصة','els.c3':'مجتمع متحدثين ملتزم','els.c4':'أربع لغات تُعامل بنفس الأهمية','els.c5':'خبرات دولية، منفتحون على العالم',
+      'eq.eyebrow':'الفريق','eq.h2':'فريق بخبرات دولية.','eq.sub':"باحثون ومهندسون يعملون على مشروع واحد، عبر ثلاث قارات.",
+      'eq.c1':'فرنسا','eq.c2':'الولايات المتحدة','eq.c3':'موريتانيا','eq.c4':'تونس','eq.c5':'المغرب','eq.formes':'تكوّنوا في','eq.experience':'خبرات سابقة في',
+      'drk.eyebrow':'منفتحون على العالم','drk.q':'غداً، ستكون هذه اللغات — التي غابت طويلاً عن العالم الرقمي — <span class="hl">متاحة للجميع</span>.','drk.qsub':"للمطورين، والباحثين، والمؤسسات، والجاليات: ذكاء اصطناعي يُبنى من هنا، ويُقدَّم للعالم.",
+      'cta.h2':'لنبنِ ذكاءً اصطناعياً للغاتنا.','cta.p':"سواء كنت مساهماً، أو باحثاً، أو مؤسسة، أو شريكاً — فهناك مكان لك في هذه المبادرة.",'cta.cta1':'انضم إلى Elson','cta.cta2':'راسلنا',
+      'pl.meta':'مساهمة صوتية','pl.anon':'مجهّل','ft.contact':'تواصل','ft.by':'من تطوير ADST × RIM AI'
+    }
+  };
+  const ROTW={fr:['hassaniya','pulaar','soninké','wolof'],en:['Hassaniya','Pulaar','Soninke','Wolof'],ar:['الحسانية','البولارية','السوننكية','الولوفية']};
+  const TTS_WORDS={
+    fr:['Vocalisation','Murmure','Apprentissage','Vocalise','Elson TTS'],
+    en:['Vocalization','Murmur','Learning','Voice','Elson TTS'],
+    ar:['النطق','همس','التعلّم','صوت','Elson TTS']
+  };
+  function applyI18n(lang){
+    if(!I18N[lang])lang='fr';
+    const d=I18N[lang],rtl=lang==='ar',root=document.documentElement;
+    root.setAttribute('lang',lang);root.setAttribute('dir',rtl?'rtl':'ltr');
+    window.__rotw=ROTW[lang]||ROTW.fr;
+    window.__ttsWords=TTS_WORDS[lang]||TTS_WORDS.fr;
+    document.querySelectorAll('[data-i18n]').forEach(el=>{const v=d[el.getAttribute('data-i18n')];if(v!=null)el.textContent=v;});
+    document.querySelectorAll('[data-i18n-html]').forEach(el=>{const v=d[el.getAttribute('data-i18n-html')];if(v!=null)el.innerHTML=v;});
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(el=>{const v=d[el.getAttribute('data-i18n-aria-label')];if(v!=null)el.setAttribute('aria-label',v);});
+    document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.dataset.lang===lang));
+    try{localStorage.setItem('dialect-locale',lang);}catch(e){}
+    if(window.__renderTtsWord)try{window.__renderTtsWord();}catch(e){}
+    if(window.__renderDetail)try{window.__renderDetail();}catch(e){}
+    if(window.__drawPipe)try{window.__drawPipe();}catch(e){}
+  }
+  document.querySelectorAll('.lang-btn').forEach(b=>b.addEventListener('click',()=>applyI18n(b.dataset.lang)));
+  (function(){let l='fr';try{l=localStorage.getItem('dialect-locale')||'fr';}catch(e){}applyI18n(l);})();
+
+  // ════════ PIPELINE — animated SVG connectors (research-diagram flow) ════════
+  const NS='http://www.w3.org/2000/svg';
+  const pipeSvg=document.getElementById('pipeSvg');
+  const TOKENS_I18N={fr:['« naka def ? »','★ 4.6 / 5','✓ validé','[0.12, 0.94 …]'],en:['“naka def?”','★ 4.6 / 5','✓ validated','[0.12, 0.94 …]'],ar:['«اشحالك؟»','★ 4.6 / 5','✓ تم التحقق','[0.12, 0.94 …]']};
+  function drawPipe(){
+    if(!pipeSvg)return;
+    const TOKENS=TOKENS_I18N[document.documentElement.lang||'fr']||TOKENS_I18N.fr;
+    const pipe=pipeSvg.parentElement, stages=[...pipe.querySelectorAll('.stage')];
+    if(stages.length<2)return;
+    pipe.querySelectorAll('.pkt').forEach(e=>e.remove());
+    const pr=pipe.getBoundingClientRect();
+    pipeSvg.setAttribute('viewBox',`0 0 ${pr.width} ${pr.height}`);
+    while(pipeSvg.firstChild)pipeSvg.removeChild(pipeSvg.firstChild);
+    const t0=stages[0].getBoundingClientRect().top;
+    const oneRow=stages.every(s=>Math.abs(s.getBoundingClientRect().top-t0)<6);
+    if(!oneRow)return; // connectors only make sense on a single row
+    const defs=document.createElementNS(NS,'defs');
+    defs.innerHTML='<linearGradient id="pgrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#08DDB8"/><stop offset="1" stop-color="#5EEAD4"/></linearGradient><filter id="pglow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+    pipeSvg.appendChild(defs);
+    const mk=(tag,attrs)=>{const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e;};
+    for(let i=0;i<stages.length-1;i++){
+      const a=stages[i].getBoundingClientRect(), b=stages[i+1].getBoundingClientRect();
+      const x1=a.right-pr.left, x2=b.left-pr.left, y1=a.top-pr.top+a.height/2, y2=b.top-pr.top+b.height/2, mx=(x1+x2)/2;
+      const d=`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+      pipeSvg.appendChild(mk('path',{d,class:'track'}));
+      const flow=mk('path',{d,fill:'none',stroke:'url(#pgrad)','stroke-width':2,'stroke-dasharray':'3 9','stroke-linecap':'round'});
+      flow.appendChild(mk('animate',{attributeName:'stroke-dashoffset',from:24,to:0,dur:'0.7s',repeatCount:'indefinite'}));
+      pipeSvg.appendChild(flow);
+      const pkt=document.createElement('div');pkt.className='pkt';pkt.textContent=TOKENS[i]||'';
+      pkt.style.offsetPath="path('"+d+"')";pkt.style.webkitOffsetPath="path('"+d+"')";
+      pkt.style.animationDelay=(i*0.7)+'s';
+      pipe.appendChild(pkt);
+    }
+  }
+  window.addEventListener('resize',()=>{clearTimeout(window.__pt);window.__pt=setTimeout(drawPipe,150);});
+  setTimeout(drawPipe,350);
+  window.__drawPipe=drawPipe;
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>setTimeout(drawPipe,50));
+
+  // ── clickable stages → real methodology ──
+  const DETAILS_I18N={
+    fr:[
+      {t:'Collecte communautaire',li:['Une phrase est servie → <b>traduction écrite</b> + <b>enregistrement vocal</b> dans Elson (PWA mobile).','Chaque contribution est <b>anonyme</b> (code), horodatée et associée à une langue.','Texte et audio sont capturés ensemble, prêts à être évalués.']},
+      {t:'Vote & qualité par consensus',li:['<b>≥ 3 évaluateurs indépendants</b> notent chaque contribution.','Approuvée si le score pondéré est <b>≥ 3,5 / 5</b> ; rejetée si <b>&lt; 2,0</b>.','Vote pondéré par la <b>confiance</b> de l’évaluateur ; <b>détection anti-collusion</b> des groupes qui se sur-notent.']},
+      {t:'Revue interne',li:['Des <b>évaluateurs internes</b> arbitrent les cas limites et les litiges.','Contrôle qualité audio : clarté, format, intégrité du fichier.','Mise en <b>quarantaine</b> des contributions douteuses, hors du corpus.']},
+      {t:'Data engineering',li:['<b>Déduplication</b> texte + audio, normalisation, alignement texte ↔ voix.','Filtrage du bruit et nettoyage <b>à l’état de l’art</b>, par nos data engineers.','Structuration en <b>corpus parallèles</b> prêts pour l’entraînement.']},
+      {t:'Infrastructure & GPU',li:['Entraînement sur <b>notre propre capacité de calcul GPU</b>.','Pipelines reproductibles, <b>souveraineté</b> des données de bout en bout.','En sortie : modèles de <b>traduction, transcription et synthèse vocale</b>.']}
+    ],
+    en:[
+      {t:'Community collection',li:['A sentence is served → <b>written translation</b> + <b>voice recording</b> in Elson (mobile PWA).','Each contribution is <b>anonymous</b> (code), timestamped and tied to a language.','Text and audio are captured together, ready to be evaluated.']},
+      {t:'Vote & quality by consensus',li:['<b>≥ 3 independent evaluators</b> rate each contribution.','Approved if the weighted score is <b>≥ 3.5 / 5</b>; rejected if <b>&lt; 2.0</b>.','Vote weighted by the evaluator’s <b>trust</b>; <b>anti-collusion detection</b> of groups that over-rate each other.']},
+      {t:'Internal review',li:['<b>Internal evaluators</b> arbitrate edge cases and disputes.','Audio quality control: clarity, format, file integrity.','Doubtful contributions are <b>quarantined</b>, out of the corpus.']},
+      {t:'Data engineering',li:['<b>Deduplication</b> of text + audio, normalization, text ↔ voice alignment.','Noise filtering and <b>state-of-the-art</b> cleaning, by our data engineers.','Structuring into <b>parallel corpora</b> ready for training.']},
+      {t:'Infrastructure & GPU',li:['Training on <b>our own GPU compute capacity</b>.','Reproducible pipelines, end-to-end data <b>sovereignty</b>.','Outputs: <b>translation, transcription and speech-synthesis</b> models.']}
+    ],
+    ar:[
+      {t:'الجمع المجتمعي',li:['تُعرض جملة على المستخدم ← <b>ترجمة مكتوبة</b> + <b>تسجيل صوتي</b> داخل منصة Elson عبر تطبيق ويب تقدّمي للهاتف.','كل مساهمة تكون <b>مجهّلة</b> برمز، ومؤرخة زمنياً، ومرتبطة بلغة محددة.','يتم جمع النص والصوت معاً، ليكونا جاهزين للتقييم.']},
+      {t:'التصويت والجودة بالتوافق',li:['يقوم <b>ما لا يقل عن 3 مقيّمين مستقلين</b> بتقييم كل مساهمة.','تُقبَل المساهمة إذا كان المعدّل الموزون <b>≥ 3.5 / 5</b>، وتُرفَض إذا كان أقل من <b>2.0</b>.','يتم ترجيح التصويت بحسب مستوى <b>الثقة</b> في المقيّم، مع اعتماد آليات <b>للكشف عن التواطؤ</b> بين المجموعات التي تمنح بعضها تقييماً مبالغاً فيه.']},
+      {t:'المراجعة الداخلية',li:['يتولى <b>مقيّمون داخليون</b> الفصل في الحالات الحدّية والنزاعات.','يتم إجراء مراقبة جودة للصوت من حيث الوضوح، والصيغة، وسلامة الملف.','تُوضَع المساهمات المشكوك فيها في <b>الحجر</b>، ولا تُدرَج ضمن المدوّنة.']},
+      {t:'هندسة البيانات',li:['<b>إزالة التكرار</b> في النصوص والتسجيلات الصوتية، وتوحيد الصيغ، ومواءمة النص مع الصوت.','تصفية الضوضاء وتنظيف البيانات وفق <b>أحدث المعايير</b>، من طرف مهندسي البيانات لدينا.','هيكلة البيانات في <b>مدوّنات متوازية</b> وجاهزة للتدريب.']},
+      {t:'البنية التحتية وموارد GPU',li:['يتم تدريب النماذج اعتماداً على <b>قدراتنا الخاصة في الحوسبة عبر GPU</b>.','خطوط معالجة قابلة لإعادة الإنتاج، مع <b>سيادة كاملة</b> على البيانات من البداية إلى النهاية.','المخرجات: نماذج <b>للترجمة، والتفريغ الصوتي، وتوليد الصوت</b>.']}
+    ]
+  };
+  let curDetail=0;
+  const stagesEls=[...document.querySelectorAll('#pipeline .stage')];
+  if(stagesEls.length){
+    const ld=document.createElement('div');ld.className='labdetail';
+    document.querySelector('#pipeline .pipe').after(ld);
+    const render=i=>{curDetail=i;const lang=document.documentElement.lang||'fr';const D=DETAILS_I18N[lang]||DETAILS_I18N.fr;const d=D[i]||DETAILS_I18N.fr[i];
+      ld.innerHTML='<div class="ld-num">0'+(i+1)+'</div><div><div class="ld-title">'+d.t+'</div><ul>'+d.li.map(x=>'<li>'+x+'</li>').join('')+'</ul></div>';
+      stagesEls.forEach((s,j)=>s.classList.toggle('active',j===i));};
+    window.__renderDetail=()=>render(curDetail);
+    stagesEls.forEach((s,i)=>{const k=document.createElement('div');k.className='more-k';k.innerHTML='<span class="pl">+</span> <span data-i18n="mth.more">Détails de l’étape</span>';s.appendChild(k);s.addEventListener('click',()=>render(i));});
+    render(0);
+  }
+
+  // ── cursor-following spotlight on pillars ──
+  document.querySelectorAll('.pillar').forEach(p=>{
+    p.addEventListener('mousemove',e=>{const r=p.getBoundingClientRect();
+      p.style.setProperty('--mx',(e.clientX-r.left)+'px');p.style.setProperty('--my',(e.clientY-r.top)+'px');});
+  });
+
+  // ── credentials → animated marquees (compact, opposite directions, uniform speed) ──
+  const lwTracks=[];
+  document.querySelectorAll('#equipe .cred-chips').forEach((cc,idx)=>{
+    const track=document.createElement('div');track.className='lw-track';
+    while(cc.firstChild)track.appendChild(cc.firstChild);
+    track.innerHTML+=track.innerHTML;
+    cc.appendChild(track);lwTracks.push(track);
+  });
+  const SPEEDS=[70,38]; // px/s — rangée 0 (écoles) normale, rangée 1 (expérience) plus lente
+  const applyLW=()=>lwTracks.forEach((t,i)=>{
+    const sp=SPEEDS[i]||60, setW=t.scrollWidth/2; if(setW<=0)return;
+    const dur=(setW/sp).toFixed(1), rev=t.classList.contains('rev');
+    t.style.animation='none'; void t.offsetWidth;            // reflow → clean restart, no jump
+    t.style.animation='lw '+dur+'s linear infinite'+(rev?' reverse':'');
+  });
+  applyLW();
+  window.addEventListener('load',applyLW);                   // recompute once logos are loaded (correct widths)
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(applyLW);
+  window.addEventListener('resize',()=>{clearTimeout(window.__lw);window.__lw=setTimeout(applyLW,200);});
+
+  // re-apply translations once all JS-generated DOM exists (more-k, marquees, cards)
+  try{applyI18n(localStorage.getItem('dialect-locale')||'fr');}catch(e){}
+
+  // ── Hero dotted wave — canvas 2D with manual 3D projection (no deps) ──
+  (function(){
+    const cv=document.getElementById('heroDots'); if(!cv) return;
+    const ctx=cv.getContext('2d'); if(!ctx) return;
+    const host=cv.parentElement||cv;            // .mesh (sized to the hero)
+    const AX=46, AY=26, SEP=46;                  // grid cols, rows, world spacing
+    const camY=150, focal=640, camZ=600;         // perspective camera
+    let W=1,H=1,dpr=1,t=0,raf=0,running=true;
+    const dark=()=>document.documentElement.getAttribute('data-theme')==='dark';
+    function size(){
+      const r=host.getBoundingClientRect();
+      W=Math.max(1,r.width); H=Math.max(1,r.height);
+      dpr=Math.min(window.devicePixelRatio||1,2);
+      cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
+      cv.style.width=W+'px'; cv.style.height=H+'px';
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+    }
+    function draw(){
+      raf=requestAnimationFrame(draw);
+      if(!running) return;
+      ctx.clearRect(0,0,W,H);
+      const d=dark(), cx=W/2, cy=H*0.46;
+      for(let iz=0; iz<AY; iz++){
+        const fade=1-iz/AY;
+        for(let ix=0; ix<AX; ix++){
+          const wx=(ix-(AX-1)/2)*SEP;
+          const wy=Math.sin(ix*0.5+t)*16 + Math.sin(iz*0.5+t*1.3)*16;
+          const z=iz*SEP+camZ, s=focal/z;
+          const sx=cx+wx*s, sy=cy+(camY-wy)*s;
+          if(sx<-20||sx>W+20||sy<-20||sy>H+20) continue;
+          ctx.beginPath();
+          ctx.arc(sx,sy,Math.max(0.4,s*1.7),0,6.283);
+          ctx.fillStyle=d?'rgba(94,234,212,'+(0.5*fade+0.07)+')'
+                         :'rgba(16,90,74,'+(0.38*fade+0.05)+')';
+          ctx.fill();
+        }
+      }
+      t+=0.018;
+    }
+    size();
+    window.addEventListener('resize',()=>{clearTimeout(window.__hd);window.__hd=setTimeout(size,150);});
+    document.addEventListener('visibilitychange',()=>{running=!document.hidden;});
+    draw();
+  })();
+
+  // ── Hero fluid orb — raw WebGL fragment shader (no deps, no mic), Elson teal ──
+  (function(){
+    const cv=document.getElementById('heroOrb'); if(!cv) return;
+    const gl=cv.getContext('webgl',{alpha:true,premultipliedAlpha:false,antialias:true});
+    if(!gl) return;
+    const vert=`precision highp float;attribute vec2 position;attribute vec2 uv;varying vec2 vUv;
+      void main(){vUv=uv;gl_Position=vec4(position,0.0,1.0);}`;
+    const frag=`precision highp float;
+      uniform float iTime;uniform vec3 iResolution;uniform float hue;uniform float rot;varying vec2 vUv;
+      vec3 rgb2yiq(vec3 c){float y=dot(c,vec3(0.299,0.587,0.114));float i=dot(c,vec3(0.596,-0.274,-0.322));float q=dot(c,vec3(0.211,-0.523,0.312));return vec3(y,i,q);}
+      vec3 yiq2rgb(vec3 c){float r=c.x+0.956*c.y+0.621*c.z;float g=c.x-0.272*c.y-0.647*c.z;float b=c.x-1.106*c.y+1.703*c.z;return vec3(r,g,b);}
+      vec3 adjustHue(vec3 color,float hueDeg){float hr=hueDeg*3.14159265/180.0;vec3 yiq=rgb2yiq(color);float ca=cos(hr),sa=sin(hr);float i=yiq.y*ca-yiq.z*sa;float q=yiq.y*sa+yiq.z*ca;yiq.y=i;yiq.z=q;return yiq2rgb(yiq);}
+      vec3 hash33(vec3 p3){p3=fract(p3*vec3(0.1031,0.11369,0.13787));p3+=dot(p3,p3.yxz+19.19);return -1.0+2.0*fract(vec3(p3.x+p3.y,p3.x+p3.z,p3.y+p3.z)*p3.zyx);}
+      float snoise3(vec3 p){const float K1=0.333333333;const float K2=0.166666667;vec3 i=floor(p+(p.x+p.y+p.z)*K1);vec3 d0=p-(i-(i.x+i.y+i.z)*K2);vec3 e=step(vec3(0.0),d0-d0.yzx);vec3 i1=e*(1.0-e.zxy);vec3 i2=1.0-e.zxy*(1.0-e);vec3 d1=d0-(i1-K2);vec3 d2=d0-(i2-K1);vec3 d3=d0-0.5;vec4 h=max(0.6-vec4(dot(d0,d0),dot(d1,d1),dot(d2,d2),dot(d3,d3)),0.0);vec4 n=h*h*h*h*vec4(dot(d0,hash33(i)),dot(d1,hash33(i+i1)),dot(d2,hash33(i+i2)),dot(d3,hash33(i+1.0)));return dot(vec4(31.316),n);}
+      vec4 extractAlpha(vec3 c){float a=max(max(c.r,c.g),c.b);return vec4(c.rgb/(a+1e-5),a);}
+      const vec3 baseColor1=vec3(0.043,0.514,0.412);
+      const vec3 baseColor2=vec3(0.369,0.918,0.831);
+      const vec3 baseColor3=vec3(0.020,0.157,0.133);
+      const float innerRadius=0.6;const float noiseScale=0.65;
+      float light1(float i,float a,float d){return i/(1.0+d*a);}
+      float light2(float i,float a,float d){return i/(1.0+d*d*a);}
+      vec4 draw(vec2 uv){
+        vec3 c1=adjustHue(baseColor1,hue),c2=adjustHue(baseColor2,hue),c3=adjustHue(baseColor3,hue);
+        float ang=atan(uv.y,uv.x);float len=length(uv);float invLen=len>0.0?1.0/len:0.0;
+        float n0=snoise3(vec3(uv*noiseScale,iTime*0.5))*0.5+0.5;
+        float r0=mix(mix(innerRadius,1.0,0.4),mix(innerRadius,1.0,0.6),n0);
+        float d0=distance(uv,(r0*invLen)*uv);float v0=light1(1.0,10.0,d0);v0*=smoothstep(r0*1.05,r0,len);
+        float cl=cos(ang+iTime*2.0)*0.5+0.5;
+        float a=iTime*-1.0;vec2 pos=vec2(cos(a),sin(a))*r0;float d=distance(uv,pos);
+        float v1=light2(1.5,5.0,d);v1*=light1(1.0,50.0,d0);
+        float v2=smoothstep(1.0,mix(innerRadius,1.0,n0*0.5),len);
+        float v3=smoothstep(innerRadius,mix(innerRadius,1.0,0.5),len);
+        vec3 col=mix(c1,c2,cl);col=mix(c3,col,v0);col=(col+v1)*v2*v3;col=clamp(col,0.0,1.0);
+        return extractAlpha(col);}
+      vec4 mainImage(vec2 fc){
+        vec2 center=iResolution.xy*0.5;float size=min(iResolution.x,iResolution.y);
+        vec2 uv=(fc-center)/size*2.0;
+        float s=sin(rot),c=cos(rot);uv=vec2(c*uv.x-s*uv.y,s*uv.x+c*uv.y);
+        return draw(uv);}
+      void main(){vec2 fc=vUv*iResolution.xy;vec4 col=mainImage(fc);gl_FragColor=vec4(col.rgb*col.a,col.a);}`;
+    function sh(t,src){const s=gl.createShader(t);gl.shaderSource(s,src);gl.compileShader(s);
+      if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.warn('orb shader',gl.getShaderInfoLog(s));}return s;}
+    const prog=gl.createProgram();
+    gl.attachShader(prog,sh(gl.VERTEX_SHADER,vert));
+    gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,frag));
+    gl.linkProgram(prog);gl.useProgram(prog);
+    const posLoc=gl.getAttribLocation(prog,'position'),uvLoc=gl.getAttribLocation(prog,'uv');
+    const pb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,pb);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(posLoc);gl.vertexAttribPointer(posLoc,2,gl.FLOAT,false,0,0);
+    const ub=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,ub);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([0,0,2,0,0,2]),gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(uvLoc);gl.vertexAttribPointer(uvLoc,2,gl.FLOAT,false,0,0);
+    const uT=gl.getUniformLocation(prog,'iTime'),uR=gl.getUniformLocation(prog,'iResolution'),
+          uHue=gl.getUniformLocation(prog,'hue'),uRot=gl.getUniformLocation(prog,'rot');
+    gl.clearColor(0,0,0,0);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+    function size(){
+      const r=cv.getBoundingClientRect();
+      const dpr=Math.min(window.devicePixelRatio||1,2);
+      const w=Math.max(1,r.width),h=Math.max(1,r.height);
+      cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+      gl.viewport(0,0,cv.width,cv.height);
+    }
+    let rot=0,last=0,raf,running=true;
+    function frame(t){
+      raf=requestAnimationFrame(frame);if(!running)return;
+      const dt=Math.min((t-last)*0.001,0.05);last=t;rot+=dt*0.25;
+      gl.useProgram(prog);
+      gl.uniform1f(uT,t*0.001);gl.uniform3f(uR,cv.width,cv.height,cv.width/cv.height);
+      gl.uniform1f(uHue,0);gl.uniform1f(uRot,rot);
+      gl.clear(gl.COLOR_BUFFER_BIT);gl.drawArrays(gl.TRIANGLES,0,3);
+    }
+    size();
+    window.addEventListener('resize',()=>{clearTimeout(window.__ho);window.__ho=setTimeout(size,150);});
+    document.addEventListener('visibilitychange',()=>{running=!document.hidden;if(running)last=performance.now();});
+    raf=requestAnimationFrame(frame);
+  })();
+
+  // ── TTS orb — cycle the centre word ──
+  (function(){
+    const wrap=document.querySelector('#tts .loader-wrapper'); if(!wrap) return;
+    const loader=wrap.querySelector('.loader');
+    let wi=0;
+    function render(word){
+      wrap.querySelectorAll('.loader-letter').forEach(n=>n.remove());
+      const lang=document.documentElement.lang||'fr';
+      if((lang==='ar'&&word!=='Elson TTS')||word==='Elson TTS'){
+        const s=document.createElement('span');
+        s.className='loader-letter';
+        s.textContent=word;
+        if(word==='Elson TTS')s.dir='ltr';
+        s.style.animationDelay='0s';
+        wrap.insertBefore(s,loader);
+        return;
+      }
+      Array.from(word).forEach((ch,i)=>{
+        const s=document.createElement('span');
+        s.className='loader-letter';
+        s.textContent=ch===' '?' ':ch;
+        s.style.animationDelay=(i*0.1)+'s';
+        wrap.insertBefore(s,loader);
+      });
+    }
+    window.__renderTtsWord=function(){
+      const words=window.__ttsWords||TTS_WORDS.fr;
+      wi=Math.min(wi,words.length-1);
+      render(words[wi]);
+    };
+    window.__renderTtsWord();
+    setInterval(function(){
+      wrap.classList.add('word-out');
+      setTimeout(function(){
+        const words=window.__ttsWords||TTS_WORDS.fr;
+        wi=(wi+1)%words.length;
+        render(words[wi]);
+        wrap.classList.remove('word-out');
+      },380);
+    },3600);
+  })();
+</script>
+</body>
+</html>

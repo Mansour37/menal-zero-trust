@@ -1,0 +1,8 @@
+[run]
+omit =
+    app/database.py
+    app/config.py
+    app/models/*
+    alembic/*
+    tests/*
+    seed.py

@@ -1,0 +1,17 @@
+node_modules
+.next
+backend
+deploy
+scripts
+.git
+.env
+.env.*
+*.log
+*.csv
+*.cjs
+*.excalidraw
+architecture*
+users
+CLAUDE.md
+AGENTS.md
+backups

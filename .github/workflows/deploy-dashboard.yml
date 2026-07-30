@@ -1,0 +1,87 @@
+name: CD - Deploy Dashboard
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "dashboard/**"
+      - ".github/workflows/deploy-dashboard.yml"
+  workflow_dispatch:
+
+env:
+  IMAGE: ${{ vars.ARTIFACT_REGISTRY_URL }}/menal-dashboard
+  SERVICE: menal-dashboard-dev
+  REGION: ${{ vars.GCP_REGION }}
+
+jobs:
+  build:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push image
+        run: |
+          DH_IMAGE="mo35ehab/menal-dashboard"
+          docker build \
+            -t $IMAGE:${{ github.sha }} \
+            -t $IMAGE:latest \
+            -t $DH_IMAGE:${{ github.sha }} \
+            -t $DH_IMAGE:latest \
+            ./dashboard
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
+          docker push $DH_IMAGE:${{ github.sha }}
+          docker push $DH_IMAGE:latest
+
+  deploy:
+    name: Deploy to Cloud Run
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy Dashboard
+        run: |
+          gcloud run deploy $SERVICE \
+            --image=$IMAGE:${{ github.sha }} \
+            --region=$REGION \
+            --project=${{ vars.GCP_PROJECT_ID }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --ingress=all \
+            --port=3000 \
+            --memory=512Mi \
+            --cpu=1 \
+            --min-instances=0 \
+            --max-instances=3 \
+            --set-env-vars=API_URL=https://${{ vars.LB_DOMAIN }} \
+            --service-account=sa-api@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+
+      - name: Get Dashboard URL
+        run: |
+          URL=$(gcloud run services describe $SERVICE \
+            --region=$REGION --project=${{ vars.GCP_PROJECT_ID }} \
+            --format="value(status.url)")
+          echo "Dashboard URL: $URL"

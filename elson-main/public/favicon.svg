@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="46%" r="55%">
+      <stop offset="0%" stop-color="#08DDB8" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#08DDB8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ray" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5EEAD4"/>
+      <stop offset="100%" stop-color="#08DDB8"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="#0A0A0A"/>
+  <circle cx="32" cy="30" r="22" fill="url(#glow)"/>
+  <!-- Elson burst: a 4-point sparkle (long axes) + 4 shorter diagonal rays -->
+  <g fill="url(#ray)">
+    <path d="M32 6 C32 19 30 28 32 32 C34 28 32 19 32 6 Z"/>
+    <path d="M32 58 C32 45 30 36 32 32 C34 36 32 45 32 58 Z"/>
+    <path d="M6 32 C19 32 28 30 32 32 C28 34 19 32 6 32 Z"/>
+    <path d="M58 32 C45 32 36 30 32 32 C36 34 45 32 58 32 Z"/>
+  </g>
+  <g fill="#08DDB8" opacity="0.85">
+    <path d="M16 16 C24 22 27 25 32 32 C25 27 22 24 16 16 Z"/>
+    <path d="M48 48 C40 42 37 39 32 32 C39 37 42 40 48 48 Z"/>
+    <path d="M48 16 C42 24 39 27 32 32 C37 25 40 22 48 16 Z"/>
+    <path d="M16 48 C22 40 25 37 32 32 C27 39 24 42 16 48 Z"/>
+  </g>
+  <circle cx="32" cy="32" r="3.4" fill="#EAFFFB"/>
+</svg>

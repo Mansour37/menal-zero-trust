@@ -1,0 +1,33 @@
+﻿# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+.terraform.lock.hcl
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# Node.js
+node_modules/
+.next/
+.env.local
+
+# Secrets
+*.pem
+*.key
+service-account*.json
+credentials*.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker build artifacts (IDs = 12 caracteres hex exactement)
+api/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/
+api/Removed
+api/Running

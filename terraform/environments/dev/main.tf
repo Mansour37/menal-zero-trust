@@ -1,0 +1,186 @@
+﻿terraform {
+  required_version = ">= 1.7"
+  required_providers {
+    github = {
+      source  = "integrations/github"
+      version = "~> 6.0"
+    }
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
+  }
+}
+
+provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+provider "github" {
+  owner = "muhammedehab35"
+  token = var.github_token
+}
+
+locals {
+  gcp_apis = [
+    "run.googleapis.com",
+    "sqladmin.googleapis.com",
+    "bigquery.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "secretmanager.googleapis.com",
+    "cloudkms.googleapis.com",
+    "workflows.googleapis.com",
+    "logging.googleapis.com",
+    "monitoring.googleapis.com",
+    "iam.googleapis.com",
+    "compute.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
+    "servicenetworking.googleapis.com",
+    "iap.googleapis.com",
+    "cloudscheduler.googleapis.com",
+  ]
+}
+
+resource "google_project_service" "apis" {
+  for_each           = toset(local.gcp_apis)
+  project            = var.project_id
+  service            = each.value
+  disable_on_destroy = false
+}
+
+module "vpc" {
+  source      = "../../modules/vpc"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+
+  depends_on = [google_project_service.apis]
+}
+
+module "iam" {
+  source     = "../../modules/iam"
+  project_id = var.project_id
+
+  depends_on = [google_project_service.apis]
+}
+
+module "artifact_registry" {
+  source      = "../../modules/artifact-registry"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+
+  depends_on = [google_project_service.apis]
+}
+
+module "cloud_sql" {
+  source      = "../../modules/cloud-sql"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+  vpc_id      = module.vpc.vpc_id
+  api_service_account_email = module.iam.api_service_account_email
+
+  depends_on = [google_project_service.apis, module.vpc, module.iam]
+}
+
+module "kms" {
+  source      = "../../modules/kms"
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+  api_service_account_email = module.iam.api_service_account_email
+
+  depends_on = [google_project_service.apis, module.iam]
+}
+
+module "load_balancer" {
+  source                 = "../../modules/load-balancer"
+  project_id             = var.project_id
+  region                 = var.region
+  environment            = var.environment
+  cloud_run_service_name = "menal-api-${var.environment}"
+  support_email          = var.support_email
+  domain_name            = var.domain_name
+
+  depends_on = [google_project_service.apis]
+}
+
+# ── Phase 5 : Pipeline de données ──────────────────────────────────────────
+
+module "bigquery" {
+  source                         = "../../modules/bigquery"
+  project_id                     = var.project_id
+  region                         = var.region
+  environment                    = var.environment
+  pipeline_service_account_email = module.iam.pipeline_service_account_email
+
+  depends_on = [google_project_service.apis, module.iam]
+}
+
+module "logging" {
+  source              = "../../modules/logging"
+  project_id          = var.project_id
+  environment         = var.environment
+  bigquery_dataset_id = module.bigquery.dataset_id
+
+  depends_on = [module.bigquery]
+}
+
+module "workflow" {
+  source                         = "../../modules/workflow"
+  project_id                     = var.project_id
+  region                         = var.region
+  environment                    = var.environment
+  bigquery_dataset_id            = module.bigquery.dataset_id
+  pipeline_service_account_email = module.iam.pipeline_service_account_email
+
+  depends_on = [google_project_service.apis, module.bigquery, module.iam]
+}
+
+module "monitoring" {
+  source      = "../../modules/monitoring"
+  project_id  = var.project_id
+  environment = var.environment
+  alert_email = var.support_email
+
+  depends_on = [google_project_service.apis]
+}
+
+# ── Variables GitHub Actions ────────────────────────────────────────────────
+
+resource "github_actions_variable" "artifact_registry_url" {
+  repository    = "menal-zero-trust"
+  variable_name = "ARTIFACT_REGISTRY_URL"
+  value         = module.artifact_registry.repository_url
+}
+
+resource "github_actions_variable" "gcp_project_id" {
+  repository    = "menal-zero-trust"
+  variable_name = "GCP_PROJECT_ID"
+  value         = var.project_id
+}
+
+resource "github_actions_variable" "gcp_region" {
+  repository    = "menal-zero-trust"
+  variable_name = "GCP_REGION"
+  value         = var.region
+}
+
+resource "github_actions_variable" "lb_ip" {
+  repository    = "menal-zero-trust"
+  variable_name = "LB_IP_ADDRESS"
+  value         = module.load_balancer.lb_ip_address
+}
+
+resource "github_actions_variable" "lb_domain" {
+  repository    = "menal-zero-trust"
+  variable_name = "LB_DOMAIN"
+  value         = var.domain_name
+}

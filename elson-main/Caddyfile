@@ -1,0 +1,87 @@
+# Hassaniya Crowdsource — Caddy Reverse Proxy (optimized for 5K concurrent users)
+
+elson.adst.ai {
+	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(self), geolocation=(), payment=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https://api.elson.adst.ai https://api-elson.adst.ai; connect-src 'self' https://api.elson.adst.ai https://api-elson.adst.ai; frame-ancestors 'none'"
+		X-XSS-Protection "1; mode=block"
+		-Server
+	}
+
+	# Never let the service worker (or the page shell) get stuck in a CDN/browser
+	# cache — otherwise a stale sw.js keeps serving an old bundle forever.
+	@nocache path /sw.js /manifest.json
+	header @nocache Cache-Control "no-cache, no-store, must-revalidate"
+
+	# Same-origin API: serve /api/* and /recordings/* from the SAME domain as the
+	# frontend. This eliminates the cross-subdomain fragility (separate CSP domain,
+	# CORS, Cloudflare WAF/cache on api-elson, and cross-site httpOnly refresh cookie).
+	# The browser only ever talks to elson.adst.ai → whatever Cloudflare allows for the
+	# page, it allows for the API too.
+	handle /api/* {
+		reverse_proxy backend:4000 {
+			transport http {
+				keepalive 30s
+				keepalive_idle_conns 50
+			}
+			lb_policy round_robin
+			health_uri /api/health
+			health_interval 10s
+			health_timeout 5s
+		}
+	}
+
+	handle /recordings/* {
+		reverse_proxy backend:4000
+	}
+
+	handle {
+		reverse_proxy frontend:3000 {
+			transport http {
+				keepalive 30s
+				keepalive_idle_conns 20
+			}
+		}
+	}
+}
+
+api.elson.adst.ai {
+	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	handle /recordings/* {
+		reverse_proxy backend:4000
+	}
+
+	handle /api/* {
+		reverse_proxy backend:4000 {
+			transport http {
+				keepalive 30s
+				keepalive_idle_conns 50
+			}
+			# Load balance across Node.js cluster via single port
+			# (kernel distributes across workers)
+			lb_policy round_robin
+			health_uri /api/health
+			health_interval 10s
+			health_timeout 5s
+		}
+	}
+
+	handle {
+		respond "Not Found" 404
+	}
+}

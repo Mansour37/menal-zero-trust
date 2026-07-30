@@ -1,0 +1,244 @@
+services:
+  # ── PostgreSQL ──
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    networks:
+      - internal
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_DB: ${DB_NAME:-hassaniya}
+      POSTGRES_USER: ${DB_USER:-hassaniya}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./backend/sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hassaniya}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Performance tuning for 5K concurrent users
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=256MB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - max_connections=150
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - max_wal_size=2GB
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 1024M
+    shm_size: '256mb'
+    # Security: no ports exposed to host, only accessible via internal network
+
+  # ── PgBouncer (connection pooler) ──
+  # Multiplexes 500+ app connections into ~30 real PG connections
+  # Critical for 5K concurrent users with clustered Node.js
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    restart: unless-stopped
+    networks:
+      - internal
+    expose:
+      - "5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-hassaniya}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-hassaniya}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 30
+      MIN_POOL_SIZE: 10
+      RESERVE_POOL_SIZE: 10
+      RESERVE_POOL_TIMEOUT: 3
+      SERVER_IDLE_TIMEOUT: 300
+      LOG_CONNECTIONS: 0
+      LOG_DISCONNECTIONS: 0
+      AUTH_TYPE: trust
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Backend (Express API) ──
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    networks:
+      - internal
+    expose:
+      - "4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-hassaniya}
+      DB_USER: ${DB_USER:-hassaniya}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_MAX_CONNECTIONS: "100"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      FRONTEND_URL: ${FRONTEND_URL:-https://app.example.com}
+      UPLOAD_DIR: /data/recordings
+      SEED_FLORES: ${SEED_FLORES:-false}
+      WEB_CONCURRENCY: "4"
+      SMTP_HOST: ${SMTP_HOST:-smtp.zoho.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      ALERT_EMAILS: ${ALERT_EMAILS:-}
+      API_KEY: ${API_KEY:-}
+      WAHA_URL: ${WAHA_URL:-http://waha:3000}
+      WAHA_API_KEY: ${WAHA_API_KEY:-}
+      WAHA_SESSION: ${WAHA_SESSION:-default}
+    volumes:
+      - recordings:/data/recordings
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 512M
+
+  # ── Frontend (Next.js) ──
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.example.com}
+    restart: unless-stopped
+    networks:
+      - internal
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+
+  # ── Caddy (Reverse Proxy + HTTPS auto) ──
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - recordings:/data/recordings:ro  # Serve audio files
+    networks:
+      - internal
+    depends_on:
+      - frontend
+      - backend
+
+  # ── Automated Backups ──
+  pg-backup:
+    image: postgres:17-alpine
+    restart: "no"
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${DB_USER:-hassaniya}
+      PGPASSWORD: ${DB_PASSWORD}
+      PGDATABASE: ${DB_NAME:-hassaniya}
+    volumes:
+      - backups:/backups
+      - recordings:/recordings:ro
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "══ ALSUN BACKUP ══"
+        DATE=$$(date +%Y%m%d_%H%M%S)
+
+        # 1. Database backup
+        DB_FILE="/backups/db_$$DATE.sql.gz"
+        echo "1. Database → $$DB_FILE"
+        pg_dump | gzip > "$$DB_FILE"
+        echo "   Done: $$(du -h $$DB_FILE | cut -f1)"
+
+        # 2. Audio recordings backup (incremental — only new files)
+        AUDIO_FILE="/backups/audio_$$DATE.tar.gz"
+        echo "2. Audio → $$AUDIO_FILE"
+        cd /recordings && tar czf "$$AUDIO_FILE" . 2>/dev/null
+        echo "   Done: $$(du -h $$AUDIO_FILE | cut -f1)"
+
+        # 3. Cleanup — keep last 7 of each
+        echo "3. Cleanup..."
+        ls -t /backups/db_*.sql.gz 2>/dev/null | tail -n +8 | xargs rm -f 2>/dev/null
+        ls -t /backups/audio_*.tar.gz 2>/dev/null | tail -n +4 | xargs rm -f 2>/dev/null
+
+        echo "══ Backups kept: ══"
+        ls -lh /backups/ 2>/dev/null
+    profiles:
+      - backup
+
+  # ── WAHA (WhatsApp HTTP API — OTP sending) ──
+  waha:
+    image: devlikeapro/waha:latest
+    restart: unless-stopped
+    networks:
+      - internal
+    expose:
+      - "3000"
+    environment:
+      # API key guarding every WAHA call (sent as X-Api-Key by the backend).
+      # Both names set to cover WAHA versions.
+      WAHA_API_KEY: ${WAHA_API_KEY}
+      WHATSAPP_API_KEY: ${WAHA_API_KEY}
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+      WHATSAPP_RESTART_ALL_SESSIONS: "true"   # auto-restore the scanned session after a restart
+      WAHA_PRINT_QR: "false"
+    volumes:
+      - waha_sessions:/app/.sessions
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 256M
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  pg_data:        # PostgreSQL data (persistent)
+  recordings:     # Audio files (persistent)
+  caddy_data:     # TLS certificates
+  caddy_config:   # Caddy config
+  backups:        # Database backups
+  waha_sessions:  # WhatsApp session (persistent — survives restarts)
