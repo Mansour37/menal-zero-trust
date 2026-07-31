@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 5.0"
+    }
+  }
+}
+
 resource "google_service_account" "api" {
   account_id   = "sa-api"
   display_name = "API FastAPI Service Account"
@@ -34,10 +43,21 @@ data "google_project" "current" {
   project_id = var.project_id
 }
 
+// L agent de service BigQuery Data Transfer (service-<numero>@gcp-sa-
+// bigquerydatatransfer...) n existe pas tant que l API n a jamais ete
+// utilisee : sur un projet neuf, le binder sans passer par cette ressource
+// echoue avec "Service account ... does not exist." (verifie en provisionnant
+// staging pour de vrai). google_project_service_identity le cree/attend.
+resource "google_project_service_identity" "bqdts" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "bigquerydatatransfer.googleapis.com"
+}
+
 resource "google_service_account_iam_member" "dts_token_creator" {
   service_account_id = google_service_account.pipeline.name
   role               = "roles/iam.serviceAccountTokenCreator"
-  member             = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-bigquerydatatransfer.iam.gserviceaccount.com"
+  member             = "serviceAccount:${google_project_service_identity.bqdts.email}"
 }
 
 resource "google_project_iam_member" "pipeline_bigquery_editor" {

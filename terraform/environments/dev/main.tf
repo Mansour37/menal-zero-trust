@@ -9,6 +9,10 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 5.0"
     }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 5.0"
+    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.6"
@@ -22,6 +26,15 @@ terraform {
 }
 
 provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+# Necessaire uniquement pour google_project_service_identity (module iam) :
+# provisionne l agent de service BigQuery Data Transfer, absent tant que
+# l API n a jamais servi sur un projet neuf — pas encore GA sur le provider
+# "google" standard.
+provider "google-beta" {
   project = var.project_id
   region  = var.region
 }
@@ -76,6 +89,10 @@ module "iam" {
   project_id   = var.project_id
   github_owner = "Mansour37"
   github_repo  = "menal-zero-trust"
+
+  providers = {
+    google-beta = google-beta
+  }
 
   depends_on = [google_project_service.apis]
 }

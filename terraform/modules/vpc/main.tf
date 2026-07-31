@@ -108,8 +108,21 @@ resource "google_compute_firewall" "allow_internal" {
   source_ranges = [var.vpc_cidr_public, var.vpc_cidr_private]
 }
 
+locals {
+  # Un connecteur VPC serverless a un nom limite a 25 caracteres par l API GCP
+  # (^[a-z][-a-z0-9]{0,23}[a-z0-9]$). "menal-vpc-connector-staging" (28) le
+  # depasse alors que "-dev"/"-prod" tenaient de justesse : abreviation dediee
+  # pour rester sous la limite sans renommer (donc sans recreer) le connecteur
+  # dev/prod deja en place.
+  vpc_connector_env_short = lookup(
+    { staging = "stg" },
+    var.environment,
+    var.environment,
+  )
+}
+
 resource "google_vpc_access_connector" "serverless" {
-  name           = "menal-vpc-connector-${var.environment}"
+  name           = "menal-vpc-connector-${local.vpc_connector_env_short}"
   project        = var.project_id
   region         = var.region
   network        = google_compute_network.vpc.name
