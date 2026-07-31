@@ -123,6 +123,12 @@ class TestPipelineIntegration:
 
     def test_dashboard_ui_components(self, session, dashboard_url):
         resp = session.get(dashboard_url, timeout=10)
+        if resp.status_code == 403 and len(resp.text.strip()) < 300 and "403 Forbidden" in resp.text:
+            pytest.skip(
+                "Page de blocage Cloud Armor generique — runner hors region "
+                "autorisee par le geo-block (voir test_01_health.py), pas une "
+                "panne du dashboard."
+            )
         assert resp.status_code == 200
         page_text = resp.text.lower()
         keywords = ["menal", "zero trust", "sécurité", "security"]

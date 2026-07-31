@@ -90,8 +90,19 @@ resource "google_cloud_run_v2_service" "api" {
 
   ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
+  # Frontiere F3/F7 (04_METHODOLOGIE §1) : le pipeline CI deploie par digest
+  # (tag SHA immuable + labels commit-sha/managed-by) via `gcloud run deploy`,
+  # jamais par un nouvel `apply`. Sans ce lifecycle, chaque `terraform apply`
+  # ecraserait le deploiement CI le plus recent en revenant au tag `:latest`
+  # mutable connu de l etat Terraform — guerre d etats entre les deux pipelines.
   lifecycle {
     prevent_destroy = false
+    ignore_changes = [
+      client,
+      client_version,
+      template[0].labels,
+      template[0].containers[0].image,
+    ]
   }
 }
 

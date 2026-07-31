@@ -41,16 +41,21 @@ resource "google_compute_security_policy" "api_waf" {
 
   # Geo-blocking : autoriser UE + Maghreb (TN, DZ, MA) + Mauritanie (MR, pays
   # d implantation de MENAL SARL — omise par erreur : bloquait le pays meme de
-  # l entreprise et de ses utilisateurs reels), bloquer le reste
+  # l entreprise et de ses utilisateurs reels), bloquer le reste.
+  # /health est explicitement exempte : c est un endpoint de liveness sans
+  # donnee sensible (status/service/version uniquement), et les moniteurs
+  # d uptime / smoke tests CI (GitHub Actions n a pas de region fixe et n est
+  # pas dans l allowlist) doivent pouvoir le verifier depuis n importe ou.
+  # Le reste de l API et le dashboard restent geo-bloques sans exception.
   rule {
     action   = "deny(403)"
     priority = 410
     match {
       expr {
-        expression = "!origin.region_code.matches('^(?:FR|DE|ES|IT|NL|BE|PT|SE|DK|FI|AT|IE|PL|CZ|GR|HU|RO|BG|SK|SI|LT|LV|EE|HR|LU|MT|CY|TN|DZ|MA|MR)$') && !inIpRange(origin.ip, '10.0.0.0/8')"
+        expression = "request.path != '/health' && !origin.region_code.matches('^(?:FR|DE|ES|IT|NL|BE|PT|SE|DK|FI|AT|IE|PL|CZ|GR|HU|RO|BG|SK|SI|LT|LV|EE|HR|LU|MT|CY|TN|DZ|MA|MR)$') && !inIpRange(origin.ip, '10.0.0.0/8')"
       }
     }
-    description = "Geo-block : only EU + Maghreb + Mauritania + VPC allowed"
+    description = "Geo-block (sauf /health) : only EU + Maghreb + Mauritania + VPC allowed"
   }
 
   # Rate limiting reseau : 1000 req/min par IP

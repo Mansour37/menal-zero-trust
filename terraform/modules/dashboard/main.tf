@@ -101,8 +101,16 @@ resource "google_cloud_run_v2_service" "dashboard" {
 
   ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
+  # Meme raison que modules/cloud-run/main.tf : ce service est deploye par
+  # scripts/hotfix.sh (tag immuable hotfix-<timestamp>), jamais par apply.
   lifecycle {
     prevent_destroy = false
+    ignore_changes = [
+      client,
+      client_version,
+      template[0].labels,
+      template[0].containers[0].image,
+    ]
   }
 
   # La revision monte le secret au demarrage : le binding accessor et la
