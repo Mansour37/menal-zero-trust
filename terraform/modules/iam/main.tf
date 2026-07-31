@@ -28,6 +28,18 @@ resource "google_service_account" "pipeline" {
   project      = var.project_id
 }
 
+# L agent de service BigQuery Data Transfer doit pouvoir obtenir des jetons du
+# SA pipeline pour executer les requetes planifiees (Sigma + normalisation F4).
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
+resource "google_service_account_iam_member" "dts_token_creator" {
+  service_account_id = google_service_account.pipeline.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-bigquerydatatransfer.iam.gserviceaccount.com"
+}
+
 resource "google_project_iam_member" "pipeline_bigquery_editor" {
   project = var.project_id
   role    = "roles/bigquery.dataEditor"
@@ -67,10 +79,10 @@ resource "google_service_account_iam_member" "cicd_act_as_api" {
 
 # ── Workload Identity Federation (WIF) pour GitHub Actions ──────────────────
 resource "google_iam_workload_identity_pool" "github" {
-  project                  = var.project_id
+  project                   = var.project_id
   workload_identity_pool_id = "menal-github-pool"
-  display_name             = "GitHub Actions Pool"
-  description              = "WIF pool for GitHub Actions deployments"
+  display_name              = "GitHub Actions Pool"
+  description               = "WIF pool for GitHub Actions deployments"
 }
 
 resource "google_iam_workload_identity_pool_provider" "github" {
@@ -99,8 +111,7 @@ resource "google_service_account_iam_member" "cicd_wif" {
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_owner}/${var.github_repo}"
 }
 
-resource "google_project_iam_member" "cicd_service_account_user" {
-  project = var.project_id
-  role    = "roles/iam.serviceAccountUser"
-  member  = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_owner}/${var.github_repo}"
-}
+# Note securite : pas de roles/iam.serviceAccountUser au niveau projet pour le
+# principalSet WIF — cela permettrait a GitHub Actions d impersonner n importe
+# quel SA du projet. Le pipeline s authentifie comme sa-cicd (workloadIdentityUser
+# ci-dessus) qui ne peut agir que comme sa-api (binding cible cicd_act_as_api).

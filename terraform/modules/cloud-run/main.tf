@@ -39,6 +39,19 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "SECRET_NAME"
         value = var.db_secret_name
       }
+      env {
+        name  = "BQ_DATASET_ID"
+        value = var.bigquery_dataset_id
+      }
+      env {
+        name = "JWT_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = var.jwt_secret_name
+            version = "latest"
+          }
+        }
+      }
 
       resources {
         limits = {
@@ -80,4 +93,15 @@ resource "google_cloud_run_v2_service" "api" {
   lifecycle {
     prevent_destroy = false
   }
+}
+
+# ── Permettre les invocations non authentifiees via le Load Balancer ────────
+# La securite est assuree par Cloud Armor WAF + ingress restriction
+# (IAP necessite une org Google Workspace indisponible sur ce projet)
+resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.api.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }

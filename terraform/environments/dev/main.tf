@@ -120,20 +120,33 @@ module "cloud_run" {
   api_service_account_email = module.iam.api_service_account_email
   vpc_connector_id          = module.vpc.vpc_connector_id
   cloudsql_instance_name    = "menal-db-${var.environment}"
+  db_secret_name            = module.cloud_sql.db_password_secret_id
+  jwt_secret_name           = module.cloud_sql.jwt_secret_id
+  bigquery_dataset_id       = module.bigquery.dataset_id
 
-  depends_on = [google_project_service.apis, module.vpc, module.iam, module.cloud_sql]
+  depends_on = [google_project_service.apis, module.vpc, module.iam, module.cloud_sql, module.bigquery]
 }
 
 module "load_balancer" {
-  source                 = "../../modules/load-balancer"
-  project_id             = var.project_id
-  region                 = var.region
-  environment            = var.environment
-  cloud_run_service_name = "menal-api-${var.environment}"
-  support_email          = var.support_email
-  domain_name            = var.domain_name
+  source                           = "../../modules/load-balancer"
+  project_id                       = var.project_id
+  region                           = var.region
+  environment                      = var.environment
+  cloud_run_service_name           = "menal-api-${var.environment}"
+  dashboard_cloud_run_service_name = "menal-dashboard-${var.environment}"
+  support_email                    = var.support_email
+  domain_name                      = var.domain_name
+  dashboard_domain_name            = "dash.menal-sarl.com"
+  admin_ip_ranges                  = var.admin_ip_ranges
 
-  depends_on = [google_project_service.apis, module.cloud_run]
+  depends_on = [google_project_service.apis, module.cloud_run, module.dashboard]
+}
+
+module "audit" {
+  source     = "../../modules/audit"
+  project_id = var.project_id
+
+  depends_on = [google_project_service.apis]
 }
 
 # ── Phase 5 : Pipeline de données ──────────────────────────────────────────
@@ -144,17 +157,20 @@ module "bigquery" {
   region                         = var.region
   environment                    = var.environment
   pipeline_service_account_email = module.iam.pipeline_service_account_email
+  api_service_account_email      = module.iam.api_service_account_email
 
   depends_on = [google_project_service.apis, module.iam]
 }
 
 module "logging" {
-  source              = "../../modules/logging"
-  project_id          = var.project_id
-  environment         = var.environment
-  bigquery_dataset_id = module.bigquery.dataset_id
+  source                         = "../../modules/logging"
+  project_id                     = var.project_id
+  region                         = var.region
+  environment                    = var.environment
+  bigquery_dataset_id            = module.bigquery.dataset_id
+  pipeline_service_account_email = module.iam.pipeline_service_account_email
 
-  depends_on = [module.bigquery]
+  depends_on = [module.bigquery, module.iam]
 }
 
 module "workflow" {
@@ -204,46 +220,58 @@ module "ml_pipeline" {
   depends_on = [google_project_service.apis, module.vpc, module.bigquery, module.iam]
 }
 
-# ── Variables GitHub Actions ────────────────────────────────────────────────
+# ── Phase 8 : Dashboard Streamlit ─────────────────────────────────────────
 
-resource "github_actions_variable" "artifact_registry_url" {
-  repository    = "menal-zero-trust"
-  variable_name = "ARTIFACT_REGISTRY_URL"
-  value         = module.artifact_registry.repository_url
+module "dashboard" {
+  source              = "../../modules/dashboard"
+  project_id          = var.project_id
+  region              = var.region
+  environment         = var.environment
+  vpc_connector_id    = module.vpc.vpc_connector_id
+  bigquery_dataset_id = module.bigquery.dataset_id
+  dashboard_image     = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-dashboard:latest"
+  depends_on          = [google_project_service.apis, module.vpc, module.bigquery]
 }
 
-resource "github_actions_variable" "gcp_project_id" {
-  repository    = "menal-zero-trust"
-  variable_name = "GCP_PROJECT_ID"
-  value         = var.project_id
-}
-
-resource "github_actions_variable" "gcp_region" {
-  repository    = "menal-zero-trust"
-  variable_name = "GCP_REGION"
-  value         = var.region
-}
-
-resource "github_actions_variable" "lb_ip" {
-  repository    = "menal-zero-trust"
-  variable_name = "LB_IP_ADDRESS"
-  value         = module.load_balancer.lb_ip_address
-}
-
-resource "github_actions_variable" "lb_domain" {
-  repository    = "menal-zero-trust"
-  variable_name = "LB_DOMAIN"
-  value         = var.domain_name
-}
-
-resource "github_actions_variable" "wif_provider_name" {
-  repository    = "menal-zero-trust"
-  variable_name = "WIF_PROVIDER_NAME"
-  value         = module.iam.wif_provider_name
-}
-
-resource "github_actions_variable" "cicd_sa_email" {
-  repository    = "menal-zero-trust"
-  variable_name = "CICD_SA_EMAIL"
-  value         = module.iam.cicd_service_account_email
-}
+# ── Variables GitHub Actions (commenté — pas de token GitHub disponible) ────
+# resource "github_actions_variable" "artifact_registry_url" {
+#   repository    = "menal-zero-trust"
+#   variable_name = "ARTIFACT_REGISTRY_URL"
+#   value         = module.artifact_registry.repository_url
+# }
+# 
+# resource "github_actions_variable" "gcp_project_id" {
+#   repository    = "menal-zero-trust"
+#   variable_name = "GCP_PROJECT_ID"
+#   value         = var.project_id
+# }
+# 
+# resource "github_actions_variable" "gcp_region" {
+#   repository    = "menal-zero-trust"
+#   variable_name = "GCP_REGION"
+#   value         = var.region
+# }
+# 
+# resource "github_actions_variable" "lb_ip" {
+#   repository    = "menal-zero-trust"
+#   variable_name = "LB_IP_ADDRESS"
+#   value         = module.load_balancer.lb_ip_address
+# }
+# 
+# resource "github_actions_variable" "lb_domain" {
+#   repository    = "menal-zero-trust"
+#   variable_name = "LB_DOMAIN"
+#   value         = var.domain_name
+# }
+# 
+# resource "github_actions_variable" "wif_provider_name" {
+#   repository    = "menal-zero-trust"
+#   variable_name = "WIF_PROVIDER_NAME"
+#   value         = module.iam.wif_provider_name
+# }
+# 
+# resource "github_actions_variable" "cicd_sa_email" {
+#   repository    = "menal-zero-trust"
+#   variable_name = "CICD_SA_EMAIL"
+#   value         = module.iam.cicd_service_account_email
+# }

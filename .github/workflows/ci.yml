@@ -102,3 +102,40 @@ jobs:
           elif [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "302" ]; then
             echo "SUCCESS: Service operationnel !"
           fi
+
+  e2e:
+    name: E2E Tests
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: pip install -r tests/requirements-e2e.txt
+
+      - name: Run E2E health & boundary tests
+        run: |
+          pytest tests/e2e/ -v -x -m "not slow and not gcp" \
+            --timeout=30 \
+            -o "junit_family=xunit2" \
+            --junit-xml=e2e-results.xml
+        env:
+          E2E_API_URL: https://${{ vars.LB_DOMAIN }}
+          # Le dashboard est en ingress LB-only : il faut le tester via son domaine
+          # public (LB + Cloud Armor), pas via l URL .run.app (bloquee par design).
+          E2E_DASHBOARD_URL: https://dash.menal-sarl.com
+          E2E_API_RUN_URL: https://menal-api-dev-riusubanoq-ew.a.run.app
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results
+          path: e2e-results.xml
+          retention-days: 7

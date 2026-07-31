@@ -1,4 +1,4 @@
-﻿output "lb_ip_address" {
+output "lb_ip_address" {
   description = "Adresse IP statique du Load Balancer (a configurer dans le DNS)"
   value       = google_compute_global_address.lb_ip.address
 }

@@ -1,4 +1,4 @@
-# ── Table : attack_embeddings (vecteurs pre-calcules des attaques connues) ──
+# ── Table : attack_embeddings (vecteurs pre-calcules ATT&CK — 768D) ────────
 resource "google_bigquery_table" "attack_embeddings" {
   dataset_id          = var.bigquery_dataset_id
   table_id            = "attack_embeddings"
@@ -6,14 +6,22 @@ resource "google_bigquery_table" "attack_embeddings" {
   deletion_protection = false
 
   schema = jsonencode([
-    { name = "technique_id",   type = "STRING",   mode = "REQUIRED", description = "ID MITRE ATT&CK" },
-    { name = "tactic",         type = "STRING",   mode = "REQUIRED", description = "Tactique MITRE" },
-    { name = "technique_name", type = "STRING",   mode = "REQUIRED", description = "Nom de la technique" },
-    { name = "description",    type = "STRING",   mode = "NULLABLE", description = "Description de l attaque" },
-    { name = "embedding",      type = "FLOAT",    mode = "REPEATED", description = "Vecteur 600-dimensions" },
-    { name = "created_at",     type = "TIMESTAMP", mode = "REQUIRED", description = "Date d insertion" },
+    { name = "technique_id", type = "STRING", mode = "REQUIRED", description = "ID MITRE ATT&CK" },
+    { name = "tactic", type = "STRING", mode = "REQUIRED", description = "Tactique MITRE" },
+    { name = "technique_name", type = "STRING", mode = "REQUIRED", description = "Nom de la technique" },
+    { name = "description", type = "STRING", mode = "NULLABLE", description = "Description de l attaque" },
+    { name = "embedding", type = "FLOAT64", mode = "REPEATED", description = "Vecteur 768-dimensions (ATTACK-BERT)" },
+    { name = "model_version", type = "STRING", mode = "REQUIRED", description = "Version du modele qui a produit les vecteurs" },
+    { name = "created_at", type = "TIMESTAMP", mode = "REQUIRED", description = "Date d insertion" },
   ])
 }
+
+# ── Index vectoriel : crée via DDL après le chargement des données ──────────
+# Commande à exécuter après avoir peuplé la table (scripts/precompute_attacks.py) :
+#   bq query --project_id=${var.project_id} \
+#     "CREATE VECTOR INDEX IF NOT EXISTS idx_attack
+#      ON \`${var.project_id}.${var.bigquery_dataset_id}.attack_embeddings\`(embedding)
+#      OPTIONS(index_type='IVF', distance_type='COSINE')"
 
 # ── ml-embed : microservice d embedding (Cloud Run interne) ────────────────
 resource "google_cloud_run_v2_service" "ml_embed" {
@@ -42,11 +50,23 @@ resource "google_cloud_run_v2_service" "ml_embed" {
         name  = "PROJECT_ID"
         value = var.project_id
       }
+      env {
+        name  = "MODEL_DIR"
+        value = "/app/model"
+      }
+      env {
+        name  = "HF_HUB_OFFLINE"
+        value = "1"
+      }
+      env {
+        name  = "TRANSFORMERS_OFFLINE"
+        value = "1"
+      }
 
       resources {
         limits = {
           cpu    = "1"
-          memory = "512Mi"
+          memory = "1Gi"
         }
       }
 
@@ -108,16 +128,8 @@ resource "google_cloud_run_v2_job" "enrich" {
           value = var.bigquery_dataset_id
         }
         env {
-          name  = "BQ_DETECTIONS_TABLE"
-          value = "detections"
-        }
-        env {
-          name  = "BQ_ENRICHMENT_TABLE"
-          value = "alert_enrichment"
-        }
-        env {
-          name  = "BQ_ATTACK_EMBEDDINGS_TABLE"
-          value = "attack_embeddings"
+          name  = "SIMILARITY_THRESHOLD"
+          value = "0.60"
         }
 
         resources {

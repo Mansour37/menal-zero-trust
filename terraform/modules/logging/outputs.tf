@@ -1,4 +1,4 @@
-﻿output "cloudrun_sink_name" {
+output "cloudrun_sink_name" {
   value = google_logging_project_sink.cloudrun_to_bq.name
 }
 

@@ -1,4 +1,4 @@
-﻿output "api_service_account_email" {
+output "api_service_account_email" {
   value       = google_service_account.api.email
   description = "Email du Service Account pour l'API FastAPI"
 }

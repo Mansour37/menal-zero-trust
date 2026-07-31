@@ -13,6 +13,7 @@ from app.auth.router import router as auth_router
 from app.routers.users import router as users_router
 from app.routers.logs import router as logs_router
 from app.routers.alerts import router as alerts_router
+from app.routers.siem import router as siem_router
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
@@ -69,6 +70,7 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(logs_router)
 app.include_router(alerts_router)
+app.include_router(siem_router)
 
 
 @app.get("/health")

@@ -19,6 +19,7 @@ class Settings:
     DB_USER: str = os.getenv("DB_USER", "api_user")
     SECRET_NAME: str = os.getenv("SECRET_NAME", "db-password-dev")
     JWT_SECRET: str = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
+    BQ_DATASET_ID: str = os.getenv("BQ_DATASET_ID", "menal_security_dev")
 
     @property
     def DB_PASSWORD(self) -> str:

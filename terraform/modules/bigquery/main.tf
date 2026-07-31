@@ -21,6 +21,22 @@ resource "google_bigquery_dataset_iam_member" "pipeline_editor" {
   project    = var.project_id
 }
 
+# ── IAM : sa-api lit le dataset SIEM (dashboard /siem/*) — lecture seule ────
+# Un moteur applicatif qui restitue les incidents ne doit jamais pouvoir
+# modifier les preuves qu'il affiche (meme principe que sa-enrich-job).
+resource "google_bigquery_dataset_iam_member" "api_viewer" {
+  dataset_id = google_bigquery_dataset.security.dataset_id
+  role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${var.api_service_account_email}"
+  project    = var.project_id
+}
+
+resource "google_project_iam_member" "api_bq_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${var.api_service_account_email}"
+}
+
 # ── Table : access_logs (toutes les requetes API) ─────────────────────────────
 resource "google_bigquery_table" "access_logs" {
   dataset_id          = google_bigquery_dataset.security.dataset_id
@@ -81,6 +97,11 @@ resource "google_bigquery_table" "raw_logs" {
   time_partitioning {
     type  = "DAY"
     field = "timestamp"
+    # Retention 90 jours (LLD §5) : expiration_ms = 7776000000 ne peut pas etre
+    # encode par un binaire Terraform 32 bits (windows_386). Activer la ligne
+    # ci-dessous une fois passe sur Terraform amd64, ou appliquer :
+    #   bq update --time_partitioning_expiration 7776000 menal_security_dev.raw_logs
+    # expiration_ms = 7776000000
   }
 
   schema = jsonencode([

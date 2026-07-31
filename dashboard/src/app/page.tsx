@@ -1,8 +1,10 @@
 import { cookies } from "next/headers";
-import { getLogs, getAlerts } from "@/lib/api";
-import { AuditLog } from "@/lib/types";
+import Link from "next/link";
+import { getLogs, getAlerts, getOverview } from "@/lib/api";
+import { AuditLog, Overview } from "@/lib/types";
 import Sidebar from "@/components/Sidebar";
 import StatsCard from "@/components/StatsCard";
+import Card from "@/components/Card";
 import RequestsChart from "@/components/charts/RequestsChart";
 
 function buildChartData(logs: AuditLog[]) {
@@ -21,9 +23,10 @@ function buildChartData(logs: AuditLog[]) {
 
 export default async function OverviewPage() {
   const token = cookies().get("token")?.value ?? "";
-  const [logs, alerts] = await Promise.all([
+  const [logs, alerts, overview] = await Promise.all([
     getLogs(token, 0, 200).catch(() => [] as AuditLog[]),
     getAlerts(token, 0, 200).catch(() => [] as AuditLog[]),
+    getOverview(token, 24).catch(() => null as Overview | null),
   ]);
 
   const total        = logs.length;
@@ -31,18 +34,66 @@ export default async function OverviewPage() {
   const authFailures = logs.filter((l) => [401, 403].includes(l.status_code)).length;
   const errorRate    = total > 0 ? ((errors / total) * 100).toFixed(1) : "0.0";
   const chartData    = buildChartData(logs);
+  const latency       = overview?.avg_latency_ms;
 
   return (
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 p-8">
-        <h1 className="text-xl font-bold text-gray-800 mb-6">Vue d&apos;ensemble</h1>
+        <h1 className="text-xl font-bold text-slate-800 mb-6">Vue d&apos;ensemble</h1>
 
-        <div className="grid grid-cols-2 gap-4 mb-8 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-5">
           <StatsCard title="Requêtes totales"    value={total}             color="blue"   />
           <StatsCard title="Taux d'erreur"       value={`${errorRate}%`}   color={parseFloat(errorRate) > 10 ? "red" : "green"} />
           <StatsCard title="Échecs auth"         value={authFailures}      color={authFailures > 20 ? "red" : "orange"} />
           <StatsCard title="Alertes actives"     value={alerts.length}     color={alerts.length > 0 ? "red" : "green"} />
+          <StatsCard
+            title="Latence moyenne"
+            value={latency != null ? `${latency.toFixed(0)} ms` : "N/A"}
+            subtitle={overview?.p99_latency_ms != null ? `p99 : ${overview.p99_latency_ms.toFixed(0)} ms` : undefined}
+            color={latency != null && latency > 1000 ? "red" : "blue"}
+          />
+        </div>
+
+        <div className="mb-8">
+          <Card title="Détection & analyse (SIEM, 24h)">
+            {overview ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Détections</p>
+                  <p className="text-2xl font-bold text-slate-800 mt-0.5">{overview.detections_count}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{overview.unique_entities} entités distinctes</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Blocages WAF</p>
+                  <p className="text-2xl font-bold text-slate-800 mt-0.5">{overview.waf_blocks}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Cloud Armor</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Non mappé (ML)</p>
+                  <p className="text-2xl font-bold text-slate-800 mt-0.5">
+                    {overview.unmapped_rate != null ? `${overview.unmapped_rate}%` : "N/A"}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {overview.enrichment_mapped + overview.enrichment_unmapped} alertes enrichies
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Modèle ML</p>
+                  <p className="text-sm font-bold text-slate-800 mt-1.5 font-mono truncate" title={overview.model_version ?? undefined}>
+                    {overview.model_version ?? "inactif"}
+                  </p>
+                  <Link href="/incidents" className="text-xs text-blue-600 hover:underline mt-0.5 inline-block">
+                    Voir les incidents →
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">
+                Données SIEM indisponibles (session expirée ou pipeline BigQuery pas encore alimenté).
+              </p>
+            )}
+          </Card>
         </div>
 
         <RequestsChart data={chartData} />

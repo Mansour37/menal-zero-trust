@@ -1,4 +1,4 @@
-﻿variable "project_id" {
+variable "project_id" {
   description = "GCP Project ID"
   type        = string
 }
@@ -15,5 +15,10 @@ variable "region" {
 
 variable "pipeline_service_account_email" {
   description = "Email du Service Account sa-pipeline"
+  type        = string
+}
+
+variable "api_service_account_email" {
+  description = "Email du Service Account sa-api (lecture seule dataset SIEM pour /siem/*)"
   type        = string
 }

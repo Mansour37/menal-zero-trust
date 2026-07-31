@@ -1,4 +1,4 @@
-﻿# ── IAM : sa-pipeline peut executer les workflows ─────────────────────────────
+# ── IAM : sa-pipeline peut executer les workflows ─────────────────────────────
 resource "google_project_iam_member" "pipeline_workflow_invoker" {
   project = var.project_id
   role    = "roles/workflows.invoker"

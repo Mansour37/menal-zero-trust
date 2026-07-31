@@ -225,8 +225,8 @@ resource "google_monitoring_alert_policy" "uptime_failure" {
 
       aggregations {
         alignment_period     = "60s"
-        per_series_aligner   = "ALIGN_MEAN"
-        cross_series_reducer = "REDUCE_MEAN"
+        per_series_aligner   = "ALIGN_NEXT_OLDER"
+        cross_series_reducer = "REDUCE_COUNT"
       }
 
       trigger {

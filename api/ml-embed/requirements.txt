@@ -1,3 +1,10 @@
 fastapi==0.115.0
 uvicorn==0.30.0
 numpy==1.26.4
+pydantic==2.9.2
+# ML dependencies (installed with optimum for ONNX int8 inference)
+# sentence-transformers==3.0.1
+# optimum[onnxruntime]==1.21.3
+# onnxruntime==1.18.1
+# transformers==4.44.2
+# safetensors==0.4.4

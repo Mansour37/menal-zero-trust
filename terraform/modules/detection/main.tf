@@ -44,18 +44,18 @@ locals {
         "R2",
         "Pic WAF",
         "MEDIUM",
-        source_ip,
+        url,
         CONCAT(CAST(waf_blocks AS STRING), " requetes bloquées par Cloud Armor en 5 min"),
         "cloud_armor",
         "TA0040",
         "T1498"
       FROM (
-        SELECT json_payload.httpRequest.requestUrl AS url,
+        SELECT STRING(json_payload.httpRequest.requestUrl) AS url,
                COUNT(*) AS waf_blocks
         FROM `${local.project}.${local.dataset}.raw_logs`
         WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 5 MINUTE)
           AND log_source = "armor"
-          AND json_payload.enforcedSecurityPolicy.outcome = "deny"
+          AND UPPER(STRING(json_payload.enforcedSecurityPolicy.outcome)) = "DENY"
         GROUP BY url
       )
       WHERE waf_blocks > 10
@@ -100,18 +100,19 @@ locals {
         "R4",
         "User-agent suspect",
         "MEDIUM",
-        ip_address,
-        CONCAT("User-agent suspect (", SUBSTR(json_payload.httpRequest.userAgent, 1, 40), ") sur ", path, " depuis ", ip_address),
+        STRING(json_payload.httpRequest.remoteIp),
+        CONCAT("User-agent suspect (", SUBSTR(STRING(json_payload.httpRequest.userAgent), 1, 40), ") sur ", STRING(json_payload.httpRequest.requestUrl), " depuis ", STRING(json_payload.httpRequest.remoteIp)),
         "cloud_run",
         "TA0043",
         "T1046"
       FROM `${local.project}.${local.dataset}.raw_logs`
       WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
         AND log_source = "cloudrun"
-        AND LOWER(json_payload.httpRequest.userAgent) IN (
-          "curl", "curl/*", "python-requests/*", "python-urllib/*", "go-http-client/*", "wget/*"
+        AND REGEXP_CONTAINS(
+          LOWER(STRING(json_payload.httpRequest.userAgent)),
+          r"^(curl|python-requests|python-urllib|go-http-client|wget)"
         )
-        AND json_payload.httpRequest.requestUrl LIKE "%/api/%"
+        AND STRING(json_payload.httpRequest.requestUrl) LIKE "%/api/%"
     SQL
   }
 
@@ -212,25 +213,17 @@ resource "google_bigquery_data_transfer_config" "detection_rules" {
   display_name           = "Sigma ${each.key}: ${each.value.name}"
   location               = var.region
   project                = var.project_id
-  schedule               = "*/5 * * * *"
+  schedule               = "every 5 minutes"
   service_account_name   = var.pipeline_service_account_email
 
   params = {
     query = each.value.query
   }
-
-  depends_on = [var.pipeline_service_account_email]
 }
 
-# ── Permissions : SA pipeline pour creer/gerer les transferts planifies ────
-resource "google_project_iam_member" "pipeline_transfer_user" {
-  project = var.project_id
-  role    = "roles/bigquery.transfers.user"
-  member  = "serviceAccount:${var.pipeline_service_account_email}"
-}
-
-resource "google_project_iam_member" "pipeline_job_user" {
-  project = var.project_id
-  role    = "roles/bigquery.jobUser"
-  member  = "serviceAccount:${var.pipeline_service_account_email}"
-}
+# Le role bigquery.dataEditor est accorde au niveau du dataset (module bigquery)
+# et bigquery.jobUser au niveau projet (module workflow) : pas de binding projet
+# dataEditor ici — un moteur de detection ne doit pas pouvoir modifier les
+# preuves en dehors du dataset SIEM (moindre privilege). Le binding
+# iam.serviceAccountTokenCreator pour l agent BigQuery Data Transfer est gere
+# dans le module iam (source unique).

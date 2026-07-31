@@ -109,14 +109,14 @@ resource "google_compute_firewall" "allow_internal" {
 }
 
 resource "google_vpc_access_connector" "serverless" {
-  name          = "menal-vpc-connector-${var.environment}"
-  project       = var.project_id
-  region        = var.region
-  network       = google_compute_network.vpc.name
-  ip_cidr_range = var.vpc_connector_cidr
-  machine_type  = "e2-micro"
-  min_instances = 2
-  max_instances = 10
+  name           = "menal-vpc-connector-${var.environment}"
+  project        = var.project_id
+  region         = var.region
+  network        = google_compute_network.vpc.name
+  ip_cidr_range  = var.vpc_connector_cidr
+  machine_type   = "e2-micro"
+  min_instances  = 2
+  max_instances  = 10
   max_throughput = 1000
   min_throughput = 200
 }

@@ -59,17 +59,20 @@ def test_decode_invalid_token_raises():
 
 def test_users_requires_auth():
     response = client.get("/users/")
-    assert response.status_code == 403
+    # 401 (FastAPI >= 0.112, RFC 7235) ou 403 (anciennes versions de HTTPBearer)
+    assert response.status_code in (401, 403)
 
 
 def test_logs_requires_auth():
     response = client.get("/logs/")
-    assert response.status_code == 403
+    # 401 (FastAPI >= 0.112, RFC 7235) ou 403 (anciennes versions de HTTPBearer)
+    assert response.status_code in (401, 403)
 
 
 def test_alerts_requires_auth():
     response = client.get("/alerts/")
-    assert response.status_code == 403
+    # 401 (FastAPI >= 0.112, RFC 7235) ou 403 (anciennes versions de HTTPBearer)
+    assert response.status_code in (401, 403)
 
 
 def test_viewer_cannot_access_users():

@@ -1,4 +1,4 @@
-﻿# Numero du projet (necessaire pour les service accounts GCP)
+# Numero du projet (necessaire pour les service accounts GCP)
 data "google_project" "current" {
   project_id = var.project_id
 }
@@ -14,7 +14,7 @@ resource "google_kms_key_ring" "menal" {
 resource "google_kms_crypto_key" "api_data" {
   name            = "menal-api-key-${var.environment}"
   key_ring        = google_kms_key_ring.menal.id
-  rotation_period = "7776000s"  # 90 jours
+  rotation_period = "7776000s" # 90 jours
 
   purpose = "ENCRYPT_DECRYPT"
 

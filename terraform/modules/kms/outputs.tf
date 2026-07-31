@@ -1,4 +1,4 @@
-﻿output "key_ring_id" {
+output "key_ring_id" {
   description = "ID du Key Ring KMS"
   value       = google_kms_key_ring.menal.id
 }

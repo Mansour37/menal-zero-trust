@@ -1,4 +1,7 @@
-import { LoginResponse, AuditLog, Alert, User } from "./types";
+import {
+  LoginResponse, AuditLog, Alert, User,
+  Overview, Detection, Incident, IncidentDetail, CoverageTactic, Vulnerability,
+} from "./types";
 
 const API_URL = process.env.API_URL || "https://menal-api-dev-5j4ih577pq-ew.a.run.app";
 
@@ -37,4 +40,30 @@ export async function getUsers(token: string): Promise<User[]> {
 export async function getHealth(): Promise<{ status: string; version: string }> {
   const res = await fetch(`${API_URL}/health`, { cache: "no-store" });
   return res.json();
+}
+
+// ── SIEM (BigQuery : detections Sigma, incidents, couverture ATT&CK, CVE) ───
+
+export async function getOverview(token: string, hours = 24): Promise<Overview> {
+  return apiFetch<Overview>(`/siem/overview?hours=${hours}`, token);
+}
+
+export async function getDetections(token: string, hours = 24, limit = 100): Promise<Detection[]> {
+  return apiFetch<Detection[]>(`/siem/detections?hours=${hours}&limit=${limit}`, token);
+}
+
+export async function getIncidents(token: string, hours = 24): Promise<Incident[]> {
+  return apiFetch<Incident[]>(`/siem/incidents?hours=${hours}`, token);
+}
+
+export async function getIncident(token: string, entity: string, hours = 24): Promise<IncidentDetail> {
+  return apiFetch<IncidentDetail>(`/siem/incidents/${encodeURIComponent(entity)}?hours=${hours}`, token);
+}
+
+export async function getCoverage(token: string, days = 30): Promise<CoverageTactic[]> {
+  return apiFetch<CoverageTactic[]>(`/siem/coverage?days=${days}`, token);
+}
+
+export async function getVulnerabilities(token: string, days = 30): Promise<Vulnerability[]> {
+  return apiFetch<Vulnerability[]>(`/siem/vulnerabilities?days=${days}`, token);
 }

@@ -1,4 +1,4 @@
-﻿# Private Service Access (VPC peering pour les services Google)
+# Private Service Access (VPC peering pour les services Google)
 # Permet a Cloud SQL d'avoir une IP privee dans le VPC
 resource "google_compute_global_address" "private_ip_range" {
   name          = "google-services-${var.environment}"
@@ -38,11 +38,14 @@ resource "google_sql_database_instance" "postgres" {
       ipv4_enabled                                  = false
       private_network                               = var.vpc_id
       enable_private_path_for_google_cloud_services = true
+      ssl_mode                                      = "ENCRYPTED_ONLY"
     }
 
     backup_configuration {
-      enabled    = true
-      start_time = "02:00"
+      enabled                        = true
+      start_time                     = "02:00"
+      point_in_time_recovery_enabled = true
+      transaction_log_retention_days = 7
       backup_retention_settings {
         retained_backups = 7
       }
@@ -80,6 +83,7 @@ resource "google_secret_manager_secret" "db_password" {
   replication {
     auto {}
   }
+
 }
 
 resource "google_secret_manager_secret_version" "db_password" {
@@ -108,6 +112,7 @@ resource "google_secret_manager_secret" "jwt_secret" {
   replication {
     auto {}
   }
+
 }
 
 resource "google_secret_manager_secret_version" "jwt_secret" {

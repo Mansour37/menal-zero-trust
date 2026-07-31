@@ -1,4 +1,4 @@
-﻿output "workflow_name" {
+output "workflow_name" {
   value = google_workflows_workflow.security_pipeline.name
 }
 

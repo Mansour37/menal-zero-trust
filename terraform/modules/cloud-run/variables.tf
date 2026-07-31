@@ -45,6 +45,16 @@ variable "db_secret_name" {
   default = "db-password-dev"
 }
 
+variable "jwt_secret_name" {
+  description = "Secret Manager secret ID contenant la cle de signature JWT"
+  type        = string
+}
+
+variable "bigquery_dataset_id" {
+  description = "Dataset BigQuery SIEM (lecture seule par l API pour les endpoints /siem)"
+  type        = string
+}
+
 variable "cpu" {
   type    = string
   default = "1"

@@ -2,9 +2,9 @@
 # Build, push Docker Hub + Artifact Registry, deploy Cloud Run — sans passer par GitHub Actions
 set -euo pipefail
 
-PROJECT_ID="menal-dev"
+PROJECT_ID="menal-zero-trust-dev"
 REGION="europe-west1"
-AR_REGISTRY="europe-west1-docker.pkg.dev/menal-dev/menal-docker-dev"
+AR_REGISTRY="europe-west1-docker.pkg.dev/menal-zero-trust-dev/menal-docker-dev"
 DH_USER="mo35ehab"
 
 usage() {
