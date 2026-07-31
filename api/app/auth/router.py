@@ -1,3 +1,6 @@
+import uuid
+from typing import Union
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
@@ -5,12 +8,40 @@ import bcrypt
 from sqlalchemy.orm import Session
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from app.auth.jwt import create_access_token
+from app.auth.jwt import create_access_token, create_mfa_pending_token, decode_token
+from app.auth.mfa import generate_secret, provisioning_uri, verify_totp
+from app.auth.dependencies import get_current_user
 from app.database import get_engine
 from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-limiter = Limiter(key_func=get_remote_address)
+
+
+def _real_client_ip(request: Request) -> str:
+    """
+    Cle de rate-limit basee sur le vrai client, pas sur le dernier saut TCP.
+
+    Le trafic passe soit par le Load Balancer (Cloud Armor + GFE), soit par
+    le proxy server-side du dashboard Next.js (qui relaie X-Forwarded-For,
+    voir dashboard/src/app/api/login/route.ts) — dans les deux cas
+    request.client.host ne serait que l IP du saut immediat, pas celle du
+    client. Le GFE ajoute TOUJOURS "<client-ip>, <gfe-ip>" en fin de
+    l en-tete X-Forwarded-For, quel que soit ce qu un attaquant y a
+    prefixe : on prend donc l avant-dernier maillon, jamais le premier
+    (piege classique de parsing XFF qui rendrait le rate-limit contournable
+    en falsifiant simplement le premier maillon).
+    """
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        hops = [h.strip() for h in xff.split(",") if h.strip()]
+        if len(hops) >= 2:
+            return hops[-2]
+        if hops:
+            return hops[0]
+    return get_remote_address(request)
+
+
+limiter = Limiter(key_func=_real_client_ip)
 
 
 def _verify_password(plain: str, hashed: str) -> bool:
@@ -22,7 +53,43 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 
-@router.post("/token", response_model=Token)
+class MfaChallenge(BaseModel):
+    mfa_required: bool = True
+    mfa_token: str
+
+
+class MfaVerifyRequest(BaseModel):
+    mfa_token: str
+    code: str
+
+
+class MfaSetupResponse(BaseModel):
+    secret: str
+    otpauth_uri: str
+
+
+class MfaEnableRequest(BaseModel):
+    code: str
+
+
+class MfaDisableRequest(BaseModel):
+    password: str
+    code: str
+
+
+class MfaStatus(BaseModel):
+    enabled: bool
+
+
+def _user_by_sub(session: Session, sub: str) -> User | None:
+    try:
+        user_id = uuid.UUID(sub)
+    except (ValueError, TypeError):
+        return None
+    return session.query(User).filter(User.id == user_id).first()
+
+
+@router.post("/token", response_model=Union[Token, MfaChallenge])
 @limiter.limit("10/minute")
 def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
     engine = get_engine()
@@ -39,6 +106,112 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User account is disabled",
             )
+        if user.mfa_enabled:
+            return MfaChallenge(mfa_token=create_mfa_pending_token(str(user.id)))
         role_name = user.role.name if user.role else "viewer"
         token = create_access_token(subject=str(user.id), role=role_name)
         return Token(access_token=token)
+
+
+@router.post("/mfa/verify", response_model=Token)
+@limiter.limit("10/minute")
+def verify_mfa(request: Request, body: MfaVerifyRequest):
+    try:
+        payload = decode_token(body.mfa_token)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired MFA challenge",
+        )
+    if payload.get("typ") != "mfa_pending":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid MFA challenge",
+        )
+    engine = get_engine()
+    with Session(engine) as session:
+        user = _user_by_sub(session, payload.get("sub", ""))
+        if not user or not user.mfa_enabled or not user.mfa_secret:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="MFA not configured for this account",
+            )
+        if not verify_totp(user.mfa_secret, body.code):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid verification code",
+            )
+        role_name = user.role.name if user.role else "viewer"
+        token = create_access_token(subject=str(user.id), role=role_name)
+        return Token(access_token=token)
+
+
+@router.get("/mfa/status", response_model=MfaStatus)
+def mfa_status(current_user: dict = Depends(get_current_user)):
+    engine = get_engine()
+    with Session(engine) as session:
+        user = _user_by_sub(session, current_user.get("sub", ""))
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        return MfaStatus(enabled=user.mfa_enabled)
+
+
+@router.post("/mfa/setup", response_model=MfaSetupResponse)
+def setup_mfa(current_user: dict = Depends(get_current_user)):
+    engine = get_engine()
+    with Session(engine) as session:
+        user = _user_by_sub(session, current_user.get("sub", ""))
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        if user.mfa_enabled:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="MFA is already enabled for this account",
+            )
+        secret = generate_secret()
+        user.mfa_secret = secret
+        session.commit()
+        return MfaSetupResponse(secret=secret, otpauth_uri=provisioning_uri(secret, user.email))
+
+
+@router.post("/mfa/enable", response_model=MfaStatus)
+@limiter.limit("10/minute")
+def enable_mfa(request: Request, body: MfaEnableRequest, current_user: dict = Depends(get_current_user)):
+    engine = get_engine()
+    with Session(engine) as session:
+        user = _user_by_sub(session, current_user.get("sub", ""))
+        if not user or not user.mfa_secret:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Call /auth/mfa/setup first",
+            )
+        if not verify_totp(user.mfa_secret, body.code):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid verification code",
+            )
+        user.mfa_enabled = True
+        session.commit()
+        return MfaStatus(enabled=True)
+
+
+@router.post("/mfa/disable", response_model=MfaStatus)
+@limiter.limit("10/minute")
+def disable_mfa(request: Request, body: MfaDisableRequest, current_user: dict = Depends(get_current_user)):
+    engine = get_engine()
+    with Session(engine) as session:
+        user = _user_by_sub(session, current_user.get("sub", ""))
+        if not user or not _verify_password(body.password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect password",
+            )
+        if user.mfa_enabled and not verify_totp(user.mfa_secret, body.code):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid verification code",
+            )
+        user.mfa_enabled = False
+        user.mfa_secret = None
+        session.commit()
+        return MfaStatus(enabled=False)

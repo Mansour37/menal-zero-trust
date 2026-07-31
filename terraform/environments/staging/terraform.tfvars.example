@@ -1,0 +1,6 @@
+# Copier en terraform.tfvars (jamais commite) et renseigner les vraies valeurs
+# avant tout `terraform init`/`plan`/`apply` sur cet environnement.
+
+project_id      = "menal-zero-trust-staging"   # projet GCP dedie a la staging, distinct de dev/prod
+support_email   = "soc-team@menal-sarl.com"    # alias d equipe, pas une adresse personnelle
+admin_ip_ranges = ["203.0.113.10/32"]          # IP(s) admin de la staging, distinctes de celles de dev

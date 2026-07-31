@@ -17,6 +17,14 @@ def get_current_user(
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if payload.get("typ") != "access":
+        # Rejette notamment les jetons "mfa_pending" — un second facteur non
+        # encore verifie ne doit jamais faire office d access token.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return payload
 
 
