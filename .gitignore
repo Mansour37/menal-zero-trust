@@ -3,6 +3,8 @@
 *.tfstate
 *.tfstate.backup
 *.tfvars
+*.tfplan
+tfplan
 .terraform.lock.hcl
 
 # Python
@@ -16,6 +18,7 @@ venv/
 node_modules/
 .next/
 .env.local
+tsconfig.tsbuildinfo
 
 # Secrets
 *.pem
