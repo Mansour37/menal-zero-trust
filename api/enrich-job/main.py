@@ -37,12 +37,30 @@ def fetch_pending_detections(limit=BATCH_SIZE):
     return rows
 
 
+def _id_token(audience: str) -> str | None:
+    """Jeton d'identite du SA du job (metadata server) — ml-embed exige
+    roles/run.invoker et un Bearer token, meme en ingress interne."""
+    try:
+        import google.auth.transport.requests
+        from google.oauth2 import id_token
+
+        return id_token.fetch_id_token(google.auth.transport.requests.Request(), audience)
+    except Exception as e:
+        step(f"  [WARN] Jeton d'identite indisponible ({e}) — appel non authentifie")
+        return None
+
+
 def call_ml_embed(texts: list[str]) -> dict | None:
+    headers = {}
+    token = _id_token(ML_EMBED_URL)
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     try:
         resp = requests.post(
             f"{ML_EMBED_URL}/embed",
             json={"texts": texts},
-            timeout=30,
+            timeout=120,
+            headers=headers,
         )
         resp.raise_for_status()
         return resp.json()
@@ -52,12 +70,15 @@ def call_ml_embed(texts: list[str]) -> dict | None:
 
 
 def search_bigquery(embedding: list[float], top_k: int = 3) -> list[dict]:
+    # VECTOR_SEARCH expose les colonnes de la table interrogee sous `base.*`
+    # (avec `query.*` et `distance`) — les referencer a nu echoue avec
+    # "Unrecognized name".
     query = f"""
         DECLARE threshold FLOAT64 DEFAULT {SIMILARITY_THRESHOLD};
         SELECT
-            technique_id,
-            tactic,
-            technique_name,
+            base.technique_id AS technique_id,
+            base.tactic AS tactic,
+            base.technique_name AS technique_name,
             (1 - distance) AS similarity
         FROM VECTOR_SEARCH(
             TABLE `{ATTACK_EMBEDDINGS_TABLE}`, 'embedding',

@@ -6,9 +6,6 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 MODEL_DIR = os.getenv("MODEL_DIR", "/app/model")
-MODEL_VERSIONS = {
-    "attack-bert-onnx-int8": "attack-bert-onnx-int8@v1.0",
-}
 MAX_TOKENS = 512
 MAX_BATCH = 64
 MAX_TEXT_LENGTH = 8000
@@ -16,17 +13,28 @@ MAX_TEXT_LENGTH = 8000
 app = FastAPI(title="menal-ml-embed", version="1.0.0", docs_url=None, redoc_url=None)
 
 try:
-    from optimum.onnxruntime import ORTModelForFeatureExtraction
+    import onnxruntime as ort
     from transformers import AutoTokenizer
 
     tok = AutoTokenizer.from_pretrained(MODEL_DIR)
-    model = ORTModelForFeatureExtraction.from_pretrained(MODEL_DIR)
-    model_version = MODEL_VERSIONS.get("attack-bert-onnx-int8", "unknown")
+    model = ort.InferenceSession(
+        os.path.join(MODEL_DIR, "model.onnx"), providers=["CPUExecutionProvider"]
+    )
+    _input_names = {i.name for i in model.get_inputs()}
+    # VERSION est ecrit par build/export_and_precompute.py — la meme valeur que
+    # celle inscrite dans les lignes attack_embeddings du catalogue.
+    _version_path = os.path.join(MODEL_DIR, "VERSION")
+    if os.path.exists(_version_path):
+        with open(_version_path, encoding="utf-8") as _vf:
+            model_version = _vf.read().strip() or "unknown"
+    else:
+        model_version = "unknown"
     model_loaded = True
 except Exception as e:
     print(f"[WARN] Model not loaded, using mock fallback: {e}")
     tok = None
     model = None
+    _input_names = set()
     model_version = "mock-fallback-v0.1"
     model_loaded = False
 
@@ -39,8 +47,9 @@ def mean_pool(last_hidden: np.ndarray, mask: np.ndarray) -> np.ndarray:
 def encode(texts: list[str]) -> tuple[np.ndarray, list[str]]:
     if model_loaded and tok is not None and model is not None:
         enc = tok(texts, padding=True, truncation=True, max_length=MAX_TOKENS, return_tensors="np")
-        out = model(**enc)
-        vectors = mean_pool(out.last_hidden_state, enc["attention_mask"])
+        feed = {k: v.astype(np.int64) for k, v in enc.items() if k in _input_names}
+        (last_hidden,) = model.run(["last_hidden_state"], feed)
+        vectors = mean_pool(last_hidden, enc["attention_mask"])
         vectors = vectors / np.clip(np.linalg.norm(vectors, axis=1, keepdims=True), 1e-9, None)
     else:
         rng = np.random.RandomState(42)

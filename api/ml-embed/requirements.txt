@@ -2,9 +2,9 @@ fastapi==0.115.0
 uvicorn==0.30.0
 numpy==1.26.4
 pydantic==2.9.2
-# ML dependencies (installed with optimum for ONNX int8 inference)
-# sentence-transformers==3.0.1
-# optimum[onnxruntime]==1.21.3
-# onnxruntime==1.18.1
-# transformers==4.44.2
-# safetensors==0.4.4
+# Inference ONNX int8 : onnxruntime brut + tokenizer transformers.
+# Volontairement SANS torch/optimum/sentence-transformers : le runtime n'en a
+# pas besoin (l'export et la quantisation se font au build, cf. build/) et les
+# exclure divise la taille de l'image et le demarrage a froid par ~4.
+onnxruntime==1.18.1
+transformers==4.44.2

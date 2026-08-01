@@ -34,3 +34,7 @@ Thumbs.db
 api/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]/
 api/Removed
 api/Running
+
+# Poids du modele ML (produits par api/ml-embed/build/, jamais commites)
+api/ml-embed/models/
+api/ml-embed/out/

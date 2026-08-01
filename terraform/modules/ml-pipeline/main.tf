@@ -64,9 +64,11 @@ resource "google_cloud_run_v2_service" "ml_embed" {
       }
 
       resources {
+        # 2 Gi : le chargement du model.onnx fp32 (~440 Mo) pique a ~900 Mo
+        # (octets du fichier + copie des poids dans l'arena onnxruntime).
         limits = {
           cpu    = "1"
-          memory = "1Gi"
+          memory = "2Gi"
         }
       }
 
@@ -74,10 +76,11 @@ resource "google_cloud_run_v2_service" "ml_embed" {
         tcp_socket {
           port = 8080
         }
+        # uvicorn n'ouvre le port qu'apres chargement du modele fp32 (~15-30 s).
         initial_delay_seconds = 10
         timeout_seconds       = 5
         period_seconds        = 10
-        failure_threshold     = 3
+        failure_threshold     = 6
       }
     }
 
@@ -138,6 +141,16 @@ resource "google_cloud_run_v2_job" "enrich" {
             memory = "1Gi"
           }
         }
+      }
+
+      # ALL_TRAFFIC (et pas PRIVATE_RANGES_ONLY) : ml-embed est en ingress
+      # interne, or les URLs run.app resolvent vers des IP publiques Google —
+      # avec PRIVATE_RANGES_ONLY l'appel contourne le VPC et arrive comme
+      # trafic externe (404 ingress). Tout le trafic du job doit transiter par
+      # le connecteur ; BigQuery reste joignable via Private Google Access + NAT.
+      vpc_access {
+        connector = var.vpc_connector_id
+        egress    = "ALL_TRAFFIC"
       }
     }
   }

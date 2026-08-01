@@ -1,0 +1,59 @@
+# Build de menal-ml-embed AVEC les vrais poids ATT&CK-BERT (ONNX int8).
+#
+#   gcloud builds submit api/ml-embed \
+#     --config api/ml-embed/cloudbuild.yaml \
+#     --project <project> \
+#     --substitutions _IMAGE=<region>-docker.pkg.dev/<project>/<repo>/menal-ml-embed:latest
+#
+# Etapes : export + quantisation + embeddings du catalogue (build/), puis image
+# Docker avec poids embarques, puis publication du JSONL des embeddings sur GCS
+# (charge ensuite dans BigQuery via `bq load --replace`).
+#
+# torch est epingle < 2.6 : transformers 4.44 charge pytorch_model.bin via
+# torch.load, dont le defaut weights_only a change en 2.6.
+
+steps:
+# python 3.11 pour l'export : onnx 1.15 (dernier avec onnx.mapping, requis par
+# le quantizer d'onnxruntime 1.18) n'a pas de wheel cp312. Le runtime (Dockerfile)
+# reste en 3.12 — il n'utilise qu'onnxruntime, pas onnx.
+  - id: export-model
+    name: python:3.11-slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        pip install --no-cache-dir --quiet torch==2.4.1 --index-url https://download.pytorch.org/whl/cpu
+        pip install --no-cache-dir --quiet \
+          "transformers==4.44.2" \
+          "optimum[onnxruntime]>=1.22" \
+          "onnxruntime==1.18.1" \
+          "onnx==1.15.0" \
+          "numpy==1.26.4"
+        python build/export_and_precompute.py \
+          --out-model models/attack-bert-onnx \
+          --out-jsonl out/attack_embeddings.jsonl
+
+  - id: build-image
+    name: gcr.io/cloud-builders/docker
+    args: ["build", "-t", "${_IMAGE}", "--build-arg", "WITH_MODEL=true", "."]
+
+  - id: push-image
+    name: gcr.io/cloud-builders/docker
+    args: ["push", "${_IMAGE}"]
+
+  - id: upload-embeddings
+    name: gcr.io/cloud-builders/gsutil
+    args:
+      - cp
+      - out/attack_embeddings.jsonl
+      - gs://${PROJECT_ID}_cloudbuild/ml/attack_embeddings.jsonl
+
+substitutions:
+  _IMAGE: europe-west1-docker.pkg.dev/menal-zero-trust-staging/menal-docker-staging/menal-ml-embed:latest
+
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 2400s
