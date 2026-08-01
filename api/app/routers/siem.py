@@ -14,9 +14,10 @@ Limites connues (documentees plutot que masquees) :
   l'enrichissement semantique est donc expose en agregat global (KPI
   "overview"), pas rattache a un incident precis. Corriger cela demande de
   faire evoluer le schema BigQuery (hors perimetre de cette passe dashboard).
-- `cve_findings` est vide tant que la boucle F6 (export Trivy -> BigQuery)
-  n'est pas implementee : l'endpoint /vulnerabilities repond alors une liste
-  vide (etat honnete, pas une erreur).
+- `cve_findings` est peuplee par `scripts/load_cve_findings.py` (boucle F6,
+  export Trivy -> BigQuery, WRITE_TRUNCATE = etat du dernier scan). Reste vide
+  tant que ce script n'a jamais tourne dans un environnement donne : l'endpoint
+  /vulnerabilities repond alors une liste vide (etat honnete, pas une erreur).
 """
 from datetime import date, datetime, timedelta, timezone
 

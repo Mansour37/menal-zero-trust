@@ -52,7 +52,7 @@ class TestPipelineIntegration:
         import requests as _requests
 
         project = os.getenv("GCP_PROJECT_ID", "menal-zero-trust-dev")
-        dataset = "menal_security_dev"
+        dataset = os.getenv("BQ_DATASET", "menal_security_dev")
         bq = bigquery.Client(project=project)
 
         try:
@@ -94,7 +94,7 @@ class TestPipelineIntegration:
         from google.api_core import exceptions
 
         project = os.getenv("GCP_PROJECT_ID", "menal-zero-trust-dev")
-        dataset = "menal_security_dev"
+        dataset = os.getenv("BQ_DATASET", "menal_security_dev")
         bq = bigquery.Client(project=project)
 
         try:

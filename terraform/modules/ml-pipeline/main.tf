@@ -14,6 +14,16 @@ resource "google_bigquery_table" "attack_embeddings" {
     { name = "model_version", type = "STRING", mode = "REQUIRED", description = "Version du modele qui a produit les vecteurs" },
     { name = "created_at", type = "TIMESTAMP", mode = "REQUIRED", description = "Date d insertion" },
   ])
+
+  # Repeuplee par un `bq load --replace` externe (api/ml-embed/build/ +
+  # scripts/load_attack_catalogue.py), pas par Terraform. L API BigQuery ne
+  # garantit pas l ordre des champs renvoye apres un load job : sans ce
+  # lifecycle, Terraform detecte un schema "different" et force un
+  # remplacement destructeur (table videe) au prochain apply — vecu en direct
+  # sur cve_findings (module.bigquery), cf. commentaire equivalent la-bas.
+  lifecycle {
+    ignore_changes = [schema]
+  }
 }
 
 # ── Index vectoriel : crée via DDL après le chargement des données ──────────

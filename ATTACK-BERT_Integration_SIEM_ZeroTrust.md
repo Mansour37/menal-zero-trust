@@ -4,6 +4,15 @@
 Couche cible : **L6 — ML / Enrichissement sémantique**
 Version du document : 1.0 — Juillet 2026
 
+> **Statut de déploiement (01/08/2026)** : déployé et fonctionnel en `staging`, avec un écart
+> assumé par rapport au plan ci-dessous — **fp32, pas int8**. La quantisation dynamique int8
+> décrite en §8.3 a été implémentée puis **rejetée** par un gate d'accord de classement : les
+> vecteurs quantisés ne reproduisaient plus les rapprochements MITRE du modèle fp32 de
+> référence (0/5 top-1 identiques sur des requêtes SOC de test). Le modèle exact est livré à la
+> place (~440 Mo au lieu de ~110 Mo, service à 2 Gi). Voir `api/ml-embed/build/
+> export_and_precompute.py` pour l'implémentation et les gates réels. `dev` n'a pas encore reçu
+> le modèle (mock aléatoire toujours actif).
+
 ---
 
 ## 1. Verdict et positionnement

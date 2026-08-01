@@ -139,3 +139,65 @@ ponctuel (créé, exécuté avec succès du premier coup cette fois, supprimé).
 | LB (`8.232.24.132`) | Répond | `curl --resolve api-staging...:80:8.232.24.132` → 301 (HTTP→HTTPS) |
 | Certificat TLS managé | PROVISIONING | attend le DNS (§4.1) — normal, pas une erreur |
 | `terraform plan` | Vide | `No changes. Your infrastructure matches the configuration.` |
+
+## 7. Modèle ML réel + validation E2E staging (01/08/2026, suite de session)
+
+### 7.1 ATTACK-BERT déployé pour de vrai (plus de mock)
+`basel/ATTACK-BERT` exporté en ONNX **fp32** (pas int8 — la quantisation dynamique a été
+testée et rejetée par un gate d'accord de classement : 0/5 top-1 MITRE identiques au fp32 de
+référence). Pipeline de build : `api/ml-embed/build/export_and_precompute.py` +
+`api/ml-embed/cloudbuild.yaml`. 872 vecteurs 768D réels chargés dans `attack_embeddings`
+(697 techniques). `enrich-job` corrigé (voir §7.2) et vérifié en train de produire de vrais
+mappings MITRE (ex. `T1003.008` à similarité 0.72). `dev` tourne toujours sur le mock aléatoire
+— même procédure à rejouer si besoin. Détail complet : commit `6509823`.
+
+### 7.2 Trois bugs préexistants dans `enrich-job`, jamais détectés faute d'exécution réelle
+Le pipeline n'avait **jamais** produit un seul mapping avant cette session :
+1. Le job Cloud Run n'avait pas de connecteur VPC → l'ingress interne de `ml-embed` répondait
+   404 à tout appel.
+2. Le job n'envoyait aucun jeton d'identité (`ml-embed` exige `roles/run.invoker` + Bearer).
+3. La requête `VECTOR_SEARCH` référençait les colonnes de la table de base sans le préfixe
+   `base.*` exigé par BigQuery → échec silencieux, statut toujours `unmapped`.
+
+### 7.3 Incident et réparation — `cve_findings` vidée par erreur (leçon retenue)
+Un `terraform apply -target=module.ml_pipeline` (destiné à ne réconcilier que le module ML
+après des changements manuels `gcloud`) a **aussi** déclenché le remplacement destructeur,
+déjà en attente, de `module.bigquery.google_bigquery_table.cve_findings` (111 lignes perdues,
+confirmé par les journaux d'audit Cloud Logging). Cause racine, indépendante de cette session :
+l'API BigQuery ne garantit pas l'ordre des champs renvoyé après un `load` job, ce qui faisait
+percevoir en permanence un schéma « différent » à Terraform et forçait un remplacement
+destructeur au moindre `apply` — la table aurait été vidée par n'importe qui, tôt ou tard.
+**Réparation** : les 4 images staging re-scannées avec Trivy (362 résultats CRITICAL/HIGH/MEDIUM,
+plus complet que l'original), rechargées. **Correctif structurel** : `lifecycle { ignore_changes
+= [schema] }` ajouté sur `cve_findings` **et** `attack_embeddings` (même risque, même cause) —
+ces deux tables sont pilotées par des jobs de chargement externes, pas par Terraform ; l'ordre
+des colonnes n'a aucune incidence fonctionnelle (BigQuery adresse par nom). `terraform plan`
+sur l'ensemble de l'environnement staging est désormais **vide** (aucune dérive).
+
+### 7.4 Suite E2E rejouée contre `staging` (pas seulement `dev`)
+La suite ne testait jusqu'ici que `dev` en dur (dataset BigQuery, nom de secret, domaine HTTP
+codés en dur dans les tests eux-mêmes) — rendue portable par environnement
+(`BQ_DATASET`/`ENVIRONMENT`). Deux bugs de test corrigés au passage : T3 attendait 401/403 pour
+un appel non authentifié à `ml-embed`, alors qu'un service en
+`ingress = INGRESS_TRAFFIC_INTERNAL_ONLY` renvoie 404 aux appelants hors VPC (comportement
+correct, pas un échec) ; T5 avalait `Exception` sans condition et ne pouvait donc jamais détecter
+un accès réellement réussi (même défaut tautologique que celui déjà corrigé pour T13/T14).
+
+| Test | Résultat sur `staging` | Note |
+|---|---|---|
+| 10 tests rapides (santé, WAF, RBAC) | 10/10 PASSED | |
+| T1 (accès direct `.run.app` bloqué) | PASSED | |
+| T3 (`ml-embed` sans jeton) | PASSED (après correction) | 404 attendu, ingress interne |
+| T6, `test_api_endpoints_require_auth` | PASSED | |
+| T4 (`enrich-job` SA lecture seule sur `detections`) | ÉCHOUE — **réel**, pas un artefact de test | `sa-pipeline` a `roles/bigquery.dataEditor` au niveau **projet** ; confirmé par lecture directe de la policy IAM, indépendamment de l'identité utilisée pour lancer le test |
+| T5 (isolation secret `db-password-staging`) | ÉCHOUE avec l'identité opérateur | Attendu : le test doit tourner avec les credentials d'une identité réellement restreinte (ex. `sa-cicd` en CI), pas un compte propriétaire de projet — l'assertion elle-même est désormais correcte (fix §ci-dessus) |
+| T13 (attaque réelle → détection Sigma) | voir résultat joint | trafic réel généré, poll jusqu'à 12 min |
+| T14 (enrichissement ML des détections) | voir résultat joint | dépend de T13 |
+
+### 7.5 Écart Zero Trust confirmé, pas corrigé
+`sa-pipeline` (exécute `enrich-job`) détient `roles/bigquery.dataEditor` au niveau **projet**
+dans `staging` — accès en écriture à **toutes** les tables du dataset, alors que `enrich-job`
+ne devrait écrire que dans `alert_enrichment` (lecture seule sur `detections`/`attack_embeddings`).
+Non corrigé intentionnellement : resserrer l'IAM (rôles par table plutôt que par projet) est un
+changement IAM à valider avant application, pas quelque chose à modifier en cours de session
+sans confirmation explicite.

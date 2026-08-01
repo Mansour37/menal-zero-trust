@@ -21,12 +21,22 @@ class TestSecurityBoundaries:
 
     @pytest.mark.slow
     def test_t3_ml_embed_without_token(self, ml_embed_url):
+        """
+        ml-embed est en ingress=INGRESS_TRAFFIC_INTERNAL_ONLY (pas seulement
+        IAM-only) : pour un appelant hors VPC, Cloud Run renvoie 404 (le
+        service est invisible depuis l internet public), jamais 401/403 — ces
+        codes supposeraient que la requete atteint d abord la verification
+        IAM, ce que l ingress interne empeche structurellement en amont.
+        Un 404 ici est donc la frontiere de securite qui fonctionne, pas un
+        echec ; 401/403 resteraient acceptables si l ingress passait un jour
+        a ALL avec auth IAM seule.
+        """
         if not ml_embed_url:
             pytest.skip("ML_EMBED_URL not set")
         try:
             resp = requests.get(f"{ml_embed_url}/health", timeout=5)
-            assert resp.status_code in (401, 403), (
-                f"Expected 401/403 for unauthenticated ml-embed call, got {resp.status_code}"
+            assert resp.status_code in (401, 403, 404), (
+                f"Expected 401/403/404 for unauthenticated ml-embed call, got {resp.status_code}"
             )
         except requests.ConnectionError:
             pytest.skip("ml-embed not reachable from external network (expected)")
@@ -51,8 +61,11 @@ class TestSecurityBoundaries:
             except requests.ConnectionError:
                 pass
 
-    def test_http_redirect(self):
-        http_url = "http://api.menal-sarl.com/health"
+    def test_http_redirect(self, api_url):
+        # Derive du host de api_url (fixture, cf. conftest.py E2E_API_URL) au
+        # lieu d un domaine code en dur : sinon ce test cible toujours le LB
+        # dev, quel que soit l environnement reellement teste.
+        http_url = "http://" + api_url.split("://", 1)[-1].rstrip("/") + "/health"
         try:
             resp = requests.get(http_url, timeout=10, allow_redirects=False)
             assert resp.status_code in (301, 302, 307, 308), (

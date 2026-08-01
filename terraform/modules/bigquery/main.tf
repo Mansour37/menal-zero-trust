@@ -201,6 +201,16 @@ resource "google_bigquery_table" "cve_findings" {
     { name = "image_digest", type = "STRING", mode = "NULLABLE", description = "Digest de l image" },
     { name = "mitre_technique", type = "STRING", mode = "NULLABLE", description = "Technique MITRE associee (F6)" }
   ])
+
+  # La table est repeuplee par scripts/load_cve_findings.py (WRITE_TRUNCATE,
+  # cf. CI "Charger les CVE dans BigQuery"). L API BigQuery ne garantit pas
+  # l ordre des champs renvoye par un load job — il diverge de celui declare
+  # ci-dessus sans que la donnee change, ce qui forcait un remplacement
+  # destructeur (table videe) a chaque `terraform apply`. Les colonnes sont
+  # adressees par nom partout (SELECT/INSERT/BigQuery), l ordre est cosmetique.
+  lifecycle {
+    ignore_changes = [schema]
+  }
 }
 
 # ── Table : api_metrics (metriques agregees par heure) ───────────────────────

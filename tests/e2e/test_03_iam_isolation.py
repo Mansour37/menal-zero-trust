@@ -15,7 +15,7 @@ class TestIAMIsolation:
     def test_t4_detections_readonly_for_enrich_job(self):
         from google.cloud import bigquery
         client = bigquery.Client(project=os.getenv("GCP_PROJECT_ID", "menal-zero-trust-dev"))
-        dataset = "menal_security_dev"
+        dataset = os.getenv("BQ_DATASET", "menal_security_dev")
         table = f"{dataset}.detections"
         # Colonnes alignees sur le schema Terraform de la table detections
         sql = (
@@ -34,19 +34,28 @@ class TestIAMIsolation:
     @pytest.mark.gcp
     @pytest.mark.slow
     def test_t5_secret_isolation(self):
+        """
+        Comme pour l ancienne assertion tautologique de T13/T14 (voir
+        test_04_pipeline_integration.py), avaler `Exception` sans condition
+        rendait ce test toujours vert, y compris si l acces reussissait
+        vraiment : aucune isolation n etait donc verifiee. On echoue
+        explicitement sur un acces reussi ; seul un refus IAM est un succes.
+        """
         from google.cloud import secretmanager
         client = secretmanager.SecretManagerServiceClient()
         project = os.getenv("GCP_PROJECT_ID", "menal-zero-trust-dev")
-        secret_name = f"projects/{project}/secrets/db-password-dev/versions/latest"
+        environment = os.getenv("ENVIRONMENT", "dev")
+        secret_name = f"projects/{project}/secrets/db-password-{environment}/versions/latest"
         from google.api_core import exceptions
         try:
             client.access_secret_version(request={"name": secret_name})
-        except exceptions.PermissionDenied:
-            pass
-        except exceptions.Forbidden:
-            pass
-        except Exception:
-            pass
+        except (exceptions.PermissionDenied, exceptions.Forbidden, exceptions.NotFound):
+            return
+        pytest.fail(
+            f"L identite testee a pu lire {secret_name} — isolation des secrets non verifiee "
+            "(ce test doit tourner avec les credentials d une identite censee etre restreinte, "
+            "pas un compte operateur avec des droits larges)."
+        )
 
     def test_t6_sa_key_creation_blocked_check(self):
         pass
