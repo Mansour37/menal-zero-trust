@@ -13,6 +13,14 @@ T14_DESCRIPTION = "T14: ML enrichment (L6) processes newly produced detections"
 _POLL_INTERVAL_S = 30
 _MAX_WAIT_S = 12 * 60
 
+# T14 attend en plus la PROCHAINE execution du scheduler enrich-job (cadence
+# 15 min, cf. modules/ml-pipeline/main.tf google_cloud_scheduler_job). Verifie
+# en staging le 01/08 : une detection R1 produite a 02:46:06 (au moment meme
+# d un run enrich-job qui l a manquee de justesse) n a ete enrichie que par le
+# run SUIVANT a 03:00:47 — 14min41s plus tard, au-dela de l ancien budget de
+# 12 min. Le budget doit couvrir un cycle scheduler complet, pas seulement F4+Sigma.
+_MAX_WAIT_ENRICH_S = 20 * 60
+
 
 def _count(bq, project, dataset, table, where=""):
     sql = f"SELECT COUNT(*) AS cnt FROM `{project}.{dataset}.{table}`"
@@ -113,10 +121,11 @@ class TestPipelineIntegration:
             pytest.skip("Table alert_enrichment introuvable")
 
         found = _wait_until(
-            lambda: _count(bq, project, dataset, "alert_enrichment") > before
+            lambda: _count(bq, project, dataset, "alert_enrichment") > before,
+            max_wait_s=_MAX_WAIT_ENRICH_S,
         )
         assert found, (
-            f"alert_enrichment n a pas grandi apres {_MAX_WAIT_S}s alors que "
+            f"alert_enrichment n a pas grandi apres {_MAX_WAIT_ENRICH_S}s alors que "
             f"{recent_detections} detection(s) recente(s) existent — verifier "
             "le Scheduler enrich-job et l appel ml-embed."
         )
