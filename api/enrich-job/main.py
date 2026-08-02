@@ -24,16 +24,60 @@ def step(msg):
     print(f"[{datetime.now(timezone.utc).isoformat()}] {msg}")
 
 
+# Fenetre de rattrapage : une detection non enrichie reste candidate pendant
+# 2 h, soit ~8 cycles du scheduler (15 min) — de quoi absorber une panne
+# passagere de ml-embed sans perdre la detection.
+LOOKBACK_INTERVAL = "INTERVAL 2 HOUR"
+
+
+def detection_key(rule_id, timestamp) -> str:
+    """
+    Identite d une detection. La table `detections` n a pas de colonne id :
+    l identite est le couple (regle, horodatage).
+
+    Construite ICI et nulle part ailleurs : c est la meme fonction qui sert a
+    filtrer les detections deja traitees et a ecrire `detection_id`, donc les
+    deux ne peuvent pas diverger. Ne pas reconstruire cette cle en SQL —
+    TO_JSON_STRING et CAST(timestamp AS STRING) de BigQuery produisent une
+    autre chaine (pas d espaces, suffixe " UTC") qui ne correspondrait a
+    aucune ligne existante, et la deduplication serait silencieusement inerte.
+    """
+    return json.dumps({"rule_id": rule_id, "timestamp": str(timestamp)})
+
+
 def fetch_pending_detections(limit=BATCH_SIZE):
-    query = f"""
+    """
+    Detections recentes PAS ENCORE enrichies.
+
+    Sans ce filtre, la fenetre de rattrapage etant bien plus large que la
+    cadence du scheduler, chaque detection etait re-embarquee a CHAQUE cycle :
+    jusqu a 21 lignes alert_enrichment pour une meme detection en staging
+    (349 lignes pour 38 detections distinctes, mesure le 02/08). Consequences :
+    inference ONNX et VECTOR_SEARCH refacturees a vide a chaque passage, et
+    tout compteur d enrichissements gonfle d un facteur ~9.
+    """
+    enriched = {
+        row.detection_id
+        for row in client.query(f"""
+            SELECT DISTINCT detection_id
+            FROM `{ENRICHMENT_TABLE}`
+            WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), {LOOKBACK_INTERVAL})
+        """).result()
+    }
+
+    candidates = client.query(f"""
         SELECT timestamp, rule_id, rule_name, severity, entity, message, source
         FROM `{DETECTIONS_TABLE}`
-        WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 HOUR)
+        WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), {LOOKBACK_INTERVAL})
         ORDER BY timestamp DESC
-        LIMIT {limit}
-    """
-    rows = list(client.query(query).result())
-    step(f"  {len(rows)} detections à traiter")
+    """).result()
+
+    rows = [
+        det for det in candidates
+        if detection_key(det.get("rule_id"), det.get("timestamp")) not in enriched
+    ][:limit]
+
+    step(f"  {len(rows)} detections à traiter ({len(enriched)} déjà enrichies)")
     return rows
 
 
@@ -73,8 +117,13 @@ def search_bigquery(embedding: list[float], top_k: int = 3) -> list[dict]:
     # VECTOR_SEARCH expose les colonnes de la table interrogee sous `base.*`
     # (avec `query.*` et `distance`) — les referencer a nu echoue avec
     # "Unrecognized name".
+    # Le seuil n est PAS applique ici : la requete renvoie les meilleurs
+    # candidats quelle que soit leur similarite, et le tri mapped/unmapped se
+    # fait cote appelant. Filtrer en SQL renvoyait un resultat vide sous le
+    # seuil, ce qui obligeait a ecrire une similarite de 0.0 en dur — un chiffre
+    # faux, indiscernable d une absence de mesure, alors que "meilleur candidat
+    # T1110 a 0,58, sous le seuil de 0,60" est une information exploitable.
     query = f"""
-        DECLARE threshold FLOAT64 DEFAULT {SIMILARITY_THRESHOLD};
         SELECT
             base.technique_id AS technique_id,
             base.tactic AS tactic,
@@ -86,7 +135,6 @@ def search_bigquery(embedding: list[float], top_k: int = 3) -> list[dict]:
             top_k => {top_k},
             distance_type => 'COSINE'
         )
-        WHERE 1 - distance >= threshold
         ORDER BY distance ASC
     """
     job_config = bigquery.QueryJobConfig(
@@ -94,13 +142,14 @@ def search_bigquery(embedding: list[float], top_k: int = 3) -> list[dict]:
             bigquery.ArrayQueryParameter("embedding_param", "FLOAT64", embedding),
         ]
     )
-    try:
-        result = client.query(query, job_config=job_config).result()
-        rows = [dict(row) for row in result]
-        return rows
-    except Exception as e:
-        step(f"  [ERROR] VECTOR_SEARCH failed: {e}")
-        return []
+    # Volontairement SANS try/except : une panne BigQuery et un "aucune technique
+    # au-dessus du seuil" sont deux situations opposees. En renvoyant [] dans les
+    # deux cas, la panne etait enregistree comme un status="unmapped" parfaitement
+    # credible — indiscernable a posteriori d un vrai non-appariement, et donc
+    # comptabilisee dans le taux d alertes non mappees affiche au SOC.
+    # L exception remonte desormais jusqu a main() qui fait echouer la tache.
+    result = client.query(query, job_config=job_config).result()
+    return [dict(row) for row in result]
 
 
 def write_enrichment(rows: list[dict]):
@@ -108,11 +157,13 @@ def write_enrichment(rows: list[dict]):
         return
     errors = client.insert_rows_json(ENRICHMENT_TABLE, rows)
     if errors:
-        step(f"  [ERROR] Insert failed: {len(errors)} errors")
+        # Leve au lieu de journaliser : une insertion perdue signifie que ces
+        # detections ne sont pas enrichies, donc qu elles doivent etre reprises
+        # au cycle suivant — ce que seul un echec de tache declenche.
         for e in errors[:3]:
             step(f"    {e}")
-    else:
-        step(f"  [OK] {len(rows)} enrichissements écrits")
+        raise RuntimeError(f"insertion alert_enrichment refusee : {len(errors)} erreur(s)")
+    step(f"  [OK] {len(rows)} enrichissements écrits")
 
 
 def main():
@@ -122,59 +173,63 @@ def main():
         step("[DONE] Aucune détection à traiter")
         return
 
+    # Listes PARALLELES indexees par position, et non un dictionnaire indexe
+    # par le texte : deux detections distinctes peuvent produire un texte
+    # identique (meme regle, meme message, horodatages differents). Avec un
+    # index par texte, la seconde ecrasait la premiere et ne recevait jamais
+    # de ligne d enrichissement — donc, depuis l ajout de la deduplication,
+    # elle serait restee eternellement "a traiter" et reprise a chaque cycle.
     texts = []
-    detection_map = {}
+    metas = []
     for det in detections:
         text = f"{det.get('rule_name', '')} {det.get('message', '')} {det.get('source', '')}".strip()
         if not text:
             continue
-        text_hash = hashlib.sha256(text.encode()).hexdigest()
-        detection_id = json.dumps({"rule_id": det.get("rule_id"), "timestamp": str(det.get("timestamp"))})
         texts.append(text)
-        detection_map[text] = {
-            "detection_id": detection_id,
-            "input_hash": text_hash,
+        metas.append({
+            "detection_id": detection_key(det.get("rule_id"), det.get("timestamp")),
+            "input_hash": hashlib.sha256(text.encode()).hexdigest(),
             "entity": det.get("entity", ""),
-        }
+        })
 
     step(f"  Appel ml-embed pour {len(texts)} textes...")
     embed_result = call_ml_embed(texts)
     if not embed_result or "items" not in embed_result:
-        step("[ERROR] ml-embed n'a retourné aucun résultat")
-        return
+        raise RuntimeError("ml-embed n'a retourné aucun résultat")
 
     model_version = embed_result.get("model_version", "unknown")
     step(f"  Modèle : {model_version} | dim={embed_result.get('dim', '?')}")
 
-    enrichment_rows = []
-    for item, text in zip(embed_result["items"], texts):
-        meta = detection_map[text]
-        embedding = item["embedding"]
-        bq_results = search_bigquery(embedding)
+    # L association item -> detection repose UNIQUEMENT sur la position : une
+    # reponse incomplete attribuerait chaque vecteur a la mauvaise detection
+    # (technique ATT&CK fausse, silencieusement). Mieux vaut ne rien ecrire et
+    # laisser le cycle suivant reprendre ces detections, desormais toujours
+    # candidates tant qu elles n ont pas de ligne d enrichissement.
+    if len(embed_result["items"]) != len(texts):
+        raise RuntimeError(
+            f"ml-embed a renvoyé {len(embed_result['items'])} vecteurs "
+            f"pour {len(texts)} textes — abandon (reprise au prochain cycle)"
+        )
 
-        if bq_results:
-            best = bq_results[0]
-            enrichment_rows.append({
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "detection_id": meta["detection_id"],
-                "technique_id": best["technique_id"],
-                "tactic": best["tactic"],
-                "similarity": best["similarity"],
-                "status": "mapped",
-                "model_version": model_version,
-                "input_hash": meta["input_hash"],
-            })
-        else:
-            enrichment_rows.append({
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "detection_id": meta["detection_id"],
-                "technique_id": None,
-                "tactic": None,
-                "similarity": 0.0,
-                "status": "unmapped",
-                "model_version": model_version,
-                "input_hash": meta["input_hash"],
-            })
+    enrichment_rows = []
+    for item, meta in zip(embed_result["items"], metas):
+        candidates = search_bigquery(item["embedding"])
+        best = candidates[0] if candidates else None
+        mapped = best is not None and best["similarity"] >= SIMILARITY_THRESHOLD
+
+        enrichment_rows.append({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "detection_id": meta["detection_id"],
+            # Sous le seuil, on conserve la technique et la similarite du
+            # meilleur candidat : c est ce qui permet a un analyste de juger si
+            # le seuil est bien regle. Seul `status` fait foi pour l affichage.
+            "technique_id": best["technique_id"] if best else None,
+            "tactic": best["tactic"] if best else None,
+            "similarity": best["similarity"] if best else None,
+            "status": "mapped" if mapped else "unmapped",
+            "model_version": model_version,
+            "input_hash": meta["input_hash"],
+        })
 
     write_enrichment(enrichment_rows)
     mapped = sum(1 for r in enrichment_rows if r["status"] == "mapped")

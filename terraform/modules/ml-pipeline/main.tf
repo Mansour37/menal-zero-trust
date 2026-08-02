@@ -102,8 +102,17 @@ resource "google_cloud_run_v2_service" "ml_embed" {
 
   ingress = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 
+  # Meme frontiere F3/F7 que modules/cloud-run : ces images sont livrees hors
+  # `apply` (promotion par digest, cf. STATUT_DEV) et un `apply` les faisait
+  # retomber sur le tag mutable `:latest` connu de l etat — c est ainsi que la
+  # correction de deduplication de enrich-job a failli etre ecrasee le 02/08.
   lifecycle {
     prevent_destroy = false
+    ignore_changes = [
+      client,
+      client_version,
+      template[0].containers[0].image,
+    ]
   }
 }
 
@@ -165,8 +174,20 @@ resource "google_cloud_run_v2_job" "enrich" {
     }
   }
 
+  # Meme frontiere F3/F7 que modules/cloud-run : ces images sont livrees hors
+  # `apply` (promotion par digest, cf. STATUT_DEV) et un `apply` les faisait
+  # retomber sur le tag mutable `:latest` connu de l etat — c est ainsi que la
+  # correction de deduplication de enrich-job a failli etre ecrasee le 02/08.
+  #
+  # Double `template[0]` : un Cloud Run Job imbrique le modele de tache dans le
+  # modele d execution, contrairement au service ml_embed ci-dessus.
   lifecycle {
     prevent_destroy = false
+    ignore_changes = [
+      client,
+      client_version,
+      template[0].template[0].containers[0].image,
+    ]
   }
 }
 

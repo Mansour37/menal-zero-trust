@@ -155,7 +155,15 @@ locals {
   }
 
   # ── R4 : User-agent suspect (curl/python/Go) sur endpoints sensibles ──────
-  # MITRE T1046 (Network Service Scanning), TA0043 (Reconnaissance)
+  # MITRE T1046 (Network Service Discovery), TA0007 (Discovery)
+  #
+  # TA0007 et non TA0043 : T1046 appartient a Discovery dans la matrice
+  # Enterprise ; TA0043 (Reconnaissance) est une tactique PRE-ATT&CK. Au-dela
+  # de l exactitude, l etiquette erronee rendait la regle INVISIBLE dans la
+  # matrice de couverture : /siem/coverage intersecte les techniques observees
+  # avec celles du catalogue POUR CHAQUE TACTIQUE, et T1046 range sous
+  # "Reconnaissance" ne recoupait aucune entree du catalogue (qui le classe
+  # sous "Discovery") — R4 ne comptait donc dans aucune tactique.
   r4_suspicious_ua = {
     name     = "User-agent suspect (curl/python) sur /api/"
     severity = "MEDIUM"
@@ -170,7 +178,7 @@ locals {
         STRING(json_payload.httpRequest.remoteIp),
         CONCAT("User-agent suspect (", SUBSTR(STRING(json_payload.httpRequest.userAgent), 1, 40), ") sur ", STRING(json_payload.httpRequest.requestUrl), " depuis ", STRING(json_payload.httpRequest.remoteIp)),
         "cloud_run",
-        "TA0043",
+        "TA0007",
         "T1046"
       FROM `${local.project}.${local.dataset}.raw_logs`
       WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)

@@ -241,3 +241,128 @@ resource "google_monitoring_alert_policy" "uptime_failure" {
     auto_close = "1800s"
   }
 }
+
+# ── Alerte 7 : le job d enrichissement ML echoue ──────────────────────────────
+# Angle mort constate le 02/08 : le Cloud Workflow du pipeline a echoue 60 fois
+# d affilee pendant plus de deux jours sans que personne en soit informe. Rien
+# ne surveillait les traitements par lots — seule l API l etait. Cette alerte
+# et la suivante ferment cet angle mort.
+#
+# Prerequis : enrich-job doit sortir en erreur quand il echoue. Il avalait ses
+# exceptions et sortait en code 0 (donc SUCCEEDED) meme ml-embed injoignable ;
+# corrige dans api/enrich-job/main.py le 02/08, sans quoi cette metrique
+# resterait plate quoi qu il arrive.
+resource "google_monitoring_alert_policy" "enrich_job_failure" {
+  display_name = "[${var.environment}] Job d enrichissement ML en echec"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Executions echouees de menal-enrich-job"
+    condition_threshold {
+      filter = <<-EOT
+        resource.type = "cloud_run_job"
+        AND resource.labels.job_name = "menal-enrich-job-${var.environment}"
+        AND metric.type = "run.googleapis.com/job/completed_execution_count"
+        AND metric.labels.result = "failed"
+      EOT
+
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+
+      aggregations {
+        alignment_period   = "900s" # une periode = un cycle du scheduler
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.name]
+  alert_strategy {
+    auto_close = "3600s"
+  }
+}
+
+# ── Alerte 8 : une requete planifiee BigQuery echoue ──────────────────────────
+# Couvre d un seul tenant les 12 transferts (7 regles de detection R1-R7 +
+# 5 requetes de normalisation F4) : une regression SQL y serait autrement restee
+# invisible jusqu a ce qu un humain remarque une table figee.
+resource "google_logging_metric" "bq_transfer_failures" {
+  name    = "menal-bq-transfer-failures-${var.environment}"
+  project = var.project_id
+  filter  = <<-EOT
+    resource.type = "bigquery_dts_config"
+    AND severity >= ERROR
+  EOT
+
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    unit        = "1"
+  }
+}
+
+resource "google_monitoring_alert_policy" "bq_transfer_failure" {
+  display_name = "[${var.environment}] Requete planifiee BigQuery en echec"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Echecs de transferts BigQuery (detection ou normalisation)"
+    condition_threshold {
+      filter = <<-EOT
+        resource.type = "bigquery_dts_config"
+        AND metric.type = "logging.googleapis.com/user/${google_logging_metric.bq_transfer_failures.name}"
+      EOT
+
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+
+      aggregations {
+        alignment_period   = "600s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.name]
+  alert_strategy {
+    auto_close = "3600s"
+  }
+}
+
+# ── Alerte 9 : la chaine de detection ne produit plus rien ────────────────────
+# Filet de securite au-dessus des deux precedentes : elles surveillent des
+# composants, celle-ci surveille le RESULTAT. Si plus aucune ligne n arrive
+# dans access_logs, c est que la chaine d ingestion F4 est rompue, quelle qu en
+# soit la cause (sink, transfert, quota) — y compris une cause non prevue par
+# les alertes ci-dessus.
+resource "google_monitoring_alert_policy" "ingestion_stalled" {
+  display_name = "[${var.environment}] Ingestion des journaux a l arret"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Aucune requete API observee depuis 30 min"
+    condition_absent {
+      filter   = <<-EOT
+        resource.type = "cloud_run_revision"
+        AND resource.labels.service_name = "menal-api-${var.environment}"
+        AND metric.type = "run.googleapis.com/request_count"
+      EOT
+      duration = "1800s"
+
+      aggregations {
+        alignment_period   = "300s"
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.name]
+  alert_strategy {
+    auto_close = "3600s"
+  }
+}

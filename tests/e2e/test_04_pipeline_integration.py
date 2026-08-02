@@ -90,13 +90,24 @@ class TestPipelineIntegration:
     @pytest.mark.gcp
     def test_t14_enrichment_processes_new_detections(self):
         """
-        L ancienne assertion (`COUNT(*) >= 0`) est une tautologie : un COUNT ne
-        peut jamais etre negatif, donc ce test ne pouvait jamais echouer et ne
-        verifiait rien. La vraie valeur ajoutee de L6 (voir enrich-job/main.py)
-        est de produire une ligne `alert_enrichment` (mapped OU unmapped, peu
-        importe) pour chaque detection recente — c est ce qu on verifie ici,
-        par un delta avant/apres borne dans le temps plutot qu un seuil absolu
-        qui serait faux dans un environnement fraichement provisionne.
+        Invariant verifie : toute detection recente finit par recevoir une
+        ligne `alert_enrichment` (mapped OU unmapped, peu importe).
+
+        Deux formulations precedentes etaient fausses :
+          - `COUNT(*) >= 0` : tautologie, ne pouvait jamais echouer ;
+          - « la table a grandi » : mesurait un effet de bord. Tant que
+            enrich-job re-enrichissait les memes detections a chaque cycle,
+            la table grandissait meme quand rien de neuf n etait traite ;
+            depuis la deduplication (enrich-job/main.py, fetch_pending_
+            detections), elle NE grandit plus si tout est deja enrichi — ce
+            qui est le comportement correct, mais faisait echouer le test.
+
+        On mesure donc la COUVERTURE : combien de detections recentes n ont
+        pas encore d enrichissement. Le rapprochement utilise la meme cle que
+        le job (JSON {rule_id, timestamp} produit par json.dumps cote Python),
+        reconstruite ici en SQL a l identique — d ou le FORMAT_TIMESTAMP et
+        les espaces apres ':' et ',', qui doivent correspondre au caractere
+        pres a la sortie de json.dumps.
         """
         from google.cloud import bigquery
         from google.api_core import exceptions
@@ -105,29 +116,42 @@ class TestPipelineIntegration:
         dataset = os.getenv("BQ_DATASET", "menal_security_dev")
         bq = bigquery.Client(project=project)
 
+        detection_key_sql = (
+            """CONCAT('{"rule_id": "', d.rule_id, '", "timestamp": "',"""
+            """ FORMAT_TIMESTAMP('%Y-%m-%d %H:%M:%E6S+00:00', d.timestamp), '"}')"""
+        )
+        unenriched_sql = f"""
+            SELECT COUNT(*) AS cnt
+            FROM `{project}.{dataset}.detections` d
+            WHERE d.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 HOUR)
+              AND NOT EXISTS (
+                SELECT 1 FROM `{project}.{dataset}.alert_enrichment` e
+                WHERE e.detection_id = {detection_key_sql}
+              )
+        """
+
         try:
-            recent_detections = _count(
+            recent = _count(
                 bq, project, dataset, "detections",
                 "timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 HOUR)",
             )
         except exceptions.NotFound:
             pytest.skip("Table detections introuvable")
-        if recent_detections == 0:
+        if recent == 0:
             pytest.skip("Aucune detection recente a enrichir (executer test_t13 d abord)")
 
+        def _unenriched():
+            return list(bq.query(unenriched_sql).result())[0].cnt
+
         try:
-            before = _count(bq, project, dataset, "alert_enrichment")
+            covered = _wait_until(lambda: _unenriched() == 0, max_wait_s=_MAX_WAIT_ENRICH_S)
         except exceptions.NotFound:
             pytest.skip("Table alert_enrichment introuvable")
 
-        found = _wait_until(
-            lambda: _count(bq, project, dataset, "alert_enrichment") > before,
-            max_wait_s=_MAX_WAIT_ENRICH_S,
-        )
-        assert found, (
-            f"alert_enrichment n a pas grandi apres {_MAX_WAIT_ENRICH_S}s alors que "
-            f"{recent_detections} detection(s) recente(s) existent — verifier "
-            "le Scheduler enrich-job et l appel ml-embed."
+        assert covered, (
+            f"{_unenriched()} des {recent} detection(s) des 2 dernieres heures n ont "
+            f"toujours pas d enrichissement apres {_MAX_WAIT_ENRICH_S}s — verifier "
+            "le Scheduler enrich-job, l appel ml-embed et la cle detection_id."
         )
 
     def test_dashboard_ui_components(self, session, dashboard_url):

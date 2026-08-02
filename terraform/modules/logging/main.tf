@@ -223,6 +223,17 @@ locals {
   #
   # MERGE sur `hour` (et non INSERT) : l heure en cours est recalculee a chaque
   # passage, donc la ligne doit etre mise a jour, pas dupliquee.
+  #
+  # La fenetre est tronquee a l HEURE (TIMESTAMP_TRUNC autour du TIMESTAMP_SUB),
+  # et non glissante a la minute. Avec une borne glissante, une heure situee au
+  # bord de la fenetre n etait que partiellement couverte : le MERGE la
+  # REECRIVAIT avec un comptage partiel qui retrecissait a chaque passage,
+  # jusqu a figer le residu des dernieres minutes au moment ou l heure sortait
+  # de la fenetre. Mesure en staging le 02/08 : 4 requetes stockees pour 73
+  # reelles (-81 % sur 24 h, -62 % sur les blocages WAF) — le dashboard
+  # affichait donc des volumes faux sur son ecran principal. Tronquee a l heure,
+  # une heure est soit entierement couverte, soit absente ; seule l heure EN
+  # COURS est partielle, ce qui est correct puisqu elle se remplit encore.
   q_api_metrics = <<-SQL
     MERGE `${var.project_id}.${var.bigquery_dataset_id}.api_metrics` T
     USING (
@@ -247,7 +258,7 @@ locals {
           APPROX_QUANTILES(a.latency_ms, 100)[OFFSET(99)] AS p99_latency_ms,
           COUNT(DISTINCT a.ip_address)                    AS unique_ips
         FROM `${var.project_id}.${var.bigquery_dataset_id}.access_logs` a
-        WHERE a.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 3 HOUR)
+        WHERE a.timestamp >= TIMESTAMP_TRUNC(TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 3 HOUR), HOUR)
         GROUP BY hour
       ) m
       -- Jointure plutot que sous-requete correlee : une correlation sur
@@ -260,7 +271,7 @@ locals {
         FROM `${var.project_id}.${var.bigquery_dataset_id}.raw_logs` r
         WHERE r.log_source = "armor"
           AND JSON_VALUE(r.json_payload, "$.enforcedSecurityPolicy.outcome") = "DENY"
-          AND r.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 3 HOUR)
+          AND r.timestamp >= TIMESTAMP_TRUNC(TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 3 HOUR), HOUR)
         GROUP BY hour
       ) w ON w.hour = m.hour
     ) S
