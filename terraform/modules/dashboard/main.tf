@@ -25,6 +25,14 @@ resource "google_secret_manager_secret_version" "dashboard_password" {
   secret_data = random_password.dashboard.result
 }
 
+# sa-cicd deploie ce service depuis le pipeline CI : il doit pouvoir agir en
+# tant que le SA du dashboard (meme schema que cicd_act_as_api pour l API).
+resource "google_service_account_iam_member" "cicd_act_as_dashboard" {
+  service_account_id = google_service_account.dashboard.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${var.cicd_service_account_email}"
+}
+
 resource "google_secret_manager_secret_iam_member" "dashboard_password_access" {
   project   = var.project_id
   secret_id = google_secret_manager_secret.dashboard_password.secret_id

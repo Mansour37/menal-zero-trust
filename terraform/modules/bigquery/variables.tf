@@ -22,3 +22,8 @@ variable "api_service_account_email" {
   description = "Email du Service Account sa-api (lecture seule dataset SIEM pour /siem/*)"
   type        = string
 }
+
+variable "cicd_service_account_email" {
+  description = "Email du Service Account sa-cicd (charge les rapports Trivy dans cve_findings, boucle F6)"
+  type        = string
+}

@@ -6,12 +6,18 @@ on:
   pull_request:
     branches: [main]
 
+# STAGING est l environnement de reference du pipeline : c est lui que le
+# CI-SEC-CD construit, scanne, deploie et teste en E2E. Dev sert aux essais
+# manuels (terraform apply / hotfix locaux). Toutes les valeurs projet /
+# registre / domaines viennent des variables GitHub du depot : basculer
+# d environnement = changer les variables, pas ce fichier.
 env:
-  REGION: europe-west1
-  PROJECT_ID: menal-zero-trust-dev
-  SERVICE_NAME: menal-api-dev
-  ARTIFACT_REGISTRY: europe-west1-docker.pkg.dev/menal-zero-trust-dev/menal-docker-dev
-  BQ_DATASET: menal_security_dev
+  REGION: ${{ vars.GCP_REGION }}
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  SERVICE_NAME: ${{ vars.API_SERVICE_NAME }}
+  DASHBOARD_SERVICE_NAME: ${{ vars.DASHBOARD_SERVICE_NAME }}
+  ARTIFACT_REGISTRY: ${{ vars.ARTIFACT_REGISTRY_URL }}
+  BQ_DATASET: ${{ vars.BQ_DATASET }}
 
 permissions:
   contents: read
@@ -55,7 +61,7 @@ jobs:
         run: pytest tests/ -v
 
   build:
-    name: Build & Push
+    name: Build & Deploy API
     needs: [security, test]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -143,10 +149,13 @@ jobs:
             ${{ steps.build.outputs.image }} \
             ${{ env.ARTIFACT_REGISTRY }}/menal-api:latest || true
 
-      - name: Smoke Test
+      # DNS + certificat manages etant en place, le smoke test passe par le
+      # domaine REEL (validation TLS incluse) : il couvre DNS, certificat,
+      # LB, Cloud Armor et le service — pas seulement l IP.
+      - name: Smoke Test (API via LB)
         run: |
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
-            https://${{ vars.LB_IP_ADDRESS }}/health -k || echo "000")
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
+            https://${{ vars.LB_DOMAIN }}/health || echo "000")
           echo "HTTP status: $HTTP_STATUS"
           case "$HTTP_STATUS" in
             200|302) echo "SUCCESS: service operationnel" ;;
@@ -154,9 +163,72 @@ jobs:
             *)       echo "ECHEC: statut inattendu $HTTP_STATUS"; exit 1 ;;
           esac
 
+  dashboard:
+    name: Build & Deploy Dashboard
+    needs: [security, test]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER_NAME }}
+          service_account: ${{ vars.CICD_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Build & Push Image
+        id: build
+        run: |
+          IMAGE_TAG="${{ env.ARTIFACT_REGISTRY }}/menal-dashboard:${{ github.sha }}"
+          docker build -t $IMAGE_TAG ./dashboard
+          docker push $IMAGE_TAG
+          echo "image=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      # Meme porte que pour l API : le dashboard est expose publiquement via
+      # le LB, une CVE CRITICAL corrigeable dans son image bloque la livraison.
+      - name: Trivy - CVE Scan (bloquant sur CRITICAL)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.build.outputs.image }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL
+          ignore-unfixed: true
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.DASHBOARD_SERVICE_NAME }}
+          image: ${{ steps.build.outputs.image }}
+          region: ${{ env.REGION }}
+
+      - name: Tag as latest
+        run: |
+          gcloud artifacts docker tags add \
+            ${{ steps.build.outputs.image }} \
+            ${{ env.ARTIFACT_REGISTRY }}/menal-dashboard:latest || true
+
+      - name: Smoke Test (dashboard via LB)
+        run: |
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
+            https://${{ vars.DASH_DOMAIN }}/login || echo "000")
+          echo "HTTP status: $HTTP_STATUS"
+          case "$HTTP_STATUS" in
+            200|30*) echo "SUCCESS: dashboard operationnel" ;;
+            *)       echo "ECHEC: statut inattendu $HTTP_STATUS"; exit 1 ;;
+          esac
+
   e2e:
     name: E2E Tests
-    needs: build
+    needs: [build, dashboard]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -180,8 +252,8 @@ jobs:
           E2E_API_URL: https://${{ vars.LB_DOMAIN }}
           # Le dashboard est en ingress LB-only : il faut le tester via son domaine
           # public (LB + Cloud Armor), pas via l URL .run.app (bloquee par design).
-          E2E_DASHBOARD_URL: https://dash.menal-sarl.com
-          E2E_API_RUN_URL: https://menal-api-dev-riusubanoq-ew.a.run.app
+          E2E_DASHBOARD_URL: https://${{ vars.DASH_DOMAIN }}
+          E2E_API_RUN_URL: ${{ vars.API_RUN_URL }}
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

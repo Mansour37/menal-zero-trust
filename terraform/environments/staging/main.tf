@@ -77,6 +77,13 @@ resource "google_project_service" "apis" {
   disable_on_destroy = false
 }
 
+# Numero de projet lu a la RACINE (aucun depends_on) : connu des le plan,
+# jamais differe — voir modules/ml-pipeline (remplacement fantome du binding
+# scheduler_token_creator quand le data etait interne au module).
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
 module "vpc" {
   source      = "../../modules/vpc"
   project_id  = var.project_id
@@ -175,6 +182,7 @@ module "bigquery" {
   environment                    = var.environment
   pipeline_service_account_email = module.iam.pipeline_service_account_email
   api_service_account_email      = module.iam.api_service_account_email
+  cicd_service_account_email     = module.iam.cicd_service_account_email
 
   depends_on = [google_project_service.apis, module.iam]
 }
@@ -231,6 +239,7 @@ module "ml_pipeline" {
   vpc_connector_id    = module.vpc.vpc_connector_id
   bigquery_dataset_id = module.bigquery.dataset_id
   pipeline_sa_email   = module.iam.pipeline_service_account_email
+  project_number      = data.google_project.current.number
   ml_embed_image      = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-ml-embed:latest"
   enrich_job_image    = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-enrich-job:latest"
 
@@ -238,13 +247,14 @@ module "ml_pipeline" {
 }
 
 module "dashboard" {
-  source              = "../../modules/dashboard"
-  project_id          = var.project_id
-  region              = var.region
-  environment         = var.environment
-  vpc_connector_id    = module.vpc.vpc_connector_id
-  bigquery_dataset_id = module.bigquery.dataset_id
-  dashboard_image     = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-dashboard:latest"
-  api_url             = "https://${var.domain_name}"
-  depends_on          = [google_project_service.apis, module.vpc, module.bigquery]
+  source                     = "../../modules/dashboard"
+  project_id                 = var.project_id
+  region                     = var.region
+  environment                = var.environment
+  vpc_connector_id           = module.vpc.vpc_connector_id
+  bigquery_dataset_id        = module.bigquery.dataset_id
+  dashboard_image            = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-dashboard:latest"
+  api_url                    = "https://${var.domain_name}"
+  cicd_service_account_email = module.iam.cicd_service_account_email
+  depends_on                 = [google_project_service.apis, module.vpc, module.bigquery]
 }

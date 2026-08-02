@@ -1,0 +1,64 @@
+name: Infra - Terraform Checks (F7)
+
+# Premiere marche du pipeline infra F7 (LLD §8) : format, validation et scan
+# IaC — aucun credential cloud requis, donc executable sur toute PR.
+# Les etapes plan/apply automatisees viendront ensuite : elles exigent d
+# accorder des roles de lecture etendus a sa-cicd (decision IAM a valider).
+on:
+  push:
+    branches: [main]
+    paths: ["terraform/**"]
+  pull_request:
+    branches: [main]
+    paths: ["terraform/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Format & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform fmt (bloquant)
+        run: terraform fmt -check -recursive terraform/
+
+      - name: Terraform validate (dev + staging)
+        run: |
+          for env in dev staging; do
+            echo "=== validate: $env ==="
+            terraform -chdir="terraform/environments/$env" init -backend=false -input=false
+            terraform -chdir="terraform/environments/$env" validate
+          done
+
+  iac-scan:
+    name: Scan IaC (Trivy config)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Porte bloquante sur CRITICAL : une mauvaise configuration critique de
+      # l infra (ex. bucket public, base exposee) ne doit pas atteindre main.
+      - name: Trivy config - bloquant sur CRITICAL
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: terraform/
+          format: table
+          exit-code: 1
+          severity: CRITICAL
+
+      # Rapport informatif HIGH/MEDIUM : visible dans les journaux.
+      - name: Trivy config - rapport HIGH/MEDIUM (informatif)
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: terraform/
+          format: table
+          exit-code: 0
+          severity: HIGH,MEDIUM

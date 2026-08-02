@@ -209,14 +209,15 @@ resource "google_cloud_run_v2_job_iam_member" "enrich_executor" {
   member   = "serviceAccount:${var.pipeline_sa_email}"
 }
 
-# ── Data : infos projet GCP (pour le numero de projet) ─────────────────────
-data "google_project" "current" {
-  project_id = var.project_id
-}
-
 # ── IAM : Cloud Scheduler peut generer un token OAuth pour le pipeline SA ─
+# Le numero de projet vient d une VARIABLE (lue a la racine de l environnement)
+# et non d un data source interne au module : a cause du depends_on pose au
+# niveau du module, ce data etait differe a l apply des qu un module dependance
+# avait un changement en attente — `member` devenait inconnu et Terraform
+# forcait un remplacement fantome de ce binding a chaque plan (l anomalie
+# "etag divergent / scheduler_token_creator a remplacer" de STATUT_DEV §4).
 resource "google_service_account_iam_member" "scheduler_token_creator" {
   service_account_id = "projects/${var.project_id}/serviceAccounts/${var.pipeline_sa_email}"
   role               = "roles/iam.serviceAccountTokenCreator"
-  member             = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
+  member             = "serviceAccount:service-${var.project_number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
 }

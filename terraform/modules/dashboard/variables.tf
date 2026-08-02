@@ -32,3 +32,8 @@ variable "api_url" {
   description = "URL de l API MENAL que le dashboard Next.js appelle en server-side (login, MFA). Doit pointer sur l API du MEME environnement : un dashboard staging qui appelle l API dev serait une fuite inter-environnement."
   type        = string
 }
+
+variable "cicd_service_account_email" {
+  description = "Email du Service Account sa-cicd : deploie l image du dashboard depuis le pipeline CI (necessite actAs sur le SA du service)"
+  type        = string
+}

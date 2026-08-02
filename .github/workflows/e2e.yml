@@ -20,7 +20,9 @@ jobs:
 
       - name: Run E2E tests
         run: |
-          pytest tests/e2e/ -v -x -m "not slow and not gcp" --timeout=30
+          pytest tests/e2e/ -v -x -m "not slow and not gcp" --timeout=30 \
+            -o "junit_family=xunit2" \
+            --junit-xml=e2e-results.xml
         env:
           E2E_API_URL: https://${{ vars.LB_DOMAIN || 'api.menal-sarl.com' }}
           E2E_DASHBOARD_URL: ${{ vars.DASHBOARD_URL || '' }}

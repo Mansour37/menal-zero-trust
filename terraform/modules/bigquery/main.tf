@@ -37,6 +37,23 @@ resource "google_project_iam_member" "api_bq_job_user" {
   member  = "serviceAccount:${var.api_service_account_email}"
 }
 
+# ── IAM : sa-cicd charge les rapports Trivy dans le dataset (boucle F6) ───────
+# Portee DATASET uniquement, pas projet : le pipeline CI ecrit le resultat de
+# ses propres scans (cve_findings) et rien d autre. jobUser est necessaire pour
+# executer le load job BigQuery (scripts/load_cve_findings.py).
+resource "google_bigquery_dataset_iam_member" "cicd_editor" {
+  dataset_id = google_bigquery_dataset.security.dataset_id
+  role       = "roles/bigquery.dataEditor"
+  member     = "serviceAccount:${var.cicd_service_account_email}"
+  project    = var.project_id
+}
+
+resource "google_project_iam_member" "cicd_bq_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${var.cicd_service_account_email}"
+}
+
 # ── Table : access_logs (toutes les requetes API) ─────────────────────────────
 resource "google_bigquery_table" "access_logs" {
   dataset_id          = google_bigquery_dataset.security.dataset_id
