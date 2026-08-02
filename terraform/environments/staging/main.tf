@@ -245,5 +245,6 @@ module "dashboard" {
   vpc_connector_id    = module.vpc.vpc_connector_id
   bigquery_dataset_id = module.bigquery.dataset_id
   dashboard_image     = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-dashboard:latest"
+  api_url             = "https://${var.domain_name}"
   depends_on          = [google_project_service.apis, module.vpc, module.bigquery]
 }

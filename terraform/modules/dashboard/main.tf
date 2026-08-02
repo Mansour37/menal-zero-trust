@@ -32,7 +32,10 @@ resource "google_secret_manager_secret_iam_member" "dashboard_password_access" {
   member    = "serviceAccount:${google_service_account.dashboard.email}"
 }
 
-# ── Cloud Run : Streamlit Dashboard ─────────────────────────────────────────
+# ── Cloud Run : Dashboard SOC Next.js (ADR 0001) ────────────────────────────
+# DASHBOARD_PASSWORD ci-dessous ne sert plus qu a l ancien dashboard Streamlit
+# (api/dashboard/, plus deploye) : le Next.js authentifie via l API MENAL
+# (API_URL -> /auth/token + MFA), pas via ce mot de passe partage.
 resource "google_cloud_run_v2_service" "dashboard" {
   name     = "menal-dashboard-${var.environment}"
   location = var.region
@@ -62,6 +65,10 @@ resource "google_cloud_run_v2_service" "dashboard" {
       env {
         name  = "BQ_DATASET_ID"
         value = var.bigquery_dataset_id
+      }
+      env {
+        name  = "API_URL"
+        value = var.api_url
       }
       env {
         name = "DASHBOARD_PASSWORD"
@@ -123,7 +130,8 @@ resource "google_cloud_run_v2_service" "dashboard" {
 
 # The dashboard is accessed exclusively through the Load Balancer (ingress LB-only).
 # Security: Cloud Armor WAF geo-block + rate limit (on the shared LB).
-# Authentication: Streamlit password (DASHBOARD_PASSWORD).
+# Authentication: compte MENAL (email + mot de passe, puis TOTP si MFA active),
+# verifie par l API a l adresse API_URL — pas par ce service.
 resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
   project  = var.project_id
   location = var.region

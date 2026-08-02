@@ -10,7 +10,7 @@ import RequestsChart from "@/components/charts/RequestsChart";
 function buildChartData(logs: AuditLog[]) {
   const buckets: Record<string, { total: number; errors: number }> = {};
   logs.forEach((l) => {
-    const d   = new Date(l.timestamp);
+    const d   = new Date(l.created_at);
     const key = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
     if (!buckets[key]) buckets[key] = { total: 0, errors: 0 };
     buckets[key].total++;
@@ -106,7 +106,7 @@ export default async function OverviewPage() {
                 <tr className="text-left text-gray-500 border-b">
                   <th className="pb-2 pr-4">Timestamp</th>
                   <th className="pb-2 pr-4">Méthode</th>
-                  <th className="pb-2 pr-4">Path</th>
+                  <th className="pb-2 pr-4">Ressource</th>
                   <th className="pb-2 pr-4">Status</th>
                   <th className="pb-2">IP</th>
                 </tr>
@@ -115,10 +115,10 @@ export default async function OverviewPage() {
                 {logs.slice(0, 10).map((l) => (
                   <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50">
                     <td className="py-2 pr-4 text-gray-400 text-xs">
-                      {new Date(l.timestamp).toLocaleTimeString("fr-FR")}
+                      {new Date(l.created_at).toLocaleTimeString("fr-FR")}
                     </td>
-                    <td className="py-2 pr-4 font-mono font-bold text-xs text-blue-600">{l.method}</td>
-                    <td className="py-2 pr-4 font-mono text-xs">{l.path}</td>
+                    <td className="py-2 pr-4 font-mono font-bold text-xs text-blue-600">{l.action}</td>
+                    <td className="py-2 pr-4 font-mono text-xs">{l.resource}</td>
                     <td className="py-2 pr-4">
                       <span className={`px-2 py-0.5 rounded text-xs font-bold ${
                         l.status_code < 400 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"

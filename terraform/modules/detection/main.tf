@@ -2,10 +2,20 @@ locals {
   project = var.project_id
   dataset = var.bigquery_dataset_id
 
-  # ── R1 : Force brute — > 5 tentatives auth echouees meme IP en 5 min ──────
+  # ── R1 : Force brute — > 5 tentatives auth echouees meme IP ───────────────
   # MITRE T1110 (Brute Force), TA0006 (Credential Access)
+  #
+  # Fenetre de 15 min alors que la regle tourne toutes les 5 min : la fenetre
+  # DOIT couvrir la latence d ingestion (LB -> sink -> BigQuery -> requete de
+  # normalisation toutes les 5 min). Avec une fenetre de 5 min, les evenements
+  # arrivaient dans access_logs APRES etre sortis de la fenetre : la regle ne
+  # s est donc jamais declenchee, meme sous attaque reelle averee.
+  #
+  # Le NOT EXISTS est indissociable de cet elargissement : sans lui, une fenetre
+  # plus longue que la periode d execution re-insere la meme detection a chaque
+  # passage (c est l origine des doublons qui gonflaient tous les compteurs).
   r1_bruteforce = {
-    name     = "Force brute authentification (> 5 echecs/meme IP/5 min)"
+    name     = "Force brute authentification (> 5 echecs/meme IP/15 min)"
     severity = "HIGH"
     query    = <<-SQL
       INSERT INTO `${local.project}.${local.dataset}.detections`
@@ -15,26 +25,43 @@ locals {
         "R1",
         "Force brute auth",
         "HIGH",
-        ip_address,
-        CONCAT(CAST(auth_failures AS STRING), " echecs auth depuis ", ip_address, " en 5 min"),
+        f.ip_address,
+        CONCAT(CAST(f.auth_failures AS STRING), " echecs auth depuis ", f.ip_address, " en 15 min"),
         "cloud_run",
         "TA0006",
         "T1110"
       FROM (
         SELECT ip_address, COUNT(*) AS auth_failures
         FROM `${local.project}.${local.dataset}.access_logs`
-        WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 5 MINUTE)
+        WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
           AND status_code IN (401, 403)
         GROUP BY ip_address
-      )
-      WHERE auth_failures > 5
+      ) AS f
+      WHERE f.auth_failures > 5
+        AND NOT EXISTS (
+          SELECT 1
+          FROM `${local.project}.${local.dataset}.detections` AS d
+          WHERE d.rule_id = "R1"
+            AND d.entity = f.ip_address
+            AND d.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
+        )
     SQL
   }
 
-  # ── R2 : Pic de blocs WAF — > 10 bloquees par Cloud Armor en 5 min ────────
+  # ── R2 : Pic de blocs WAF — > 10 bloquees par Cloud Armor ─────────────────
   # MITRE T1498 (Network Denial of Service), TA0040 (Impact)
+  #
+  # Fenetre de 15 min (et non 5) pour la meme raison que R1 : elle doit couvrir
+  # la latence d ingestion des journaux, sinon les evenements arrivent apres
+  # etre sortis de la fenetre et la regle ne se declenche jamais. Le NOT EXISTS
+  # evite la re-insertion a chaque passage.
+  #
+  # Regroupement par IP SOURCE, et non par URL : l entite utile a un analyste
+  # est l attaquant, pas la page visee. Un scanner qui sonde 50 URLs produisait
+  # 50 detections sans jamais nommer sa source ; il en produit desormais une,
+  # exploitable telle quelle (blocage, investigation).
   r2_waf_spike = {
-    name     = "Pic WAF (> 10 bloquées/5 min)"
+    name     = "Pic WAF (> 10 bloquées/15 min, par IP source)"
     severity = "MEDIUM"
     query    = <<-SQL
       INSERT INTO `${local.project}.${local.dataset}.detections`
@@ -44,21 +71,30 @@ locals {
         "R2",
         "Pic WAF",
         "MEDIUM",
-        url,
-        CONCAT(CAST(waf_blocks AS STRING), " requetes bloquées par Cloud Armor en 5 min"),
+        f.src_ip,
+        CONCAT(CAST(f.waf_blocks AS STRING), " requetes bloquees par Cloud Armor depuis ", f.src_ip, " en 15 min"),
         "cloud_armor",
         "TA0040",
         "T1498"
       FROM (
-        SELECT STRING(json_payload.httpRequest.requestUrl) AS url,
-               COUNT(*) AS waf_blocks
+        SELECT
+          JSON_VALUE(json_payload, "$.httpRequest.remoteIp") AS src_ip,
+          COUNT(*) AS waf_blocks
         FROM `${local.project}.${local.dataset}.raw_logs`
-        WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 5 MINUTE)
+        WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
           AND log_source = "armor"
-          AND UPPER(STRING(json_payload.enforcedSecurityPolicy.outcome)) = "DENY"
-        GROUP BY url
-      )
-      WHERE waf_blocks > 10
+          AND UPPER(JSON_VALUE(json_payload, "$.enforcedSecurityPolicy.outcome")) = "DENY"
+        GROUP BY src_ip
+      ) AS f
+      WHERE f.waf_blocks > 10
+        AND f.src_ip IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM `${local.project}.${local.dataset}.detections` AS d
+          WHERE d.rule_id = "R2"
+            AND d.entity = f.src_ip
+            AND d.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
+        )
     SQL
   }
 
@@ -75,15 +111,46 @@ locals {
         "R3",
         "Path traversal",
         "HIGH",
-        ip_address,
-        CONCAT("Tentative path traversal sur ", path, " depuis ", ip_address),
-        "cloud_run",
+        f.entity,
+        f.message,
+        f.src,
         "TA0001",
         "T1190"
-      FROM `${local.project}.${local.dataset}.access_logs`
-      WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
-        AND (path LIKE "%../%" OR path LIKE "%..\\%"
-             OR path LIKE "%..%252f%" OR path LIKE "%..%255c%")
+      FROM (
+        -- Tentatives ayant atteint l application
+        SELECT
+          ip_address AS entity,
+          CONCAT("Tentative path traversal sur ", path, " depuis ", ip_address) AS message,
+          "cloud_run" AS src
+        FROM `${local.project}.${local.dataset}.access_logs`
+        WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
+          AND (path LIKE "%../%" OR path LIKE "%..\\%"
+               OR path LIKE "%..%252f%" OR path LIKE "%..%255c%")
+        UNION ALL
+        -- Tentatives BLOQUEES au bord par le WAF : elles n atteignent jamais
+        -- les journaux applicatifs, donc s en tenir a access_logs rendait cette
+        -- regle aveugle des lors que le WAF fait son travail. Une tentative
+        -- bloquee reste un signal d attaque a remonter au SOC.
+        SELECT
+          JSON_VALUE(json_payload, "$.httpRequest.remoteIp") AS entity,
+          CONCAT("Tentative path traversal (bloquee par le WAF) sur ",
+                 JSON_VALUE(json_payload, "$.httpRequest.requestUrl"),
+                 " depuis ", JSON_VALUE(json_payload, "$.httpRequest.remoteIp")) AS message,
+          "cloud_armor" AS src
+        FROM `${local.project}.${local.dataset}.raw_logs`
+        WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
+          AND log_source = "armor"
+          AND (JSON_VALUE(json_payload, "$.httpRequest.requestUrl") LIKE "%../%"
+               OR JSON_VALUE(json_payload, "$.httpRequest.requestUrl") LIKE "%..%252f%")
+      ) AS f
+      WHERE f.entity IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM `${local.project}.${local.dataset}.detections` d
+          WHERE d.rule_id = "R3"
+            AND d.message = f.message
+            AND d.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
+        )
     SQL
   }
 
@@ -113,6 +180,13 @@ locals {
           r"^(curl|python-requests|python-urllib|go-http-client|wget)"
         )
         AND STRING(json_payload.httpRequest.requestUrl) LIKE "%/api/%"
+        AND NOT EXISTS (
+          SELECT 1
+          FROM `${local.project}.${local.dataset}.detections` d
+          WHERE d.rule_id = "R4"
+            AND d.message = CONCAT("User-agent suspect (", SUBSTR(STRING(json_payload.httpRequest.userAgent), 1, 40), ") sur ", STRING(json_payload.httpRequest.requestUrl), " depuis ", STRING(json_payload.httpRequest.remoteIp))
+            AND d.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
+        )
     SQL
   }
 
@@ -138,6 +212,13 @@ locals {
       WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
         AND latency_ms > 5000
         AND service = "cloud-run"
+        AND NOT EXISTS (
+          SELECT 1
+          FROM `${local.project}.${local.dataset}.detections` d
+          WHERE d.rule_id = "R5"
+            AND d.message = CONCAT("Requete ", method, " ", path, " : ", CAST(latency_ms AS STRING), "ms depuis ", ip_address)
+            AND d.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
+        )
     SQL
   }
 
@@ -154,16 +235,47 @@ locals {
         "R6",
         "Pattern injection detecte",
         "CRITICAL",
-        ip_address,
-        CONCAT("Pattern injectif sur ", path, " depuis ", ip_address),
-        "cloud_run",
+        f.entity,
+        f.message,
+        f.src,
         "TA0001",
         "T1190"
-      FROM `${local.project}.${local.dataset}.access_logs`
-      WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
-        AND (path LIKE "%'%'%" OR path LIKE "%1=1%" OR path LIKE "%UNION%SELECT%"
-             OR path LIKE "%<script%>" OR path LIKE "%<%>%"
-             OR path LIKE "%../../etc/passwd%")
+      FROM (
+        -- Tentatives ayant atteint l application
+        SELECT
+          ip_address AS entity,
+          CONCAT("Pattern injectif sur ", path, " depuis ", ip_address) AS message,
+          "cloud_run" AS src
+        FROM `${local.project}.${local.dataset}.access_logs`
+        WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
+          AND (path LIKE "%'%'%" OR path LIKE "%1=1%" OR path LIKE "%UNION%SELECT%"
+               OR path LIKE "%<script%>" OR path LIKE "%<%>%"
+               OR path LIKE "%../../etc/passwd%")
+        UNION ALL
+        -- Tentatives bloquees au bord (voir R3 : le WAF rendait cette regle
+        -- aveugle en interceptant les charges avant les journaux applicatifs).
+        SELECT
+          JSON_VALUE(json_payload, "$.httpRequest.remoteIp") AS entity,
+          CONCAT("Pattern injectif (bloque par le WAF) sur ",
+                 JSON_VALUE(json_payload, "$.httpRequest.requestUrl"),
+                 " depuis ", JSON_VALUE(json_payload, "$.httpRequest.remoteIp")) AS message,
+          "cloud_armor" AS src
+        FROM `${local.project}.${local.dataset}.raw_logs`
+        WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
+          AND log_source = "armor"
+          AND (JSON_VALUE(json_payload, "$.httpRequest.requestUrl") LIKE "%1=1%"
+               OR UPPER(JSON_VALUE(json_payload, "$.httpRequest.requestUrl")) LIKE "%UNION%SELECT%"
+               OR JSON_VALUE(json_payload, "$.httpRequest.requestUrl") LIKE "%<script%"
+               OR JSON_VALUE(json_payload, "$.httpRequest.requestUrl") LIKE "%etc/passwd%")
+      ) AS f
+      WHERE f.entity IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM `${local.project}.${local.dataset}.detections` d
+          WHERE d.rule_id = "R6"
+            AND d.message = f.message
+            AND d.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
+        )
     SQL
   }
 
@@ -190,6 +302,13 @@ locals {
         AND (path LIKE "%.env%" OR path LIKE "%.git%" OR path LIKE "%/config%"
              OR path LIKE "%/wp-admin%" OR path LIKE "%/actuator%"
              OR path LIKE "%/server-status%" OR path LIKE "%/console%")
+        AND NOT EXISTS (
+          SELECT 1
+          FROM `${local.project}.${local.dataset}.detections` d
+          WHERE d.rule_id = "R7"
+            AND d.message = CONCAT("Tentative acces ", path, " depuis ", ip_address)
+            AND d.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
+        )
     SQL
   }
 

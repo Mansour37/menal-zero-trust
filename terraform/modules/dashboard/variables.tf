@@ -27,3 +27,8 @@ variable "dashboard_image" {
   description = "Container image URL for the dashboard"
   type        = string
 }
+
+variable "api_url" {
+  description = "URL de l API MENAL que le dashboard Next.js appelle en server-side (login, MFA). Doit pointer sur l API du MEME environnement : un dashboard staging qui appelle l API dev serait une fuite inter-environnement."
+  type        = string
+}

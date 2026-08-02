@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = process.env.API_URL || "https://menal-api-dev-5j4ih577pq-ew.a.run.app";
+import { apiUrl } from "@/lib/apiUrl";
 
 export async function POST(request: NextRequest) {
   const { mfaToken, code } = await request.json();
   const forwardedFor = request.headers.get("x-forwarded-for");
-  const res = await fetch(`${API_URL}/auth/mfa/verify`, {
+  const res = await fetch(`${apiUrl()}/auth/mfa/verify`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

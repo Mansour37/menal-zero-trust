@@ -23,6 +23,13 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
       });
+      if (res.status === 429) {
+        setError(
+          "Trop de tentatives de connexion depuis votre poste. " +
+            "Reessayez dans quelques minutes.",
+        );
+        return;
+      }
       if (!res.ok) {
         setError("Identifiants invalides");
         return;

@@ -3,6 +3,15 @@ data "google_project" "current" {
   project_id = var.project_id
 }
 
+locals {
+  # Exemption admin repliee DANS le geo-block (priorite 410) au lieu d une regle
+  # allow autonome au-dessus du WAF : les IP admin sautent le geo-block mais
+  # restent evaluees par les regles OWASP (1000-1400) et le rate-limit (1500).
+  # Une regle allow prioritaire court-circuitait tout Cloud Armor (first-match-wins),
+  # laissant les IP admin sans aucune protection applicative.
+  admin_exempt_expr = length(var.admin_ip_ranges) > 0 ? " && !(${join(" || ", [for r in var.admin_ip_ranges : "inIpRange(origin.ip, '${r}')"])})" : ""
+}
+
 # ── Adresse IP statique du Load Balancer ─────────────────────────────────────
 resource "google_compute_global_address" "lb_ip" {
   name    = "menal-api-lb-ip-${var.environment}"
@@ -26,22 +35,11 @@ resource "google_compute_security_policy" "api_waf" {
   name    = "menal-api-waf-${var.environment}"
   project = var.project_id
 
-  # Admin IP allowlist (passe avant le geo-block)
-  rule {
-    action   = "allow"
-    priority = 400
-    match {
-      versioned_expr = "SRC_IPS_V1"
-      config {
-        src_ip_ranges = var.admin_ip_ranges
-      }
-    }
-    description = "Admin IP allowlist"
-  }
-
   # Geo-blocking : autoriser UE + Maghreb (TN, DZ, MA) + Mauritanie (MR, pays
   # d implantation de MENAL SARL — omise par erreur : bloquait le pays meme de
   # l entreprise et de ses utilisateurs reels), bloquer le reste.
+  # Les IP admin (var.admin_ip_ranges) sont exemptees ICI via admin_exempt_expr :
+  # elles sautent le geo-block mais restent soumises au WAF et au rate-limit.
   # /health est explicitement exempte : c est un endpoint de liveness sans
   # donnee sensible (status/service/version uniquement), et les moniteurs
   # d uptime / smoke tests CI (GitHub Actions n a pas de region fixe et n est
@@ -52,16 +50,107 @@ resource "google_compute_security_policy" "api_waf" {
     priority = 410
     match {
       expr {
-        expression = "request.path != '/health' && !origin.region_code.matches('^(?:FR|DE|ES|IT|NL|BE|PT|SE|DK|FI|AT|IE|PL|CZ|GR|HU|RO|BG|SK|SI|LT|LV|EE|HR|LU|MT|CY|TN|DZ|MA|MR)$') && !inIpRange(origin.ip, '10.0.0.0/8')"
+        expression = "request.path != '/health' && !origin.region_code.matches('^(?:FR|DE|ES|IT|NL|BE|PT|SE|DK|FI|AT|IE|PL|CZ|GR|HU|RO|BG|SK|SI|LT|LV|EE|HR|LU|MT|CY|TN|DZ|MA|MR)$') && !inIpRange(origin.ip, '10.0.0.0/8')${local.admin_exempt_expr}"
       }
     }
-    description = "Geo-block (sauf /health) : only EU + Maghreb + Mauritania + VPC allowed"
+    description = "Geo-block (sauf /health, VPC et IP admin) : only EU + Maghreb + Mauritania allowed"
   }
 
-  # Rate limiting reseau : 1000 req/min par IP
+  # OWASP A03 : Cross-Site Scripting (XSS)
+  rule {
+    action   = "deny(403)"
+    priority = 1000
+    match {
+      expr {
+        expression = "evaluatePreconfiguredWaf('xss-v33-stable', {'sensitivity': 1})"
+      }
+    }
+    description = "Block XSS - OWASP A03"
+  }
+
+  # OWASP A03 : Injection SQL
+  rule {
+    action   = "deny(403)"
+    priority = 1100
+    match {
+      expr {
+        expression = "evaluatePreconfiguredWaf('sqli-v33-stable', {'sensitivity': 1})"
+      }
+    }
+    description = "Block SQLi - OWASP A03"
+  }
+
+  # OWASP A05 : Local File Inclusion
+  rule {
+    action   = "deny(403)"
+    priority = 1200
+    match {
+      expr {
+        expression = "evaluatePreconfiguredWaf('lfi-v33-stable', {'sensitivity': 1})"
+      }
+    }
+    description = "Block LFI - OWASP A05"
+  }
+
+  # OWASP A01 : Remote Code Execution
+  rule {
+    action   = "deny(403)"
+    priority = 1300
+    match {
+      expr {
+        expression = "evaluatePreconfiguredWaf('rce-v33-stable', {'sensitivity': 1})"
+      }
+    }
+    description = "Block RCE - OWASP A01"
+  }
+
+  # OWASP A04 : Remote File Inclusion
+  rule {
+    action   = "deny(403)"
+    priority = 1400
+    match {
+      expr {
+        expression = "evaluatePreconfiguredWaf('rfi-v33-stable', {'sensitivity': 1})"
+      }
+    }
+    description = "Block RFI - OWASP A04"
+  }
+
+  # Anti-brute-force : limite serree sur les chemins d authentification.
+  # Appliquee AU BORD, ou Cloud Armor voit la VRAIE IP du client : c est le seul
+  # point du chemin qui la connaisse. Le limiteur applicatif (slowapi) est, lui,
+  # aveugle sur le trajet dashboard -> API (double traversee du LB), ou il ne voit
+  # que l IP de sortie partagee du dashboard — un attaquant pouvait donc epuiser
+  # un compteur COMMUN et verrouiller TOUS les analystes en 12 requetes non
+  # authentifiees. Ici la cle est l IP reelle : seul l attaquant est banni.
+  rule {
+    action   = "rate_based_ban"
+    priority = 1450
+    match {
+      expr {
+        expression = "request.path.startsWith('/auth/token') || request.path.startsWith('/api/login')"
+      }
+    }
+    rate_limit_options {
+      conform_action   = "allow"
+      exceed_action    = "deny(429)"
+      enforce_on_key   = "IP"
+      ban_duration_sec = 300
+      rate_limit_threshold {
+        count        = 10
+        interval_sec = 60
+      }
+    }
+    description = "Anti-brute-force : 10 tentatives d auth/min par IP reelle, ban 5 min"
+  }
+
+  # Rate limiting reseau : 1000 req/min par IP (anti-DDoS).
+  # DOIT rester APRES les regles OWASP (1000-1400) : une regle throttle a
+  # conform_action=allow est terminale (first-match-wins), donc la placer avant
+  # le WAF court-circuitait entierement les regles OWASP (bug corrige).
   rule {
     action   = "throttle"
-    priority = 900
+    priority = 1500
     match {
       versioned_expr = "SRC_IPS_V1"
       config {
@@ -78,66 +167,6 @@ resource "google_compute_security_policy" "api_waf" {
       }
     }
     description = "Rate limit 1000 req/min par IP (anti-DDoS)"
-  }
-
-  # OWASP A03 : Cross-Site Scripting (XSS)
-  rule {
-    action   = "deny(403)"
-    priority = 1000
-    match {
-      expr {
-        expression = "evaluatePreconfiguredExpr('xss-v33-stable')"
-      }
-    }
-    description = "Block XSS - OWASP A03"
-  }
-
-  # OWASP A03 : Injection SQL
-  rule {
-    action   = "deny(403)"
-    priority = 1100
-    match {
-      expr {
-        expression = "evaluatePreconfiguredExpr('sqli-v33-stable')"
-      }
-    }
-    description = "Block SQLi - OWASP A03"
-  }
-
-  # OWASP A05 : Local File Inclusion
-  rule {
-    action   = "deny(403)"
-    priority = 1200
-    match {
-      expr {
-        expression = "evaluatePreconfiguredExpr('lfi-v33-stable')"
-      }
-    }
-    description = "Block LFI - OWASP A05"
-  }
-
-  # OWASP A01 : Remote Code Execution
-  rule {
-    action   = "deny(403)"
-    priority = 1300
-    match {
-      expr {
-        expression = "evaluatePreconfiguredExpr('rce-v33-stable')"
-      }
-    }
-    description = "Block RCE - OWASP A01"
-  }
-
-  # OWASP A04 : Remote File Inclusion
-  rule {
-    action   = "deny(403)"
-    priority = 1400
-    match {
-      expr {
-        expression = "evaluatePreconfiguredExpr('rfi-v33-stable')"
-      }
-    }
-    description = "Block RFI - OWASP A04"
   }
 
   # Regle par defaut : autoriser le reste

@@ -39,7 +39,14 @@ def create_mfa_pending_token(subject: str) -> str:
 
 def decode_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[ALGORITHM])
+        # require=["exp"] : un token SANS champ exp etait accepte et valide pour
+        # toujours (aucune expiration verifiee). On impose exp et iat presents.
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[ALGORITHM],
+            options={"require": ["exp", "iat", "sub"]},
+        )
         return payload
     except PyJWTError as exc:
         raise ValueError("Invalid token") from exc

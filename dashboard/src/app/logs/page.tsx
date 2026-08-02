@@ -23,30 +23,29 @@ export default async function LogsPage() {
                 <tr className="text-left text-gray-600">
                   <th className="px-4 py-3">Timestamp</th>
                   <th className="px-4 py-3">Méthode</th>
-                  <th className="px-4 py-3">Path</th>
+                  <th className="px-4 py-3">Ressource</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Utilisateur</th>
                   <th className="px-4 py-3">IP</th>
-                  <th className="px-4 py-3">Latence</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {logs.map((l) => (
                   <tr key={l.id} className="hover:bg-gray-50 transition">
                     <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                      {new Date(l.timestamp).toLocaleString("fr-FR")}
+                      {new Date(l.created_at).toLocaleString("fr-FR")}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${
-                        l.method === "GET"    ? "bg-blue-100 text-blue-700" :
-                        l.method === "POST"   ? "bg-green-100 text-green-700" :
-                        l.method === "DELETE" ? "bg-red-100 text-red-700" :
+                        l.action === "GET"    ? "bg-blue-100 text-blue-700" :
+                        l.action === "POST"   ? "bg-green-100 text-green-700" :
+                        l.action === "DELETE" ? "bg-red-100 text-red-700" :
                         "bg-gray-100 text-gray-700"
                       }`}>
-                        {l.method}
+                        {l.action}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-600">{l.path}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-600">{l.resource}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-bold px-2 py-0.5 rounded ${
                         l.status_code < 300 ? "bg-green-100 text-green-700" :
@@ -59,14 +58,11 @@ export default async function LogsPage() {
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500">{l.user_id ?? "—"}</td>
                     <td className="px-4 py-3 text-xs text-gray-400 font-mono">{l.ip_address ?? "—"}</td>
-                    <td className="px-4 py-3 text-xs text-gray-400">
-                      {l.response_time_ms != null ? `${l.response_time_ms} ms` : "—"}
-                    </td>
                   </tr>
                 ))}
                 {logs.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                       Aucun log disponible
                     </td>
                   </tr>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_URL = process.env.API_URL || "https://menal-api-dev-5j4ih577pq-ew.a.run.app";
+import { apiUrl } from "@/lib/apiUrl";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   // on relaie le X-Forwarded-For pose par le Load Balancer en amont (voir
   // app/auth/router.py cote API pour l extraction sure de l IP reelle).
   const forwardedFor = request.headers.get("x-forwarded-for");
-  const res = await fetch(`${API_URL}/auth/token`, {
+  const res = await fetch(`${apiUrl()}/auth/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -18,6 +18,16 @@ export async function POST(request: NextRequest) {
     body,
   });
 
+  // Un 429 (anti-brute-force) doit rester un 429 : le reecrire en 401 faisait
+  // croire a l analyste qu il s etait trompe de mot de passe, et privait le SOC
+  // du seul signal indiquant qu une attaque par blocage etait en cours.
+  if (res.status === 429) {
+    const retryAfter = res.headers.get("retry-after");
+    return NextResponse.json(
+      { error: "TooManyRequests" },
+      { status: 429, ...(retryAfter ? { headers: { "Retry-After": retryAfter } } : {}) },
+    );
+  }
   if (!res.ok) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const data = await res.json();

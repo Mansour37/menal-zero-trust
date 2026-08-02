@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 import bcrypt
 from sqlalchemy.orm import Session
 from app.auth.dependencies import require_role
@@ -9,6 +9,10 @@ from app.models.role import Role
 import uuid
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+# bcrypt tronque silencieusement au-dela de 72 octets ; on borne explicitement
+# pour eviter un 500 et un faux sentiment de robustesse sur les longs mots de passe.
+BCRYPT_MAX_BYTES = 72
 
 
 class UserOut(BaseModel):
@@ -23,7 +27,9 @@ class UserOut(BaseModel):
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
+    # Politique minimale : au moins 12 caracteres. Auparavant aucune contrainte
+    # (le mot de passe "1" etait accepte).
+    password: str = Field(min_length=12, max_length=BCRYPT_MAX_BYTES)
     role_name: str = "viewer"
 
 
@@ -65,7 +71,7 @@ def create_user(
         user = User(
             id=uuid.uuid4(),
             email=payload.email,
-            hashed_password=bcrypt.hashpw(payload.password.encode(), bcrypt.gensalt()).decode(),
+            hashed_password=bcrypt.hashpw(payload.password.encode("utf-8")[:BCRYPT_MAX_BYTES], bcrypt.gensalt()).decode(),
             role_id=role.id,
         )
         session.add(user)

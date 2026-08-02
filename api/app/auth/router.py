@@ -19,17 +19,19 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 def _real_client_ip(request: Request) -> str:
     """
-    Cle de rate-limit basee sur le vrai client, pas sur le dernier saut TCP.
+    Cle du filet de securite applicatif. NE PAS considerer comme l IP du client.
 
-    Le trafic passe soit par le Load Balancer (Cloud Armor + GFE), soit par
-    le proxy server-side du dashboard Next.js (qui relaie X-Forwarded-For,
-    voir dashboard/src/app/api/login/route.ts) — dans les deux cas
-    request.client.host ne serait que l IP du saut immediat, pas celle du
-    client. Le GFE ajoute TOUJOURS "<client-ip>, <gfe-ip>" en fin de
-    l en-tete X-Forwarded-For, quel que soit ce qu un attaquant y a
-    prefixe : on prend donc l avant-dernier maillon, jamais le premier
-    (piege classique de parsing XFF qui rendrait le rate-limit contournable
-    en falsifiant simplement le premier maillon).
+    Le GFE ajoute toujours "<pair>, <gfe-ip>" en fin de X-Forwarded-For, donc
+    l avant-dernier maillon resiste a une falsification du debut de l en-tete.
+    Mais cela ne donne le vrai client que sur l appel DIRECT a l API
+    (client -> LB -> API).
+
+    Sur le trajet reel du dashboard il y a DEUX traversees du LB
+    (client -> LB -> Next.js -> LB -> API, voir app/api/login/route.ts) : le GFE
+    ajoute une seconde paire, et l avant-dernier maillon devient l IP de sortie
+    PARTAGEE du dashboard. La cle est alors commune a tous les utilisateurs —
+    d ou AUTH_BACKSTOP_LIMIT volontairement large. Le controle anti-brute-force
+    par client reel est applique au bord par Cloud Armor (priorite 1450).
     """
     xff = request.headers.get("x-forwarded-for")
     if xff:
@@ -43,9 +45,26 @@ def _real_client_ip(request: Request) -> str:
 
 limiter = Limiter(key_func=_real_client_ip)
 
+# Filet de securite applicatif, PAS le controle anti-brute-force principal.
+# Celui-ci est applique au bord par Cloud Armor (10/min par IP REELLE + ban),
+# voir terraform/modules/load-balancer/main.tf priorite 1450 : c est le seul
+# point qui connaisse la vraie IP du client.
+# Ici la cle (_real_client_ip) se replie sur l IP de sortie PARTAGEE du dashboard
+# quand la requete est relayee (double traversee du LB) : un seuil serre y
+# devenait donc un verrou global — 12 requetes non authentifiees suffisaient a
+# bloquer la connexion de TOUS les analystes. Le seuil est volontairement large :
+# il ne sert qu a arreter un emballement, jamais a identifier un attaquant.
+AUTH_BACKSTOP_LIMIT = "60/minute"
+
 
 def _verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
+    # bcrypt n exploite que les 72 premiers octets et LEVE au-dela (bcrypt>=4.1).
+    # On borne + on capture pour renvoyer un simple echec d auth (401) au lieu
+    # d un 500 declenchable par un appel non authentifie avec un mot de passe long.
+    try:
+        return bcrypt.checkpw(plain.encode("utf-8")[:72], hashed.encode())
+    except (ValueError, TypeError):
+        return False
 
 
 class Token(BaseModel):
@@ -90,7 +109,7 @@ def _user_by_sub(session: Session, sub: str) -> User | None:
 
 
 @router.post("/token", response_model=Union[Token, MfaChallenge])
-@limiter.limit("10/minute")
+@limiter.limit(AUTH_BACKSTOP_LIMIT)
 def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
     engine = get_engine()
     with Session(engine) as session:
@@ -114,7 +133,7 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
 
 
 @router.post("/mfa/verify", response_model=Token)
-@limiter.limit("10/minute")
+@limiter.limit(AUTH_BACKSTOP_LIMIT)
 def verify_mfa(request: Request, body: MfaVerifyRequest):
     try:
         payload = decode_token(body.mfa_token)
@@ -175,7 +194,7 @@ def setup_mfa(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/mfa/enable", response_model=MfaStatus)
-@limiter.limit("10/minute")
+@limiter.limit(AUTH_BACKSTOP_LIMIT)
 def enable_mfa(request: Request, body: MfaEnableRequest, current_user: dict = Depends(get_current_user)):
     engine = get_engine()
     with Session(engine) as session:
@@ -196,7 +215,7 @@ def enable_mfa(request: Request, body: MfaEnableRequest, current_user: dict = De
 
 
 @router.post("/mfa/disable", response_model=MfaStatus)
-@limiter.limit("10/minute")
+@limiter.limit(AUTH_BACKSTOP_LIMIT)
 def disable_mfa(request: Request, body: MfaDisableRequest, current_user: dict = Depends(get_current_user)):
     engine = get_engine()
     with Session(engine) as session:

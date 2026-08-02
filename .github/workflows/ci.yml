@@ -11,6 +11,7 @@ env:
   PROJECT_ID: menal-zero-trust-dev
   SERVICE_NAME: menal-api-dev
   ARTIFACT_REGISTRY: europe-west1-docker.pkg.dev/menal-zero-trust-dev/menal-docker-dev
+  BQ_DATASET: menal_security_dev
 
 permissions:
   contents: read
@@ -23,19 +24,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Portes bloquantes : un secret detecte ou un finding SAST fait ECHOUER
+      # le pipeline. Sans cela, ces scans etaient du theatre (continue-on-error).
       - name: Gitleaks - Secret Scanning
         uses: gitleaks/gitleaks-action@v2
-        continue-on-error: true
 
       - name: Semgrep - SAST
         uses: semgrep/semgrep-action@v1
         with:
           config: p/default
-        continue-on-error: true
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r api/requirements.txt
+          pip install pytest pytest-cov httpx   # httpx : requis par fastapi TestClient
+
+      - name: Run API unit tests
+        working-directory: api
+        run: pytest tests/ -v
 
   build:
     name: Build & Push
-    needs: security
+    needs: [security, test]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -62,21 +83,51 @@ jobs:
           docker push $IMAGE_TAG
           echo "image=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Trivy - CVE Scan
+      # Porte bloquante : une CVE CRITICAL corrigeable fait echouer le build.
+      # ignore-unfixed evite de bloquer sur des CVE sans correctif disponible
+      # (sinon la porte serait desactivee a la premiere alerte non actionnable).
+      - name: Trivy - CVE Scan (bloquant sur CRITICAL)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.build.outputs.image }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL
+          ignore-unfixed: true
+
+      # Rapport informatif HIGH : visible dans les journaux, non bloquant.
+      - name: Trivy - rapport HIGH (informatif)
+        if: always()
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ steps.build.outputs.image }}
           format: table
           exit-code: 0
-          severity: HIGH,CRITICAL
-          output: trivy-report.txt
+          severity: HIGH
+          ignore-unfixed: true
 
-      - name: Check for critical CVEs
+      # Boucle F6 : le scan alimente le SIEM. Sans cette etape, cve_findings
+      # restait vide et la page /siem/vulnerabilities du dashboard n affichait
+      # rien — le pipeline scannait sans que personne ne voie le resultat.
+      - name: Trivy - rapport JSON pour le SIEM
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.build.outputs.image }}
+          format: json
+          exit-code: 0
+          severity: CRITICAL,HIGH,MEDIUM
+          output: trivy-findings.json
+
+      - name: Charger les CVE dans BigQuery
+        if: always()
         run: |
-          if grep -q "Total: [1-9]" trivy-report.txt; then
-            echo "WARNING: CVE(s) detected in base image"
-            cat trivy-report.txt
-          fi
+          pip install --quiet google-cloud-bigquery
+          python scripts/load_cve_findings.py \
+            --project "${{ env.PROJECT_ID }}" \
+            --dataset "${{ env.BQ_DATASET }}" \
+            --report trivy-findings.json \
+            --image-digest "${{ github.sha }}"
 
       - name: Deploy to Cloud Run
         id: deploy
@@ -97,11 +148,11 @@ jobs:
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
             https://${{ vars.LB_IP_ADDRESS }}/health -k || echo "000")
           echo "HTTP status: $HTTP_STATUS"
-          if [ "$HTTP_STATUS" = "000" ]; then
-            echo "WARNING: LB not fully ready (DNS/SSL not configured)"
-          elif [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "302" ]; then
-            echo "SUCCESS: Service operationnel !"
-          fi
+          case "$HTTP_STATUS" in
+            200|302) echo "SUCCESS: service operationnel" ;;
+            000)     echo "ECHEC: LB injoignable (DNS/SSL)"; exit 1 ;;
+            *)       echo "ECHEC: statut inattendu $HTTP_STATUS"; exit 1 ;;
+          esac
 
   e2e:
     name: E2E Tests

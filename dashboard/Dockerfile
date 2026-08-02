@@ -1,8 +1,12 @@
 # ── Stage 1 : deps ────────────────────────────────────────────────────────────
 FROM node:20-alpine AS deps
 WORKDIR /app
-COPY package.json ./
-RUN npm install --frozen-lockfile 2>/dev/null || npm install
+# Copier le lockfile ET utiliser `npm ci` : installe EXACTEMENT les versions
+# verrouillees (integrite verifiee). L ancien `npm install --frozen-lockfile`
+# etait un non-sens (flag pnpm/yarn inexistant pour npm) + ne copiait pas le
+# lockfile -> resolution non reproductible a chaque build (trou chaine d appro).
+COPY package.json package-lock.json ./
+RUN npm ci
 
 # ── Stage 2 : builder ─────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder

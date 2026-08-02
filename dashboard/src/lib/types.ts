@@ -3,15 +3,18 @@ export interface LoginResponse {
   token_type: string;
 }
 
+// Aligne EXACTEMENT sur la reponse de l API (api/app/routers/logs.py::AuditLogOut).
+// Le middleware d audit ecrit action=methode HTTP, resource=chemin, created_at=horodatage.
+// L ancien type (timestamp/method/path/response_time_ms) ne correspondait a AUCUN champ
+// renvoye -> chaque ligne affichait "Invalid Date" et des colonnes vides.
 export interface AuditLog {
   id: string;
-  timestamp: string;
-  method: string;
-  path: string;
-  status_code: number;
   user_id: string | null;
+  action: string;
+  resource: string;
   ip_address: string | null;
-  response_time_ms: number | null;
+  status_code: number;
+  created_at: string;
 }
 
 export interface Alert extends AuditLog {}

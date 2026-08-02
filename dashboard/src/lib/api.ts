@@ -3,10 +3,10 @@ import {
   Overview, Detection, Incident, IncidentDetail, CoverageTactic, Vulnerability,
 } from "./types";
 
-const API_URL = process.env.API_URL || "https://menal-api-dev-5j4ih577pq-ew.a.run.app";
+import { apiUrl } from "./apiUrl";
 
 async function apiFetch<T>(path: string, token: string): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${apiUrl()}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
@@ -16,7 +16,7 @@ async function apiFetch<T>(path: string, token: string): Promise<T> {
 
 export async function login(username: string, password: string): Promise<LoginResponse> {
   const body = new URLSearchParams({ username, password, grant_type: "password" });
-  const res = await fetch(`${API_URL}/auth/token`, {
+  const res = await fetch(`${apiUrl()}/auth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
@@ -25,12 +25,14 @@ export async function login(username: string, password: string): Promise<LoginRe
   return res.json();
 }
 
-export async function getLogs(token: string, skip = 0, limit = 50): Promise<AuditLog[]> {
-  return apiFetch<AuditLog[]>(`/logs/?skip=${skip}&limit=${limit}`, token);
+// Le parametre API est `offset` (voir logs.py/alerts.py), pas `skip` : l ancien
+// `?skip=` etait ignore par FastAPI, rendant la pagination inoperante.
+export async function getLogs(token: string, offset = 0, limit = 50): Promise<AuditLog[]> {
+  return apiFetch<AuditLog[]>(`/logs/?offset=${offset}&limit=${limit}`, token);
 }
 
-export async function getAlerts(token: string, skip = 0, limit = 50): Promise<Alert[]> {
-  return apiFetch<Alert[]>(`/alerts/?skip=${skip}&limit=${limit}`, token);
+export async function getAlerts(token: string, offset = 0, limit = 50): Promise<Alert[]> {
+  return apiFetch<Alert[]>(`/alerts/?offset=${offset}&limit=${limit}`, token);
 }
 
 export async function getUsers(token: string): Promise<User[]> {
@@ -38,7 +40,7 @@ export async function getUsers(token: string): Promise<User[]> {
 }
 
 export async function getHealth(): Promise<{ status: string; version: string }> {
-  const res = await fetch(`${API_URL}/health`, { cache: "no-store" });
+  const res = await fetch(`${apiUrl()}/health`, { cache: "no-store" });
   return res.json();
 }
 

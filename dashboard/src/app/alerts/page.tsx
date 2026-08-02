@@ -61,7 +61,7 @@ export default async function AlertsPage() {
                   <th className="px-4 py-3">Timestamp</th>
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Sévérité</th>
-                  <th className="px-4 py-3">Path</th>
+                  <th className="px-4 py-3">Ressource</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">IP Source</th>
                 </tr>
@@ -72,7 +72,7 @@ export default async function AlertsPage() {
                   return (
                     <tr key={a.id} className="hover:bg-red-50 transition">
                       <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                        {new Date(a.timestamp).toLocaleString("fr-FR")}
+                        {new Date(a.created_at).toLocaleString("fr-FR")}
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-gray-600">
                         {eventType(a.status_code)}
@@ -82,7 +82,7 @@ export default async function AlertsPage() {
                           {sev.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs">{a.path}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{a.resource}</td>
                       <td className="px-4 py-3">
                         <span className="text-xs font-bold text-red-700">{a.status_code}</span>
                       </td>

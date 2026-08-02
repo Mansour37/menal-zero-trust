@@ -18,7 +18,8 @@ class Settings:
     DB_NAME: str = os.getenv("DB_NAME", "menal_db")
     DB_USER: str = os.getenv("DB_USER", "api_user")
     SECRET_NAME: str = os.getenv("SECRET_NAME", "db-password-dev")
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
+    _JWT_SECRET_DEFAULT = "dev-secret-change-in-production"
+    JWT_SECRET: str = os.getenv("JWT_SECRET", _JWT_SECRET_DEFAULT)
     BQ_DATASET_ID: str = os.getenv("BQ_DATASET_ID", "menal_security_dev")
 
     @property
@@ -30,3 +31,12 @@ class Settings:
 
 
 settings = Settings()
+
+# Fail-closed : hors dev, refuser de demarrer avec le secret JWT par defaut
+# (publie dans le depot). Sinon une revision ou le secret n est pas injecte
+# signerait des tokens avec une valeur publiquement connue -> forge admin triviale.
+if settings.ENVIRONMENT != "dev" and settings.JWT_SECRET == Settings._JWT_SECRET_DEFAULT:
+    raise RuntimeError(
+        "JWT_SECRET utilise la valeur par defaut hors environnement dev. "
+        "Injecter un secret reel (Secret Manager) avant de demarrer."
+    )
