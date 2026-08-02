@@ -75,7 +75,7 @@ Matrice de flux (même convention que `05_DOCUMENTS_COMPLEMENTAIRES.md` §1) :
 ## 4. Scénario de démo — réalisable aujourd'hui, sur l'infra MENAL réelle
 
 **Principe :** au lieu d'attaquer Elson (pas intégré), on génère un vrai dépassement du
-seuil de la règle **R1 — force brute** (`> 5 échecs d'authentification / même IP / 5 min`,
+seuil de la règle **R1 — force brute** (`> 5 échecs d'authentification / même IP / 15 min`,
 `terraform/modules/detection/main.tf`) contre `POST /auth/token` de l'API MENAL — le même
 type d'endpoint, le même mécanisme de détection que celui qui surveillerait
 `POST /api/auth/login` d'Elson une fois derrière le même ALB. C'est exactement le test
@@ -88,7 +88,10 @@ voir `STATUT_DEV.md` §2.4).
 ```bash
 export GOOGLE_APPLICATION_CREDENTIALS=<clé ou ADC déjà active>
 export E2E_RUN_SLOW=1
-export GCP_PROJECT_ID=menal-zero-trust-dev   # ou -staging une fois promu
+export GCP_PROJECT_ID=menal-zero-trust-staging
+export BQ_DATASET=menal_security_staging
+export E2E_API_URL=https://api-staging.menal-sarl.com
+export E2E_DASHBOARD_URL=https://dash-staging.menal-sarl.com
 pytest tests/e2e/test_04_pipeline_integration.py::TestPipelineIntegration::test_t13_simulated_attack_pipeline -v -s
 ```
 
@@ -103,16 +106,36 @@ depuis la même IP → dépassement du seuil R1 → attend (jusqu'à 12 min, son
 2. **BigQuery `raw_logs`/`access_logs`** : les 8 requêtes apparaissent, normalisées
    depuis les vrais logs Cloud Run (`modules/logging/main.tf`, flux F4).
 3. **BigQuery `detections`** : une ligne `rule_id = R1`, `severity = HIGH`,
-   `mitre_tactic = TA0006`, `mitre_technique = T1110` apparaît (< 5 min après le
-   dépassement de seuil).
-4. **Dashboard MENAL** (`https://dash.menal-sarl.com/detections`) : la détection s'affiche
+   `mitre_tactic = TA0006`, `mitre_technique = T1110` apparaît. Compter **jusqu'à 10 min** :
+   la règle s'exécute toutes les 5 min, sur une fenêtre de 15 min qui doit d'abord
+   couvrir la latence d'ingestion (sink → normalisation F4 → règle).
+4. **Dashboard MENAL** (`https://dash-staging.menal-sarl.com/detections`) : la détection s'affiche
    en temps réel, mappée MITRE ATT&CK.
 5. **`/incidents`** : si l'entité (IP) accumule d'autres signaux dans l'heure, un incident
    chaîné apparaît avec un score.
 6. **`/coverage`** : la technique T1110 (Brute Force) passe à "observée" dans la
    couverture ATT&CK.
 
-### 4.3 Variante rapide (sans attendre le cycle complet)
+### 4.3 Deux pièges à connaître avant de lancer la démo
+
+**On ne peut pas rejouer la démo deux fois de suite.** R1 déduplique : elle n'insère rien
+si une détection R1 existe déjà pour la même IP dans les 15 dernières minutes. C'est
+volontaire — sans cela, la même attaque produisait une détection à chaque exécution de la
+règle et gonflait tous les compteurs. Conséquence pratique : **attendre 15 min entre deux
+démonstrations**, ou changer d'IP source.
+
+**Ne pas dépasser 10 tentatives par minute.** Cloud Armor applique désormais un
+`rate_based_ban` au bord sur les chemins d'authentification (10 tentatives/min par IP
+réelle, bannissement 5 min — `terraform/modules/load-balancer/main.tf`, priorité 1450). Le
+scénario en génère 8, ce qui passe : c'est calibré pour déclencher R1 (seuil > 5) sans
+déclencher le bannissement. En ajouter « pour être sûr » ferait bannir l'IP de démonstration
+et **empêcherait** la détection applicative d'être alimentée. Si cela arrive : attendre
+5 min.
+
+Ce comportement est en soi un point de démonstration : deux couches de défense
+indépendantes, l'une au bord qui bloque, l'autre applicative qui détecte et documente.
+
+### 4.4 Variante rapide (sans attendre le cycle complet)
 
 Pour une démo chronométrée, préparer la détection **avant** la présentation (lancer §4.1
 10–15 min avant), puis en direct : ouvrir le dashboard, montrer la détection déjà présente,
@@ -138,6 +161,9 @@ cliquer sur l'incident, montrer le mapping MITRE et le lien runbook
 - Le MFA (TOTP, cette session) protège les comptes MENAL ; Elson n'a **aucun** MFA
   aujourd'hui (`DOCUMENTATION_ELSON.md` §11.6) — point à citer comme axe d'amélioration
   si la question est posée.
-- La détection sémantique (ATT&CK-BERT, couche L6) utilise encore un encodeur simulé côté
-  précalcul (`scripts/precompute_attacks.py`) — à ne présenter que comme mécanisme
-  fonctionnel, pas comme résultat sémantique validé (cf. audit initial de cette session).
+- La détection sémantique (ATT&CK-BERT, couche L6) tourne sur le **vrai modèle** en
+  staging depuis le 01/08 : `basel/ATTACK-BERT` exporté en ONNX **fp32**, 872 vecteurs
+  768D. La variante int8 a été testée et **rejetée** par le critère d'acceptation
+  (accord de classement 0/5 en top-1 MITRE) — un point à citer si l'on interroge la
+  rigueur de la démarche : le garde-fou a joué son rôle. En `dev`, l'encodeur reste
+  simulé : **ne pas faire la démo sur dev**.
