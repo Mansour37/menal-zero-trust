@@ -22,6 +22,16 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Le runtime n execute que `node server.js` : npm / corepack / yarn ne servent
+# a rien en production, et le npm bundle de l image de base embarque node-tar
+# 6.2.1 (CVE-2026-59873 CRITICAL, bloquee par la porte Trivy du CI). Les
+# retirer corrige la CVE et reduit la surface de l image finale.
+RUN rm -rf /usr/local/lib/node_modules/npm \
+           /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx \
+           /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+           /opt/yarn*
+
 RUN addgroup --system --gid 1001 nodejs && \
     adduser  --system --uid 1001 nextjs
 
