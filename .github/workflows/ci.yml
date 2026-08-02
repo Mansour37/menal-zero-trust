@@ -28,7 +28,12 @@ jobs:
     name: Security Scans
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 — gitleaks scanne le RANGE de commits du push
+      # (before^..after) : avec le clone shallow par defaut, ces revisions
+      # n existent pas localement et le scan echoue en "unknown revision".
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Portes bloquantes : un secret detecte ou un finding SAST fait ECHOUER
       # le pipeline. Sans cela, ces scans etaient du theatre (continue-on-error).
