@@ -259,6 +259,10 @@ jobs:
           # public (LB + Cloud Armor), pas via l URL .run.app (bloquee par design).
           E2E_DASHBOARD_URL: https://${{ vars.DASH_DOMAIN }}
           E2E_API_RUN_URL: ${{ vars.API_RUN_URL }}
+          # Sans cette variable, T3 (ml-embed injoignable depuis internet)
+          # s ignorait silencieusement : une frontiere de securite qui n etait
+          # jamais verifiee, ce qui se lit comme un succes dans un rapport.
+          E2E_ML_EMBED_URL: ${{ vars.ML_EMBED_URL }}
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

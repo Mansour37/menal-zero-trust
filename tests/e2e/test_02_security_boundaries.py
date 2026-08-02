@@ -19,7 +19,11 @@ class TestSecurityBoundaries:
         except requests.ConnectionError:
             pass
 
-    @pytest.mark.slow
+    # Pas de marqueur `slow` : ce test est une simple requete HTTP (0,3 s) et
+    # n exige aucun credential. Marque `slow`, il etait exclu du CI (`-m "not
+    # slow"`) ET du plan complet quand E2E_ML_EMBED_URL manquait — une frontiere
+    # de securite qui ne s executait donc jamais nulle part, ce qui se lit comme
+    # un succes dans un rapport de tests.
     def test_t3_ml_embed_without_token(self, ml_embed_url):
         """
         ml-embed est en ingress=INGRESS_TRAFFIC_INTERNAL_ONLY (pas seulement
