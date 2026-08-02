@@ -1,19 +1,24 @@
-# Statut — Plateforme MENAL Zero Trust (dev + staging)
+# Statut — Plateforme MENAL Zero Trust (staging = environnement de référence)
 
-**Date :** 31 juillet 2026
-**Projets GCP :** `menal-zero-trust-dev`, `menal-zero-trust-staging` (europe-west1)
+**Date :** 2 août 2026
+**Projets GCP :** `menal-zero-trust-staging` (référence), `menal-zero-trust-dev` (essais) — europe-west1
 **Référentiels :** `01_HLD_MENAL.md`, `02_LLD_MENAL.md`, `04_METHODOLOGIE_IMPLEMENTATION.md`,
-`05_DOCUMENTS_COMPLEMENTAIRES.md`, `indexe-dev.md` (revue précédente, 30 juillet 2026)
+`05_DOCUMENTS_COMPLEMENTAIRES.md`, `indexe-dev.md` (revue du 30 juillet 2026)
+
+> Les sections §2 à §7 conservent la chronologie des sessions des 30 juillet – 1er août.
+> L'état courant est décrit en **§8**, qui fait foi en cas de divergence.
 
 ## 1. Résumé
 
-Dev **opérationnel et validé par des tests E2E réels** (10/10, exécutés depuis une IP
-mauritanienne réelle, sans tolérance masquée). MFA (TOTP) implémenté et déployé sur l'API et
-le dashboard. Dashboard Next.js (cible ADR 0001) déployé en lieu et place du dashboard
-Streamlit. **Staging est désormais réellement provisionné** (§6) — projet GCP créé, 141
-ressources appliquées, images promues par digest depuis dev, base migrée, LB opérationnel.
-Reste : DNS de `api-staging.menal-sarl.com`/`dash-staging.menal-sarl.com` à pointer vers
-`8.232.24.132` (hors de mon contrôle — registrar/DNS du domaine).
+**`staging` est l'environnement de référence** : c'est lui que le pipeline CI-SEC-CD
+construit, scanne, déploie et teste en E2E. `dev` reste disponible pour les essais manuels.
+DNS et certificats TLS managés sont actifs (`api-staging` / `dash-staging.menal-sarl.com`).
+
+Le pipeline est **vert de bout en bout** et ses portes ne sont pas décoratives : elles ont
+bloqué trois défauts réels le 2 août (§8.2). La chaîne de données SIEM a été auditée maillon
+par maillon et corrigée là où elle mentait (§8.3). Le principe cardinal Zero Trust du HLD §5
+est désormais **tenu et vérifiable** (§8.4) — c'était le dernier écart majeur entre la
+documentation et la réalité.
 
 ## 2. Travaux de cette session (chronologie, avec preuve)
 
@@ -201,3 +206,135 @@ ne devrait écrire que dans `alert_enrichment` (lecture seule sur `detections`/`
 Non corrigé intentionnellement : resserrer l'IAM (rôles par table plutôt que par projet) est un
 changement IAM à valider avant application, pas quelque chose à modifier en cours de session
 sans confirmation explicite.
+
+---
+
+# §8. État courant — 2 août 2026 (fait foi)
+
+## 8.1 staging, environnement de référence du CI-SEC-CD
+
+`ci.yml` est entièrement piloté par les **variables GitHub du dépôt** : changer
+d'environnement cible se fait en changeant les variables, pas le workflow.
+
+Chaîne complète, vérifiée verte sur staging :
+
+| Étape | État |
+|---|---|
+| Gitleaks (secrets) + Semgrep (SAST) | bloquants |
+| Tests unitaires API (29) | verts |
+| Build + Trivy CRITICAL — image API | bloquant |
+| Chargement des CVE dans BigQuery (boucle F6) | alimente `cve_findings` |
+| Déploiement API + smoke test par domaine réel | vert |
+| Build + Trivy CRITICAL — image dashboard | **nouveau job** : le dashboard n'était jamais construit par le CI |
+| Déploiement dashboard + smoke test | vert |
+| E2E (10 tests rapides) | 10/10 |
+| `terraform.yml` : fmt, validate, scan IaC Trivy | vert |
+
+`terraform.yml` est la **première marche du pipeline infra F7** du LLD §8. Restent à
+automatiser `plan` et `apply` : ils exigent d'élargir les droits de lecture de `sa-cicd`,
+décision IAM à valider explicitement.
+
+Les workflows morts `deploy.yml` / `deploy-dashboard.yml` ont été supprimés.
+
+## 8.2 Trois défauts réels interceptés par les portes du pipeline
+
+1. **Gitleaks ne scannait rien.** Le clone superficiel par défaut ne contient pas la
+   révision de départ du `push` : le scan échouait en « unknown revision » après avoir
+   parcouru 0 octet. Corrigé par `fetch-depth: 0`.
+2. **Trivy a bloqué une CVE CRITICAL réelle** dans l'image du dashboard : `node-tar` 6.2.1
+   (déni de service par bombe gzip), embarqué par le `npm` de `node:20-alpine`. Le runtime
+   n'exécute que `node server.js` : npm, corepack et yarn ont été retirés de l'image finale.
+3. **Le géo-blocage rendait le smoke test aveugle.** Le dashboard répondait 403 aux runners
+   GitHub, qui n'ont pas de région fixe. `GET /` et `GET /login` (le mur d'authentification,
+   sans donnée) sont exemptés comme l'était déjà `/health` ; `POST /api/login` reste
+   géo-bloqué et limité au bord.
+
+## 8.3 Chaîne SIEM auditée maillon par maillon, et corrigée
+
+Trois audits (flux logiques, performance/coûts, disponibilité/résilience) menés sur staging,
+chaque constat vérifié par la mesure.
+
+| Défaut | Mesure avant | Après |
+|---|---|---|
+| `api_metrics` sous-comptait | 4 requêtes stockées pour 73 réelles (−81 % sur 24 h, −62 % sur les blocages WAF) | stocké = réel sur toutes les heures ; historique recalculé (63 lignes) |
+| `enrich-job` bouclait | 349 lignes pour 38 détections distinctes (jusqu'à 21 doublons) | une ligne par détection ; le modèle n'est plus réinvoqué à vide |
+| Cloud Workflow en panne | **60 exécutions FAILED d'affilée depuis plus de 2 jours**, sans que personne en soit informé | supprimé (voir ci-dessous) |
+| Échecs silencieux du job | sortie en code 0 même ml-embed injoignable ; un échec BigQuery s'écrivait `status="unmapped"`, indiscernable d'un vrai non-appariement | les erreurs remontent, la tâche échoue, `max_retries` redevient opérant |
+| R4 invisible dans la matrice | T1046 tagué TA0043 alors que MITRE le classe en Discovery (TA0007) : l'intersection par tactique le supprimait | R4 compte dans Discovery |
+
+**Le Cloud Workflow a été supprimé, pas réparé.** Son heredoc n'interpolait pas le nom de
+projet et BigQuery recevait un nom de table littéral. Le réparer aurait restauré une double
+écriture sans déduplication sur `api_metrics` et `security_events`, tables désormais tenues
+par les requêtes planifiées. Ses bindings IAM sont conservés : `sa-pipeline` en a besoin.
+
+**Alerting — l'angle mort qui a laissé passer ces 60 échecs.** Aucun traitement par lots
+n'était surveillé ; seule l'API l'était. Trois politiques ajoutées : job d'enrichissement en
+échec, requête planifiée BigQuery en échec, ingestion à l'arrêt.
+
+Amélioration de lisibilité du résultat ML : sous le seuil de similarité, la technique et le
+score du meilleur candidat sont conservés au lieu d'un `0.0` codé en dur. « Meilleur
+candidat T1110 à 0,58, sous le seuil de 0,60 » permet de juger si le seuil est bien réglé ;
+un zéro ne dit rien et se confond avec une absence de mesure.
+
+## 8.4 Principe cardinal Zero Trust : tenu (T4 levé)
+
+> « Un moteur de détection ne doit jamais pouvoir modifier les preuves qu'il analyse »
+> — HLD §5, LLD §2.1
+
+`enrich-job` partageait `sa-pipeline` avec les requêtes planifiées Sigma, qui elles
+**doivent** écrire dans `detections` : le job en héritait le droit d'écrire sur les preuves
+mêmes qu'il enrichit. Restreindre `sa-pipeline` était impossible sans casser R1–R7 — seule
+une identité dédiée tient le principe (c'est le design à 6 comptes de service du LLD §2.1).
+
+`sa-enrich-job`, droits vérifiés sur staging après application :
+
+| Portée | Rôle |
+|---|---|
+| projet | `bigquery.jobUser`, `logging.logWriter` — **aucun accès aux données** |
+| dataset `menal_security_staging` | `READER` |
+| table `alert_enrichment` | `dataEditor` |
+
+La granularité **table** est le cœur de la mesure : c'est la seule portée qui distingue
+« écrire son résultat » de « réécrire les preuves ». Validé en exécutant le job sous cette
+identité.
+
+T4 et T5 testaient la mauvaise identité : joués avec les credentials de l'opérateur, ils
+échouaient sur un accès légitimement autorisé. Ils usurpent désormais `sa-enrich-job` et
+s'ignorent proprement quand l'usurpation est refusée — ne pas pouvoir usurper est la posture
+attendue d'un poste d'opérateur, pas une anomalie.
+
+## 8.5 Performance, coûts, disponibilité
+
+- **Facturation Cloud Run à la requête** (`cpu_idle`) sur les trois services. Ils tournaient
+  en « CPU toujours alloué », réglage hérité jamais déclaré, facturés à l'instance 24/7 alors
+  qu'aucun ne traite quoi que ce soit hors requête : environ 60 % de la facture staging sans
+  contrepartie.
+- **Démarrage à froid du dashboard** : 11,5 s mesurés au premier accès, sur un écran SOC où
+  l'on arrive précisément quand quelque chose se passe. Avec une instance chaude : 1,09 s
+  puis ~260 ms.
+- **Versioning activé sur `gs://menal-tf-state`** (bucket d'amorçage, hors IaC) : un état
+  Terraform corrompu ou supprimé était irrécupérable.
+- **Anomalie `scheduler_token_creator` résolue** — elle figurait en §4.9 comme inexpliquée.
+  Un `data "google_project"` interne au module `ml-pipeline`, différé par le `depends_on` du
+  module dès qu'une dépendance avait un changement en attente, rendait `member` inconnu et
+  forçait un remplacement fantôme à chaque plan. Le numéro de projet est désormais passé en
+  variable depuis la racine.
+- **Frontière F3/F7 étendue au pipeline ML** : `ignore_changes` sur l'image du job et du
+  service. Un `apply` a failli faire retomber le correctif de déduplication sur le tag
+  mutable `:latest`.
+
+## 8.6 Reste à traiter (assumé, chiffré)
+
+| # | Sujet | Élément de décision |
+|---|---|---|
+| 1 | **Cloud SQL zonal** (`db-f1-micro`, `europe-west1-b`, sans réplica) | Seul SPOF structurel : une panne de zone arrête l'API. Sauvegardes et PITR (7 j) sont en place et corrects. Passer en `REGIONAL` est une décision coût/risque à assumer explicitement |
+| 2 | Requêtes planifiées : ~78 Go/jour facturés pour un dataset de 24 Mo | Plus de 99 % sont du minimum forfaitaire de 10 Mo par table référencée, multiplié par 3 456 exécutions/jour. Fusionner les 7 règles Sigma en une requête ramènerait le poste sous le palier gratuit |
+| 3 | Rétention 90 j des partitions (LLD §5) | Toujours commentée dans `modules/bigquery` (limite d'un binaire Terraform 32 bits). Coût nul aujourd'hui, mais croissance non bornée |
+| 4 | `plan`/`apply` Terraform automatisés (F7 complet) | Exige d'élargir les droits de lecture de `sa-cicd` — décision IAM |
+| 5 | `scripts/hotfix.sh` contourne le CI | Moins nécessaire depuis que le CI construit le dashboard ; à supprimer une fois `ml-embed` et `enrich-job` intégrés au pipeline |
+| 6 | Canal d'alerte unique (email personnel, non vérifié) | L'alerting est lui-même un point unique de défaillance |
+| 7 | Tests sur `siem.py` / `bigquery.py` / pages dashboard | Non couverts |
+| 8 | Trois tuiles de la page d'accueil | « Requêtes totales », « Taux d'erreur » et « Échecs auth » sont calculées sur les 200 derniers journaux d'audit et plafonnent donc structurellement à 200, alors que `overview.total_requests` est récupéré sans être affiché |
+| 9 | Priorisation des CVE par technique observée | `mitre_technique` est NULL sur toutes les lignes (choix documenté : il n'existe pas de correspondance officielle CVE→technique). Le mécanisme annoncé sur la page ne peut donc jamais se déclencher |
+| 10 | `api/dashboard/` (Streamlit) | Code mort, plus déployé, non supprimé |
+| 11 | Environnement `prod` et projet `menal-ops` | `terraform/environments/prod/` est vide ; la chaîne dev→staging→prod du DoD n'est pas atteignable en l'état |

@@ -3,6 +3,12 @@
 **Document : High-Level Design (conception de haut niveau) — v1.0 — Juillet 2026**
 **Projet : PFE — Hébergement et sécurisation des applications MENAL (application exemple : ELSON)**
 
+> **Ce document décrit la cible.** Les écarts vérifiés entre cette conception et le système
+> réellement déployé sont recensés dans [`06_ECARTS_IMPLEMENTATION.md`](06_ECARTS_IMPLEMENTATION.md),
+> et l'état courant de l'environnement de référence (`staging`) dans
+> [`STATUT_DEV.md`](STATUT_DEV.md) §8. En cas de divergence, ces deux documents font foi sur
+> ce qui existe ; celui-ci fait foi sur ce qui est visé.
+
 ---
 
 ## 1. Objet, périmètre et hypothèses

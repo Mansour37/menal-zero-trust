@@ -5,6 +5,12 @@ Ce document détaille chaque couche du HLD. Chaque section suit le même gabarit
 **Composants → Configuration → Contrôles Zero Trust → Interfaces → Point de vigilance.**
 Les identifiants de flux (F1–F6) renvoient au HLD §4.1.
 
+> **Ce document décrit la cible.** Les écarts vérifiés entre cette conception et le système
+> réellement déployé sont recensés dans [`06_ECARTS_IMPLEMENTATION.md`](06_ECARTS_IMPLEMENTATION.md),
+> et l'état courant de l'environnement de référence (`staging`) dans
+> [`STATUT_DEV.md`](STATUT_DEV.md) §8. En cas de divergence, ces deux documents font foi sur
+> ce qui existe ; celui-ci fait foi sur ce qui est visé.
+
 ---
 
 ## 0. Conventions
