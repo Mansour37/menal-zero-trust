@@ -176,13 +176,14 @@ module "audit" {
 # ── Phase 5 : Pipeline de données ──────────────────────────────────────────
 
 module "bigquery" {
-  source                         = "../../modules/bigquery"
-  project_id                     = var.project_id
-  region                         = var.region
-  environment                    = var.environment
-  pipeline_service_account_email = module.iam.pipeline_service_account_email
-  api_service_account_email      = module.iam.api_service_account_email
-  cicd_service_account_email     = module.iam.cicd_service_account_email
+  source                           = "../../modules/bigquery"
+  project_id                       = var.project_id
+  region                           = var.region
+  environment                      = var.environment
+  pipeline_service_account_email   = module.iam.pipeline_service_account_email
+  api_service_account_email        = module.iam.api_service_account_email
+  cicd_service_account_email       = module.iam.cicd_service_account_email
+  enrich_job_service_account_email = module.iam.enrich_job_service_account_email
 
   depends_on = [google_project_service.apis, module.iam]
 }
@@ -239,6 +240,7 @@ module "ml_pipeline" {
   vpc_connector_id    = module.vpc.vpc_connector_id
   bigquery_dataset_id = module.bigquery.dataset_id
   pipeline_sa_email   = module.iam.pipeline_service_account_email
+  enrich_job_sa_email = module.iam.enrich_job_service_account_email
   project_number      = data.google_project.current.number
   ml_embed_image      = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-ml-embed:latest"
   enrich_job_image    = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-enrich-job:latest"

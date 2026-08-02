@@ -54,6 +54,11 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       resources {
+        # cpu_idle : facturation A LA REQUETE. Les trois services tournaient en
+        # "CPU toujours alloue" (herite, jamais declare) — factures a l instance
+        # 24/7 alors qu aucun ne fait de traitement hors requete. Mesure du
+        # 02/08 : ~60 % de la facture staging, sans contrepartie.
+        cpu_idle = true
         limits = {
           cpu    = var.cpu
           memory = var.memory

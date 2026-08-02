@@ -27,3 +27,8 @@ variable "cicd_service_account_email" {
   description = "Email du Service Account sa-cicd (charge les rapports Trivy dans cve_findings, boucle F6)"
   type        = string
 }
+
+variable "enrich_job_service_account_email" {
+  description = "Email du SA du job d enrichissement ML : lecture du dataset, ecriture sur la SEULE table alert_enrichment (principe cardinal Zero Trust, test E2E T4)"
+  type        = string
+}

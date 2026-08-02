@@ -135,3 +135,26 @@ resource "google_service_account_iam_member" "cicd_wif" {
 # principalSet WIF — cela permettrait a GitHub Actions d impersonner n importe
 # quel SA du projet. Le pipeline s authentifie comme sa-cicd (workloadIdentityUser
 # ci-dessus) qui ne peut agir que comme sa-api (binding cible cicd_act_as_api).
+
+# ── sa-enrich-job : identite dediee au moteur d enrichissement ML ─────────────
+# Principe cardinal du HLD §5 / LLD §2.1 : « un moteur de detection ne doit
+# jamais pouvoir modifier les preuves qu il analyse ». Le job partageait
+# sa-pipeline avec les requetes planifiees Sigma, qui doivent ecrire dans
+# `detections` — il en heritait donc le droit d ecriture sur les preuves
+# memes qu il enrichit. C est l echec reel et documente du test E2E T4.
+#
+# Separer les identites est la SEULE facon de tenir ce principe : restreindre
+# sa-pipeline aurait casse les regles R1-R7 qui, elles, doivent ecrire.
+# Ses droits sont accordes plus bas, au plus juste (module bigquery) :
+# lecture du dataset, ecriture sur la seule table alert_enrichment.
+resource "google_service_account" "enrich_job" {
+  account_id   = "sa-enrich-job"
+  display_name = "ML Enrichment Job Service Account"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "enrich_job_logging_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.enrich_job.email}"
+}

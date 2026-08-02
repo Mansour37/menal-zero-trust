@@ -254,3 +254,33 @@ resource "google_bigquery_table" "api_metrics" {
     { name = "waf_blocks", type = "INTEGER", mode = "REQUIRED", description = "Requetes bloquees par Cloud Armor" }
   ])
 }
+
+# ── IAM : sa-enrich-job — lecture du dataset, ecriture sur alert_enrichment ───
+# Materialise le principe cardinal du HLD §5 : le moteur d enrichissement lit
+# les detections mais ne peut pas les modifier. Le droit d ecriture est accorde
+# a la GRANULARITE DE LA TABLE (et non du dataset) : c est la seule portee qui
+# distingue « ecrire son resultat » de « reecrire les preuves ». Verifie par le
+# test E2E T4, qui tente un INSERT dans detections avec cette identite.
+resource "google_bigquery_dataset_iam_member" "enrich_job_viewer" {
+  dataset_id = google_bigquery_dataset.security.dataset_id
+  role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${var.enrich_job_service_account_email}"
+  project    = var.project_id
+}
+
+resource "google_bigquery_table_iam_member" "enrich_job_writes_enrichment" {
+  dataset_id = google_bigquery_dataset.security.dataset_id
+  table_id   = google_bigquery_table.alert_enrichment.table_id
+  role       = "roles/bigquery.dataEditor"
+  member     = "serviceAccount:${var.enrich_job_service_account_email}"
+  project    = var.project_id
+}
+
+# Necessaire pour executer les requetes (VECTOR_SEARCH, lecture des detections).
+# jobUser ne donne aucun acces aux donnees : il autorise seulement a lancer un
+# job, les droits de lecture/ecriture restant ceux definis ci-dessus.
+resource "google_project_iam_member" "enrich_job_bq_job_user" {
+  project = var.project_id
+  role    = "roles/bigquery.jobUser"
+  member  = "serviceAccount:${var.enrich_job_service_account_email}"
+}

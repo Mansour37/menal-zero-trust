@@ -22,3 +22,8 @@ output "wif_provider_name" {
   value       = google_iam_workload_identity_pool_provider.github.name
   description = "WIF provider name for GitHub Actions"
 }
+
+output "enrich_job_service_account_email" {
+  value       = google_service_account.enrich_job.email
+  description = "Email du SA dedie au Cloud Run Job d enrichissement ML (droits d ecriture limites a alert_enrichment)"
+}

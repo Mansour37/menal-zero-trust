@@ -55,7 +55,12 @@ resource "google_cloud_run_v2_service" "dashboard" {
     timeout         = "300s"
 
     scaling {
-      min_instance_count = 0
+      # 1 instance chaude : le premier acces mesure a 11,5 s (demarrage a
+      # froid) sur un tableau de bord SOC, ou l on arrive justement quand
+      # quelque chose se passe. Avec cpu_idle ci-dessous, une instance au
+      # repos est facturee au tarif idle, sans commune mesure avec le cout
+      # d une instance CPU-toujours-alloue.
+      min_instance_count = 1
       max_instance_count = 2
     }
 
@@ -89,6 +94,11 @@ resource "google_cloud_run_v2_service" "dashboard" {
       }
 
       resources {
+        # cpu_idle : facturation A LA REQUETE. Les trois services tournaient en
+        # "CPU toujours alloue" (herite, jamais declare) — factures a l instance
+        # 24/7 alors qu aucun ne fait de traitement hors requete. Mesure du
+        # 02/08 : ~60 % de la facture staging, sans contrepartie.
+        cpu_idle = true
         limits = {
           cpu    = "1"
           memory = "512Mi"

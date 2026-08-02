@@ -74,6 +74,10 @@ resource "google_cloud_run_v2_service" "ml_embed" {
       }
 
       resources {
+        # cpu_idle : facturation a la requete (voir modules/cloud-run).
+        # Ce service est le plus coûteux des trois : appele 4 fois par heure,
+        # il restait facture en continu.
+        cpu_idle = true
         # 2 Gi : le chargement du model.onnx fp32 (~440 Mo) pique a ~900 Mo
         # (octets du fichier + copie des poids dans l'arena onnxruntime).
         limits = {
@@ -126,7 +130,7 @@ resource "google_cloud_run_v2_job" "enrich" {
     task_count = 1
 
     template {
-      service_account = var.pipeline_sa_email
+      service_account = var.enrich_job_sa_email
       timeout         = "600s"
       max_retries     = 2
 
@@ -191,17 +195,17 @@ resource "google_cloud_run_v2_job" "enrich" {
   }
 }
 
-# ── IAM : ml-embed peut etre invoque par enrich-job (via pipeline SA) ─────
+# ── IAM : ml-embed peut etre invoque par le job d enrichissement ────────
 resource "google_cloud_run_v2_service_iam_member" "ml_embed_invoker" {
   project  = var.project_id
   location = var.region
   name     = google_cloud_run_v2_service.ml_embed.name
   role     = "roles/run.invoker"
-  member   = "serviceAccount:${var.pipeline_sa_email}"
+  member   = "serviceAccount:${var.enrich_job_sa_email}"
 }
 
-# ── IAM : enrich-job peut ecrire dans le dataset BQ (via pipeline SA) ─────
-# L IAM dataEditor est deja accordee au pipeline SA dans le module BQ
+# ── IAM BigQuery du job : accordee dans le module bigquery ──────────────
+# Lecture du dataset + ecriture sur la SEULE table alert_enrichment.
 
 # ── Scheduler : declenche enrich-job toutes les 15 min ──────────────────────
 resource "google_cloud_scheduler_job" "enrich_trigger" {
@@ -209,8 +213,11 @@ resource "google_cloud_scheduler_job" "enrich_trigger" {
   project     = var.project_id
   region      = var.region
   description = "Declenche enrich-job toutes les 15 min"
-  schedule    = "*/15 * * * *"
-  time_zone   = "UTC"
+  # Le declencheur reste sa-pipeline : il ne fait qu appeler l API run, et
+  # l identite sous laquelle la tache s execute est celle du job lui-meme
+  # (sa-enrich-job) — declencher n est pas s executer en tant que.
+  schedule  = "*/15 * * * *"
+  time_zone = "UTC"
 
   http_target {
     http_method = "POST"
