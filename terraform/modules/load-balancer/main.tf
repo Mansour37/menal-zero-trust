@@ -40,20 +40,25 @@ resource "google_compute_security_policy" "api_waf" {
   # l entreprise et de ses utilisateurs reels), bloquer le reste.
   # Les IP admin (var.admin_ip_ranges) sont exemptees ICI via admin_exempt_expr :
   # elles sautent le geo-block mais restent soumises au WAF et au rate-limit.
-  # /health est explicitement exempte : c est un endpoint de liveness sans
-  # donnee sensible (status/service/version uniquement), et les moniteurs
-  # d uptime / smoke tests CI (GitHub Actions n a pas de region fixe et n est
-  # pas dans l allowlist) doivent pouvoir le verifier depuis n importe ou.
-  # Le reste de l API et le dashboard restent geo-bloques sans exception.
+  # Exemptions de liveness (meme logique que pour les IP admin : elles sautent
+  # le geo-block mais restent soumises aux regles OWASP et au rate-limit) :
+  #   - /health (API)          : endpoint de liveness sans donnee sensible ;
+  #   - GET / et GET /login    : mur d authentification du dashboard, sans
+  #     donnee. Les moniteurs d uptime et les smoke/E2E du CI (GitHub Actions
+  #     n a pas de region fixe) doivent pouvoir verifier que le dashboard SERT
+  #     reellement sa page de login — un 403 geo-block rendrait le smoke test
+  #     aveugle a une panne reelle. Le POST /api/login, lui, reste geo-bloque
+  #     ET rate-limite au bord (regle 1450) : voir le mur, pas le franchir.
+  # Le reste de l API et du dashboard reste geo-bloque sans exception.
   rule {
     action   = "deny(403)"
     priority = 410
     match {
       expr {
-        expression = "request.path != '/health' && !origin.region_code.matches('^(?:FR|DE|ES|IT|NL|BE|PT|SE|DK|FI|AT|IE|PL|CZ|GR|HU|RO|BG|SK|SI|LT|LV|EE|HR|LU|MT|CY|TN|DZ|MA|MR)$') && !inIpRange(origin.ip, '10.0.0.0/8')${local.admin_exempt_expr}"
+        expression = "!(request.path == '/health' || (request.method == 'GET' && (request.path == '/' || request.path == '/login'))) && !origin.region_code.matches('^(?:FR|DE|ES|IT|NL|BE|PT|SE|DK|FI|AT|IE|PL|CZ|GR|HU|RO|BG|SK|SI|LT|LV|EE|HR|LU|MT|CY|TN|DZ|MA|MR)$') && !inIpRange(origin.ip, '10.0.0.0/8')${local.admin_exempt_expr}"
       }
     }
-    description = "Geo-block (sauf /health, VPC et IP admin) : only EU + Maghreb + Mauritania allowed"
+    description = "Geo-block (sauf /health, GET / et /login, VPC, IP admin) : only EU + Maghreb + Mauritania allowed"
   }
 
   # OWASP A03 : Cross-Site Scripting (XSS)
