@@ -117,17 +117,26 @@ demandent un arbitrage, pas du travail technique.
 
 | # | Manque | Nature |
 |---|---|---|
-| 1 | **Aucun SLO chiffré et mesuré** | On ne peut pas s'engager sur une disponibilité qu'on ne mesure pas. Des cibles réalistes ont été proposées (disponibilité 99 %, latence p95, fraîcheur des détections) ; il reste à les instrumenter et à observer une période de référence |
+| 1 | ~~Aucun SLO chiffré~~ — **fait** le 03/08 | Disponibilité 99 % et latence 95 % < 1 s instrumentées en Cloud Monitoring, plus un SLI de retard d'enrichissement. Reste à observer une période de référence complète avant de s'engager sur les chiffres |
 | 2 | **Cloud SQL zonal** | Une panne de zone arrête le service. Décision coût/risque **à décider** avant tout engagement |
-| 3 | **Aucune restauration testée** | Les sauvegardes existent ; leur restauration n'a jamais été exécutée. Une sauvegarde non testée est une hypothèse, pas une garantie |
-| 4 | **Aucun runbook d'incident** | Ni procédure de restauration, ni retour arrière documenté, ni astreinte |
+| 3 | ~~Aucune restauration testée~~ — **fait** le 03/08 | Restauration réellement exécutée : **RTO 32 min 45 s**, **RPO 0** au point demandé, coupure vérifiée ligne à ligne. Voir `08_RUNBOOK.md` §3 |
+| 4 | ~~Aucun runbook~~ — **fait** le 03/08 | `08_RUNBOOK.md` : retour arrière, panne de base, restauration, réponse aux dix alertes, diagnostic ML et requêtes planifiées. **L'astreinte reste à désigner** |
 | 5 | **Canal d'alerte unique**, adresse personnelle non vérifiée | L'alerting est lui-même un point unique de défaillance |
 | 6 | **Pas d'environnement de production** | `terraform/environments/prod/` est vide ; la chaîne dev→staging→prod n'a jamais été déroulée |
 | 7 | Isolation inter-environnements de la CI incomplète | La condition d'accès fédéré porte sur le dépôt, pas sur la branche ni le tag : toute branche obtient les mêmes droits |
 
 ### Recommandation
 
-L'infrastructure est **techniquement saine et démontrable**. Les points 1, 3 et 4 sont les
-moins coûteux et les plus structurants : ils transforment « ça marche » en « on sait ce qui
-se passe quand ça ne marche plus », qui est exactement la question qu'un premier client
-posera. Le point 2 est un arbitrage à assumer explicitement, pas à laisser par défaut.
+Les points 1, 3 et 4 sont traités depuis le 3 août : les SLO sont instrumentés, la
+restauration a été **réellement exécutée** (RTO 32 min 45 s, RPO 0) et le runbook existe.
+
+Ce qui reste avant un engagement contractuel, par ordre d'importance :
+
+1. **Cloud SQL zonal** (point 2) — arbitrage coût/risque à assumer explicitement. Avec le
+   RTO désormais connu, la question est chiffrée : accepte-t-on ~45 min à 1 h d'arrêt en cas
+   de panne de zone, ou paie-t-on la haute disponibilité ?
+2. **Canal d'alerte unique** (point 5), sur une adresse personnelle non vérifiée, et
+   **aucune astreinte désignée** — le runbook dit quoi faire, pas qui le fera.
+3. **Observer une période de référence** sur les SLO avant de s'engager sur leurs valeurs :
+   une cible sans historique reste une intention.
+4. Les points 6 et 7 (pas de production, isolation CI incomplète) restent ouverts.

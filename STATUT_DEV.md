@@ -327,7 +327,7 @@ attendue d'un poste d'opérateur, pas une anomalie.
 
 | # | Sujet | Élément de décision |
 |---|---|---|
-| 1 | **Cloud SQL zonal** (`db-f1-micro`, `europe-west1-b`, sans réplica) | Seul SPOF structurel : une panne de zone arrête l'API. Sauvegardes et PITR (7 j) sont en place et corrects. Passer en `REGIONAL` est une décision coût/risque à assumer explicitement |
+| 1 | **Cloud SQL zonal** (`db-f1-micro`, `europe-west1-b`, sans réplica) | Seul SPOF structurel : une panne de zone arrête l'API. Sauvegardes et PITR validés par un test réel (§8.7). Passer en `REGIONAL` est une décision coût/risque à assumer explicitement |
 | 2 | Requêtes planifiées : ~78 Go/jour facturés pour un dataset de 24 Mo | Plus de 99 % sont du minimum forfaitaire de 10 Mo par table référencée, multiplié par 3 456 exécutions/jour. Fusionner les 7 règles Sigma en une requête ramènerait le poste sous le palier gratuit |
 | 3 | Rétention 90 j des partitions (LLD §5) | Toujours commentée dans `modules/bigquery` (limite d'un binaire Terraform 32 bits). Coût nul aujourd'hui, mais croissance non bornée |
 | 4 | `plan`/`apply` Terraform automatisés (F7 complet) | Exige d'élargir les droits de lecture de `sa-cicd` — décision IAM |
@@ -338,3 +338,49 @@ attendue d'un poste d'opérateur, pas une anomalie.
 | 9 | Priorisation des CVE par technique observée | `mitre_technique` est NULL sur toutes les lignes (choix documenté : il n'existe pas de correspondance officielle CVE→technique). Le mécanisme annoncé sur la page ne peut donc jamais se déclencher |
 | 10 | `api/dashboard/` (Streamlit) | Code mort, plus déployé, non supprimé |
 | 11 | Environnement `prod` et projet `menal-ops` | `terraform/environments/prod/` est vide ; la chaîne dev→staging→prod du DoD n'est pas atteignable en l'état |
+
+## 8.7 SLO, restauration testée et runbook (3 août 2026)
+
+Les trois manques qui empêchaient un engagement contractuel sont traités.
+
+**SLO mesurés** — `terraform/modules/monitoring`. Deux objectifs sur 30 jours glissants,
+cibles tenables pour l'architecture réelle plutôt que flatteuses : disponibilité API 99 %
+(budget d'erreur ~7 h 18) et latence 95 % sous 1 s. Les `4xx` sont exclus du numérateur de
+disponibilité — compter un `401` comme une indisponibilité ferait chuter le SLO à chaque
+tentative d'intrusion, c'est-à-dire précisément quand la plateforme fait son travail.
+
+S'y ajoute un SLI de **retard d'enrichissement** : `enrich-job` émet à chaque cycle, en JSON
+sur sa sortie standard, le nombre de détections en attente et l'âge de la plus ancienne ;
+deux métriques de journal l'extraient, et une alerte se déclenche au-delà de 30 minutes.
+C'est le plus rentable des trois parce qu'il mesure le **résultat** et non un composant :
+une panne de ml-embed, une erreur BigQuery ou un déclencheur muet produisent le même
+symptôme, et cet indicateur unique les rend toutes visibles — y compris les pannes dont on
+n'a pas anticipé la forme.
+
+**Restauration réellement exécutée**, pas documentée d'après le fournisseur :
+
+| Grandeur | Valeur mesurée |
+|---|---|
+| RTO (durée de restauration) | **32 min 45 s** (clone PITR, `db-f1-micro`, 10 Go) |
+| RPO au point demandé | **0** — 314 lignes attendues, 314 restaurées, 0 manquante, 0 en trop |
+| Coupure au bon instant | Vérifiée : les 3 écritures postérieures au point de restauration sont correctement absentes |
+
+Méthode : clone vers une instance **neuve** (jamais par-dessus l'originale, qui reste une
+pièce à conviction tant que la cause n'est pas comprise), vérification du contenu par export
+via l'API d'administration — sans ajouter d'IP publique, ce qui aurait exposé une copie
+complète des données au pire moment. Instance de test et bucket supprimés après contrôle.
+
+Un enseignement du test mérite d'être noté : le premier marqueur choisi passait par `/health`,
+qui est explicitement exclu de l'audit applicatif — il n'écrivait donc rien en base et ne
+prouvait rien. Le contrôle a été refait sur un point d'accès réellement audité. Un test de
+restauration qui ne vérifie pas *quelles* données sont revenues ne teste que la mécanique.
+
+**Runbook** — `08_RUNBOOK.md`. Procédures avec commandes exactes et durées observées : retour
+arrière par révision, panne de base, restauration, réponse aux dix alertes, diagnostic du
+pipeline ML et des requêtes planifiées. Il consigne aussi ce qu'il ne couvre pas (bascule de
+zone impossible, pas de sauvegarde BigQuery, pas de procédure de compromission, pas
+d'astreinte désignée) : un runbook qui prétend tout couvrir se fait démentir au premier
+incident qu'il n'avait pas prévu.
+
+Le point d'alerte le plus important à traiter reste le **canal unique** sur une adresse
+personnelle non vérifiée — l'alerting est aujourd'hui son propre point unique de défaillance.
