@@ -366,3 +366,183 @@ resource "google_monitoring_alert_policy" "ingestion_stalled" {
     auto_close = "3600s"
   }
 }
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SLO — objectifs de niveau de service
+# ═══════════════════════════════════════════════════════════════════════════
+# Le HLD §8 annonçait « best effort » sans chiffre. Un engagement qu on ne
+# mesure pas n en est pas un : ces SLO existent pour qu on puisse dire, avec
+# une donnee et non une impression, si la plateforme tient sa promesse.
+#
+# Cibles volontairement tenables pour l architecture reelle (mono-region,
+# Cloud SQL zonal, mise a l echelle a zero) plutot que flatteuses. Annoncer
+# 99,9 % sur une base de donnees sans haute disponibilite serait un engagement
+# que l infrastructure ne peut pas honorer.
+
+resource "google_monitoring_custom_service" "platform" {
+  service_id   = "menal-platform-${var.environment}"
+  display_name = "Plateforme MENAL (${var.environment})"
+  project      = var.project_id
+}
+
+# ── SLO 1 : disponibilite de l API — 99 % sur 30 jours ────────────────────
+# Budget d erreur : ~7 h 18 par periode de 30 jours.
+resource "google_monitoring_slo" "api_availability" {
+  service      = google_monitoring_custom_service.platform.service_id
+  slo_id       = "api-availability-${var.environment}"
+  display_name = "Disponibilite API — 99 % / 30 j"
+  project      = var.project_id
+
+  goal                = 0.99
+  rolling_period_days = 30
+
+  request_based_sli {
+    good_total_ratio {
+      total_service_filter = join(" AND ", [
+        "metric.type=\"run.googleapis.com/request_count\"",
+        "resource.type=\"cloud_run_revision\"",
+        "resource.label.\"service_name\"=\"menal-api-${var.environment}\"",
+      ])
+      # « Bon » = tout sauf 5xx. Les 4xx sont exclus du numerateur car ils
+      # signalent une requete invalide ou non autorisee : compter un 401 comme
+      # une indisponibilite ferait chuter le SLO a chaque tentative d intrusion,
+      # c est-a-dire precisement quand la plateforme fait son travail.
+      good_service_filter = join(" AND ", [
+        "metric.type=\"run.googleapis.com/request_count\"",
+        "resource.type=\"cloud_run_revision\"",
+        "resource.label.\"service_name\"=\"menal-api-${var.environment}\"",
+        "metric.label.\"response_code_class\"!=\"5xx\"",
+      ])
+    }
+  }
+}
+
+# ── SLO 2 : latence API — 95 % des requetes sous 1 s ──────────────────────
+# 1 s et non 800 ms : avec min_instance_count = 0 sur l API, les demarrages a
+# froid (~2 s mesures) entrent dans la distribution. Un seuil que l on sait
+# deja intenable ne mesure rien — il apprend seulement a ignorer l alerte.
+# Passer l API a une instance chaude permettrait de resserrer a 500 ms.
+resource "google_monitoring_slo" "api_latency" {
+  service      = google_monitoring_custom_service.platform.service_id
+  slo_id       = "api-latency-${var.environment}"
+  display_name = "Latence API — 95 % < 1 s / 30 j"
+  project      = var.project_id
+
+  goal                = 0.95
+  rolling_period_days = 30
+
+  request_based_sli {
+    distribution_cut {
+      distribution_filter = join(" AND ", [
+        "metric.type=\"run.googleapis.com/request_latencies\"",
+        "resource.type=\"cloud_run_revision\"",
+        "resource.label.\"service_name\"=\"menal-api-${var.environment}\"",
+      ])
+      range {
+        max = 1000 # millisecondes
+      }
+    }
+  }
+}
+
+# ── SLI 3 : retard d enrichissement ───────────────────────────────────────
+# Mesure le RESULTAT de la chaine L6, pas ses composants. Une panne de
+# ml-embed, une erreur BigQuery ou un declencheur muet produisent le meme
+# symptome — des detections qui restent sans enrichissement — et cet
+# indicateur unique les rend toutes visibles, y compris les pannes dont on n a
+# pas anticipe la forme. Emis par api/enrich-job/main.py (emit_backlog_metric).
+resource "google_logging_metric" "enrichment_backlog" {
+  name    = "menal-enrichment-backlog-${var.environment}"
+  project = var.project_id
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_job\"",
+    "resource.labels.job_name=\"menal-enrich-job-${var.environment}\"",
+    "jsonPayload.message=\"enrichment_backlog\"",
+  ])
+
+  # DISTRIBUTION et non GAUGE : Cloud Logging n autorise un value_extractor
+  # que sur une distribution. Chaque execution du job depose une observation ;
+  # on aligne ensuite en ALIGN_MAX pour retrouver la valeur du dernier cycle.
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Detections en attente d enrichissement"
+  }
+
+  value_extractor = "EXTRACT(jsonPayload.menal_backlog)"
+
+  bucket_options {
+    exponential_buckets {
+      num_finite_buckets = 16
+      growth_factor      = 2
+      scale              = 1
+    }
+  }
+}
+
+resource "google_logging_metric" "enrichment_oldest_age" {
+  name    = "menal-enrichment-oldest-age-${var.environment}"
+  project = var.project_id
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_job\"",
+    "resource.labels.job_name=\"menal-enrich-job-${var.environment}\"",
+    "jsonPayload.message=\"enrichment_backlog\"",
+  ])
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "s"
+    display_name = "Age de la plus ancienne detection non enrichie"
+  }
+
+  value_extractor = "EXTRACT(jsonPayload.menal_oldest_pending_age_s)"
+
+  # Bornes de 1 s a ~9 h : couvre le cycle nominal (< 15 min) comme une panne
+  # prolongee, sans quoi tout ce qui depasse tomberait dans un seul seau et
+  # l alerte ne distinguerait plus « en retard » de « a l arret ».
+  bucket_options {
+    exponential_buckets {
+      num_finite_buckets = 16
+      growth_factor      = 2
+      scale              = 1
+    }
+  }
+}
+
+# ── Alerte 10 : fraicheur de l enrichissement ─────────────────────────────
+# Seuil a 30 min : le declencheur tourne toutes les 15 min, donc une detection
+# doit normalement etre enrichie en moins de deux cycles. Au-dela, quelque
+# chose ne fonctionne pas, meme si tous les composants se declarent sains.
+resource "google_monitoring_alert_policy" "enrichment_stale" {
+  display_name = "[${var.environment}] Enrichissement en retard (> 30 min)"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Detection non enrichie depuis plus de 30 min"
+    condition_threshold {
+      filter = join(" AND ", [
+        "resource.type=\"cloud_run_job\"",
+        "metric.type=\"logging.googleapis.com/user/${google_logging_metric.enrichment_oldest_age.name}\"",
+      ])
+
+      comparison      = "COMPARISON_GT"
+      threshold_value = 1800
+      duration        = "0s"
+
+      # ALIGN_PERCENTILE_99 : sur une distribution, c est l equivalent le plus
+      # proche de « la pire valeur observee sur la periode ».
+      aggregations {
+        alignment_period   = "900s"
+        per_series_aligner = "ALIGN_PERCENTILE_99"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.name]
+  alert_strategy {
+    auto_close = "3600s"
+  }
+}

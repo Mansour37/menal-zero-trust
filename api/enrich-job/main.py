@@ -65,20 +65,51 @@ def fetch_pending_detections(limit=BATCH_SIZE):
         """).result()
     }
 
-    candidates = client.query(f"""
+    candidates = list(client.query(f"""
         SELECT timestamp, rule_id, rule_name, severity, entity, message, source
         FROM `{DETECTIONS_TABLE}`
         WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), {LOOKBACK_INTERVAL})
         ORDER BY timestamp DESC
-    """).result()
+    """).result())
 
-    rows = [
+    pending = [
         det for det in candidates
         if detection_key(det.get("rule_id"), det.get("timestamp")) not in enriched
-    ][:limit]
+    ]
 
-    step(f"  {len(rows)} detections à traiter ({len(enriched)} déjà enrichies)")
-    return rows
+    emit_backlog_metric(pending, len(candidates))
+    step(f"  {len(pending)} detections à traiter ({len(enriched)} déjà enrichies)")
+    return pending[:limit]
+
+
+def emit_backlog_metric(pending: list, total_recent: int) -> None:
+    """
+    Emet la mesure de retard d enrichissement sur stdout, en JSON, pour que
+    Cloud Logging la range en jsonPayload et qu une metrique de journal puisse
+    l extraire (voir modules/monitoring, menal-enrichment-backlog).
+
+    C est le SLI le plus rentable de la chaine : il ne mesure pas un composant
+    mais le RESULTAT attendu. Une panne de ml-embed, une erreur BigQuery ou un
+    job qui ne se declenche plus produisent le meme symptome — des detections
+    qui restent sans enrichissement — et ce seul indicateur les rend toutes
+    visibles, sans supposer d avance par quel maillon la panne arrivera.
+
+    Le retard est ecrit MEME quand il vaut zero : une metrique qui ne s ecrit
+    qu en cas de probleme est indistinguable d un job qui ne tourne plus.
+    """
+    now = datetime.now(timezone.utc)
+    oldest_age_s = 0
+    if pending:
+        oldest = min(det.get("timestamp") for det in pending)
+        oldest_age_s = int((now - oldest).total_seconds())
+
+    print(json.dumps({
+        "severity": "INFO",
+        "message": "enrichment_backlog",
+        "menal_backlog": len(pending),
+        "menal_oldest_pending_age_s": oldest_age_s,
+        "menal_recent_detections": total_recent,
+    }), flush=True)
 
 
 def _id_token(audience: str) -> str | None:
