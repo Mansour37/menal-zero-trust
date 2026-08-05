@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 MODEL_DIR = os.getenv("MODEL_DIR", "/app/model")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "dev")
 MAX_TOKENS = 512
 MAX_BATCH = 64
 MAX_TEXT_LENGTH = 8000
@@ -31,6 +32,13 @@ try:
         model_version = "unknown"
     model_loaded = True
 except Exception as e:
+    # Le repli mock n existe QUE pour dev : des embeddings aleatoires passent
+    # quand meme par VECTOR_SEARCH, qui renvoie toujours un meilleur candidat —
+    # certains franchiraient le seuil et seraient ecrits comme mappings MITRE
+    # valides. Hors dev, on refuse de demarrer : la startup probe echoue et la
+    # revision precedente (avec modele) garde le trafic.
+    if ENVIRONMENT != "dev":
+        raise
     print(f"[WARN] Model not loaded, using mock fallback: {e}")
     tok = None
     model = None

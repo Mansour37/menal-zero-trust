@@ -231,6 +231,15 @@ def main():
     model_version = embed_result.get("model_version", "unknown")
     step(f"  Modèle : {model_version} | dim={embed_result.get('dim', '?')}")
 
+    # Ceinture et bretelles avec le fail-closed de ml-embed : des vecteurs mock
+    # (aleatoires) traversent VECTOR_SEARCH sans erreur et certains franchissent
+    # le seuil — des mappings MITRE calcules sur du bruit, ecrits comme valides.
+    # L echec de tache laisse ces detections candidates pour le cycle suivant.
+    if ENV != "dev" and model_version.startswith("mock"):
+        raise RuntimeError(
+            f"ml-embed repond en mode mock ({model_version}) hors dev — abandon"
+        )
+
     # L association item -> detection repose UNIQUEMENT sur la position : une
     # reponse incomplete attribuerait chaque vecteur a la mauvaise detection
     # (technique ATT&CK fausse, silencieusement). Mieux vaut ne rien ecrire et
