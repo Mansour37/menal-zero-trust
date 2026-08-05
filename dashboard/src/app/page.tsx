@@ -8,26 +8,45 @@ import Card from "@/components/Card";
 import RequestsChart from "@/components/charts/RequestsChart";
 
 function buildChartData(logs: AuditLog[]) {
-  const buckets: Record<string, { total: number; errors: number }> = {};
+  // Cle = minute en epoch, pas un libelle "H:MM" : l API renvoie les logs du
+  // plus recent au plus ancien, et trier des libelles mettrait "10:00" avant
+  // "9:59". Sans tri numerique, slice(-20) gardait les 20 minutes les plus
+  // ANCIENNES de la fenetre, affichees en ordre chronologique inverse.
+  const buckets: Record<number, { total: number; errors: number }> = {};
   logs.forEach((l) => {
-    const d   = new Date(l.created_at);
-    const key = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+    const d = new Date(l.created_at);
+    d.setSeconds(0, 0);
+    const key = d.getTime();
     if (!buckets[key]) buckets[key] = { total: 0, errors: 0 };
     buckets[key].total++;
     if (l.status_code >= 400) buckets[key].errors++;
   });
   return Object.entries(buckets)
-    .map(([time, v]) => ({ time, ...v }))
-    .slice(-20);
+    .map(([ms, v]) => ({ ms: Number(ms), ...v }))
+    .sort((a, b) => a.ms - b.ms)
+    .slice(-20)
+    .map(({ ms, total, errors }) => {
+      const d = new Date(ms);
+      return {
+        time: `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`,
+        total,
+        errors,
+      };
+    });
 }
 
 export default async function OverviewPage() {
   const token = cookies().get("token")?.value ?? "";
-  const [logs, alerts, overview] = await Promise.all([
-    getLogs(token, 0, 200).catch(() => [] as AuditLog[]),
-    getAlerts(token, 0, 200).catch(() => [] as AuditLog[]),
-    getOverview(token, 24).catch(() => null as Overview | null),
+  const [logsRes, alertsRes, overviewRes] = await Promise.allSettled([
+    getLogs(token, 0, 200),
+    getAlerts(token, 0, 200),
+    getOverview(token, 24),
   ]);
+  const logs     = logsRes.status === "fulfilled" ? logsRes.value : ([] as AuditLog[]);
+  const alerts   = alertsRes.status === "fulfilled" ? alertsRes.value : ([] as AuditLog[]);
+  const overview = overviewRes.status === "fulfilled" ? overviewRes.value : (null as Overview | null);
+  // Une panne API ne doit jamais s afficher comme "0 alerte, tout va bien".
+  const apiFailed = logsRes.status === "rejected" || alertsRes.status === "rejected";
 
   const total        = logs.length;
   const errors       = logs.filter((l) => l.status_code >= 400).length;
@@ -41,6 +60,13 @@ export default async function OverviewPage() {
       <Sidebar />
       <main className="flex-1 p-8">
         <h1 className="text-xl font-bold text-slate-800 mb-6">Vue d&apos;ensemble</h1>
+
+        {apiFailed && (
+          <div className="mb-6 rounded-xl border border-red-300 bg-red-50 p-4 text-sm font-semibold text-red-700">
+            API injoignable — les compteurs ci-dessous sont incomplets et ne
+            reflètent pas l&apos;état réel du système.
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-5">
           <StatsCard title="Requêtes totales"    value={total}             color="blue"   />

@@ -22,7 +22,15 @@ function eventType(code: number): string {
 
 export default async function AlertsPage() {
   const token  = cookies().get("token")?.value ?? "";
-  const alerts: Alert[] = await getAlerts(token, 0, 100).catch(() => []);
+  // Distinguer panne et absence d alertes : avec un .catch(() => []), une API
+  // en panne affichait "Aucune alerte — tout est nominal" au SOC.
+  let alerts: Alert[] = [];
+  let failed = false;
+  try {
+    alerts = await getAlerts(token, 0, 100);
+  } catch {
+    failed = true;
+  }
 
   const critical = alerts.filter((a) => a.status_code >= 500).length;
   const high     = alerts.filter((a) => a.status_code === 429).length;
@@ -94,8 +102,13 @@ export default async function AlertsPage() {
                 })}
                 {alerts.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                      Aucune alerte — tout est nominal ✓
+                    <td
+                      colSpan={6}
+                      className={`px-4 py-8 text-center ${failed ? "font-semibold text-red-600" : "text-gray-400"}`}
+                    >
+                      {failed
+                        ? "Impossible de charger les alertes — état du système inconnu (API injoignable)."
+                        : "Aucune alerte — tout est nominal ✓"}
                     </td>
                   </tr>
                 )}

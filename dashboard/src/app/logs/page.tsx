@@ -5,7 +5,14 @@ import Sidebar from "@/components/Sidebar";
 
 export default async function LogsPage() {
   const token = cookies().get("token")?.value ?? "";
-  const logs: AuditLog[] = await getLogs(token, 0, 100).catch(() => []);
+  // Meme logique que la page alertes : une panne API n est pas "aucun log".
+  let logs: AuditLog[] = [];
+  let failed = false;
+  try {
+    logs = await getLogs(token, 0, 100);
+  } catch {
+    failed = true;
+  }
 
   return (
     <div className="flex min-h-screen">
@@ -62,8 +69,13 @@ export default async function LogsPage() {
                 ))}
                 {logs.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                      Aucun log disponible
+                    <td
+                      colSpan={6}
+                      className={`px-4 py-8 text-center ${failed ? "font-semibold text-red-600" : "text-gray-400"}`}
+                    >
+                      {failed
+                        ? "Impossible de charger les logs (API injoignable)."
+                        : "Aucun log disponible"}
                     </td>
                   </tr>
                 )}

@@ -12,7 +12,7 @@ interface DataPoint {
 export default function RequestsChart({ data }: { data: DataPoint[] }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <h3 className="text-sm font-semibold text-gray-700 mb-4">Requêtes (dernière heure)</h3>
+      <h3 className="text-sm font-semibold text-gray-700 mb-4">Requêtes — 20 dernières minutes d&apos;activité</h3>
       <ResponsiveContainer width="100%" height={220}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
