@@ -13,11 +13,11 @@ resource "google_service_account" "api" {
   project      = var.project_id
 }
 
-resource "google_project_iam_member" "api_secret_accessor" {
-  project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.api.email}"
-}
+# Pas de secretAccessor au niveau projet pour sa-api : ses deux secrets reels
+# (db-password, jwt-secret) ont chacun un binding cible dans modules/cloud-sql.
+# Le binding projet etendait sa-api a TOUS les secrets presents et futurs —
+# combine a run.developer + actAs de sa-cicd, il fermait la chaine d escalade
+# depot GitHub -> tous les secrets, dont la cle de signature JWT.
 
 resource "google_project_iam_member" "api_cloudsql_client" {
   project = var.project_id
@@ -118,7 +118,12 @@ resource "google_iam_workload_identity_pool_provider" "github" {
     "attribute.ref"        = "assertion.ref"
   }
 
-  attribute_condition = "assertion.repository == '${var.github_owner}/${var.github_repo}'"
+  # La condition sur le seul depot laissait N IMPORTE QUELLE branche obtenir
+  # l identite sa-cicd (run.developer + actAs sa-api) : une branche poussee par
+  # un contributeur compromis pouvait deployer une revision arbitraire et lire
+  # les secrets accessibles a sa-api. Le garde-fou `if: github.ref` de ci.yml
+  # est cote GitHub, pas cote GCP — seul ce filtre-ci fait autorite.
+  attribute_condition = "assertion.repository == '${var.github_owner}/${var.github_repo}' && assertion.ref == '${var.allowed_deploy_ref}'"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
