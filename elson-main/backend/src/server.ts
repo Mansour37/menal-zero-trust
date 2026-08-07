@@ -144,7 +144,7 @@ app.use(globalLimiter);
 
 if (config.nodeEnv === "production") {
   app.use("/api", (req, res, next) => {
-    if (req.path === "/health" || req.path === "/public/stats") return next();
+    if (req.path === "/health" || req.path === "/ready" || req.path === "/public/stats") return next();
     // Flash tournament announcement: public info (home banner visible even when logged out).
     if (req.path === "/community/flash/active") return next();
     if (req.method === "OPTIONS") return next();

@@ -54,7 +54,7 @@ module "elson_app" {
   create_bucket = true
 
   migrate_image   = "${local.elson_registry}/elson-backend:latest"
-  migrate_command = ["npx", "tsx", "src/scripts/migrate.ts"]
+  migrate_command = ["npx", "tsx", "src/scripts/migrate.ts", "--from-zero"]
   migrate_env = merge(local.elson_db_env, {
     NODE_ENV     = "production"
     MIGRATE_MODE = "auto"
