@@ -44,3 +44,24 @@ variable "admin_ip_ranges" {
   description = "IP ranges autorisees pour l acces admin (contourne geo-block WAF) — a fournir via terraform.tfvars, propre a cet environnement."
   type        = list(string)
 }
+
+variable "cloud_run_services" {
+  description = "Services Cloud Run ingeres dans le SIEM (sink + normalisation). Vide => fallback historique menal-api-<env> (le module gère la retombee). A etendre quand une 2e app est herbergee (ex: [\"menal-api-staging\", \"app2-staging\"])."
+  type        = list(string)
+  default     = []
+}
+
+variable "auth_paths" {
+  description = "Chemins d authentification proteges par l anti-brute-force Cloud Armor (regle 1450) — a etendre par app herbergee."
+  type        = list(string)
+  default     = []
+}
+
+variable "extra_services" {
+  description = "Mapps de services supplementaires routes derriere le LB staging (ecart 4). Ex: app2 = { service_name = \"app2-staging\", domain = \"app2-staging.elm\" }. Vide = pas de 2e app deployee."
+  type = map(object({
+    service_name = string
+    domain       = string
+  }))
+  default = {}
+}

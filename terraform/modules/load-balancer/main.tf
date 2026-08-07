@@ -10,6 +10,9 @@ locals {
   # Une regle allow prioritaire court-circuitait tout Cloud Armor (first-match-wins),
   # laissant les IP admin sans aucune protection applicative.
   admin_exempt_expr = length(var.admin_ip_ranges) > 0 ? " && !(${join(" || ", [for r in var.admin_ip_ranges : "inIpRange(origin.ip, '${r}')"])})" : ""
+
+  # Chemins d'auth : retombe sur le comportement historique si la liste est vide.
+  auth_paths_ops = length(var.auth_paths) > 0 ? var.auth_paths : ["/auth/token", "/api/login"]
 }
 
 # ── Adresse IP statique du Load Balancer ─────────────────────────────────────
@@ -133,7 +136,7 @@ resource "google_compute_security_policy" "api_waf" {
     priority = 1450
     match {
       expr {
-        expression = "request.path.startsWith('/auth/token') || request.path.startsWith('/api/login')"
+        expression = join(" || ", [for p in local.auth_paths_ops : "request.path.startsWith('${p}')"])
       }
     }
     rate_limit_options {
@@ -242,6 +245,38 @@ resource "google_compute_backend_service" "dashboard" {
   }
 }
 
+# ── Services supplementaires (ecart 4 : multi-app) ─────────────────────────
+# Chaque service de var.extra_services est route derriere le meme LB, protege
+# par le meme WAF (Cloud Armor), avec son propre domaine (host) et cert SSL.
+resource "google_compute_region_network_endpoint_group" "extra_neg" {
+  for_each              = var.extra_services
+  name                  = "menal-${each.key}-neg-${var.environment}"
+  network_endpoint_type = "SERVERLESS"
+  region                = var.region
+  project               = var.project_id
+
+  cloud_run {
+    service = each.value.service_name
+  }
+}
+
+resource "google_compute_backend_service" "extra" {
+  for_each        = var.extra_services
+  name            = "menal-${each.key}-backend-${var.environment}"
+  project         = var.project_id
+  protocol        = "HTTPS"
+  security_policy = google_compute_security_policy.api_waf.id
+
+  backend {
+    group = google_compute_region_network_endpoint_group.extra_neg[each.key].id
+  }
+
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+}
+
 # ── URL Map (host-based routing) ───────────────────────────────────────────
 # api.menal-sarl.com → API backend
 # dash.menal-sarl.com → Dashboard backend (conditionnel)
@@ -282,6 +317,23 @@ resource "google_compute_url_map" "api" {
       default_service = google_compute_backend_service.dashboard[0].id
     }
   }
+
+  # Host rules pour les services supplementaires (chacun son domaine)
+  dynamic "host_rule" {
+    for_each = var.extra_services
+    content {
+      hosts        = [host_rule.value.domain]
+      path_matcher = "extra-${host_rule.key}-matcher-${var.environment}"
+    }
+  }
+
+  dynamic "path_matcher" {
+    for_each = var.extra_services
+    content {
+      name            = "extra-${path_matcher.key}-matcher-${var.environment}"
+      default_service = google_compute_backend_service.extra[path_matcher.key].id
+    }
+  }
 }
 
 # ── Certificats SSL managed (Google provisionnera quand DNS sera configure) ──
@@ -318,6 +370,21 @@ resource "google_compute_managed_ssl_certificate" "dashboard" {
   }
 }
 
+# Cert SSL par service supplementaire (domaine propre)
+resource "google_compute_managed_ssl_certificate" "extra" {
+  for_each = var.extra_services
+  name     = "menal-${each.key}-cert-${var.environment}-${substr(md5(each.value.domain), 0, 6)}"
+  project  = var.project_id
+
+  managed {
+    domains = [each.value.domain]
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 # ── Politique SSL : TLS 1.2 minimum, suites modernes ─────────────────────────
 resource "google_compute_ssl_policy" "modern" {
   name            = "menal-ssl-policy-${var.environment}"
@@ -334,7 +401,8 @@ resource "google_compute_target_https_proxy" "api" {
   ssl_policy = google_compute_ssl_policy.modern.id
   ssl_certificates = concat(
     [google_compute_managed_ssl_certificate.api.id],
-    local.has_dash_domain ? [google_compute_managed_ssl_certificate.dashboard[0].id] : []
+    local.has_dash_domain ? [google_compute_managed_ssl_certificate.dashboard[0].id] : [],
+    [for k, v in var.extra_services : google_compute_managed_ssl_certificate.extra[k].id]
   )
 }
 

@@ -164,6 +164,8 @@ module "load_balancer" {
   domain_name                      = var.domain_name
   dashboard_domain_name            = var.dashboard_domain_name
   admin_ip_ranges                  = var.admin_ip_ranges
+  auth_paths                       = var.auth_paths
+  extra_services                   = var.extra_services
 
   depends_on = [google_project_service.apis, module.cloud_run, module.dashboard]
 }
@@ -195,6 +197,7 @@ module "logging" {
   environment                    = var.environment
   bigquery_dataset_id            = module.bigquery.dataset_id
   pipeline_service_account_email = module.iam.pipeline_service_account_email
+  cloud_run_services             = var.cloud_run_services
 
   depends_on = [module.bigquery, module.iam]
 }

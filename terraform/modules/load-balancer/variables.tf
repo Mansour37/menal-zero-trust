@@ -43,3 +43,18 @@ variable "admin_ip_ranges" {
   description = "IP ranges autorisees pour l acces admin (contourne le geo-block)"
   default     = []
 }
+
+variable "auth_paths" {
+  type        = list(string)
+  description = "Chemins d authentification proteges par l anti-brute-force au bord (regle Cloud Armor 1450). Parametrable pour couvrir n importe quelle app herbergee (pas seulement /auth/token /api/login de menal-api)."
+  default     = ["/auth/token", "/api/login"]
+}
+
+variable "extra_services" {
+  type = map(object({
+    service_name = string
+    domain       = string
+  }))
+  description = "Services supplementaires a router derriere le meme LB (ecart 4 : plus de 2 emplacements fixes api/dashboard). Clee = identifiant court (ex: 'app2'), valeur = service Cloud Run + domaine. Chaque entree genere NEG + backend + host_rule + cert."
+  default     = {}
+}

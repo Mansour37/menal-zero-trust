@@ -9,6 +9,13 @@ resource "google_monitoring_notification_channel" "email" {
   }
 }
 
+# ── Services surveilles : parametrables, fallback historique si vide ─────────
+locals {
+  service_name_ops = var.service_name != "" ? var.service_name : "menal-api-${var.environment}"
+  db_name_ops      = var.db_instance_name != "" ? var.db_instance_name : "menal-db-${var.environment}"
+  enrich_job_ops   = var.enrich_job_name != "" ? var.enrich_job_name : "menal-enrich-job-${var.environment}"
+}
+
 # ── Alerte 1 : taux d erreur API > 10% ────────────────────────────────────────
 resource "google_monitoring_alert_policy" "high_error_rate" {
   display_name = "[${var.environment}] Taux d erreur API > 10%"
@@ -20,7 +27,7 @@ resource "google_monitoring_alert_policy" "high_error_rate" {
     condition_threshold {
       filter = <<-EOT
         resource.type = "cloud_run_revision"
-        AND resource.labels.service_name = "menal-api-${var.environment}"
+        AND resource.labels.service_name = "${local.service_name_ops}"
         AND metric.type = "run.googleapis.com/request_count"
         AND metric.labels.response_code_class = "5xx"
       EOT
@@ -55,7 +62,7 @@ resource "google_monitoring_alert_policy" "high_latency" {
     condition_threshold {
       filter = <<-EOT
         resource.type = "cloud_run_revision"
-        AND resource.labels.service_name = "menal-api-${var.environment}"
+        AND resource.labels.service_name = "${local.service_name_ops}"
         AND metric.type = "run.googleapis.com/request_latencies"
       EOT
 
@@ -89,7 +96,7 @@ resource "google_monitoring_alert_policy" "auth_failures" {
     condition_threshold {
       filter = <<-EOT
         resource.type = "cloud_run_revision"
-        AND resource.labels.service_name = "menal-api-${var.environment}"
+        AND resource.labels.service_name = "${local.service_name_ops}"
         AND metric.type = "run.googleapis.com/request_count"
         AND (metric.labels.response_code = "401" OR metric.labels.response_code = "403")
       EOT
@@ -124,7 +131,7 @@ resource "google_monitoring_alert_policy" "cloudsql_cpu" {
     condition_threshold {
       filter = <<-EOT
         resource.type = "cloudsql_database"
-        AND resource.labels.database_id = "${var.project_id}:menal-db-${var.environment}"
+        AND resource.labels.database_id = "${var.project_id}:${local.db_name_ops}"
         AND metric.type = "cloudsql.googleapis.com/database/cpu/utilization"
       EOT
 
@@ -157,7 +164,7 @@ resource "google_monitoring_alert_policy" "fivexx_spike" {
     condition_threshold {
       filter = <<-EOT
         resource.type = "cloud_run_revision"
-        AND resource.labels.service_name = "menal-api-${var.environment}"
+        AND resource.labels.service_name = "${local.service_name_ops}"
         AND metric.type = "run.googleapis.com/request_count"
         AND metric.labels.response_code_class = "5xx"
       EOT
@@ -183,7 +190,7 @@ resource "google_monitoring_alert_policy" "fivexx_spike" {
 
 # ── Uptime check : verification toutes les 5 min ─────────────────────────────
 resource "google_monitoring_uptime_check_config" "health_check" {
-  display_name = "menal-api-${var.environment}-health"
+  display_name = "${local.service_name_ops}-health"
   project      = var.project_id
   timeout      = "10s"
   period       = "300s"
@@ -262,7 +269,7 @@ resource "google_monitoring_alert_policy" "enrich_job_failure" {
     condition_threshold {
       filter = <<-EOT
         resource.type = "cloud_run_job"
-        AND resource.labels.job_name = "menal-enrich-job-${var.environment}"
+        AND resource.labels.job_name = "${local.enrich_job_ops}"
         AND metric.type = "run.googleapis.com/job/completed_execution_count"
         AND metric.labels.result = "failed"
       EOT
@@ -349,7 +356,7 @@ resource "google_monitoring_alert_policy" "ingestion_stalled" {
     condition_absent {
       filter   = <<-EOT
         resource.type = "cloud_run_revision"
-        AND resource.labels.service_name = "menal-api-${var.environment}"
+        AND resource.labels.service_name = "${local.service_name_ops}"
         AND metric.type = "run.googleapis.com/request_count"
       EOT
       duration = "1800s"
@@ -401,7 +408,7 @@ resource "google_monitoring_slo" "api_availability" {
       total_service_filter = join(" AND ", [
         "metric.type=\"run.googleapis.com/request_count\"",
         "resource.type=\"cloud_run_revision\"",
-        "resource.label.\"service_name\"=\"menal-api-${var.environment}\"",
+        "resource.label.\"service_name\"=\"${local.service_name_ops}\"",
       ])
       # « Bon » = tout sauf 5xx. Les 4xx sont exclus du numerateur car ils
       # signalent une requete invalide ou non autorisee : compter un 401 comme
@@ -410,7 +417,7 @@ resource "google_monitoring_slo" "api_availability" {
       good_service_filter = join(" AND ", [
         "metric.type=\"run.googleapis.com/request_count\"",
         "resource.type=\"cloud_run_revision\"",
-        "resource.label.\"service_name\"=\"menal-api-${var.environment}\"",
+        "resource.label.\"service_name\"=\"${local.service_name_ops}\"",
         "metric.label.\"response_code_class\"!=\"5xx\"",
       ])
     }
@@ -436,7 +443,7 @@ resource "google_monitoring_slo" "api_latency" {
       distribution_filter = join(" AND ", [
         "metric.type=\"run.googleapis.com/request_latencies\"",
         "resource.type=\"cloud_run_revision\"",
-        "resource.label.\"service_name\"=\"menal-api-${var.environment}\"",
+        "resource.label.\"service_name\"=\"${local.service_name_ops}\"",
       ])
       range {
         max = 1000 # millisecondes
@@ -456,7 +463,7 @@ resource "google_logging_metric" "enrichment_backlog" {
   project = var.project_id
   filter = join(" AND ", [
     "resource.type=\"cloud_run_job\"",
-    "resource.labels.job_name=\"menal-enrich-job-${var.environment}\"",
+    "resource.labels.job_name=\"${local.enrich_job_ops}\"",
     "jsonPayload.message=\"enrichment_backlog\"",
   ])
 
@@ -486,7 +493,7 @@ resource "google_logging_metric" "enrichment_oldest_age" {
   project = var.project_id
   filter = join(" AND ", [
     "resource.type=\"cloud_run_job\"",
-    "resource.labels.job_name=\"menal-enrich-job-${var.environment}\"",
+    "resource.labels.job_name=\"${local.enrich_job_ops}\"",
     "jsonPayload.message=\"enrichment_backlog\"",
   ])
 

@@ -23,33 +23,62 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "GCP_PROJECT_ID"
         value = var.project_id
       }
-      env {
-        name  = "CLOUD_SQL_CONNECTION_NAME"
-        value = "${var.project_id}:${var.region}:${var.cloudsql_instance_name}"
+
+      # ── Connexions applicatives optionnelles : app herbergee sans base, sans
+      #    JWT ou sans SIEM → ces blocs disparaissent si la variable est vide.
+      dynamic "env" {
+        for_each = var.cloudsql_instance_name != "" ? [1] : []
+        content {
+          name  = "CLOUD_SQL_CONNECTION_NAME"
+          value = "${var.project_id}:${var.region}:${var.cloudsql_instance_name}"
+        }
       }
-      env {
-        name  = "DB_NAME"
-        value = var.db_name
+      dynamic "env" {
+        for_each = var.db_name != "" ? [1] : []
+        content {
+          name  = "DB_NAME"
+          value = var.db_name
+        }
       }
-      env {
-        name  = "DB_USER"
-        value = var.db_user
+      dynamic "env" {
+        for_each = var.db_user != "" ? [1] : []
+        content {
+          name  = "DB_USER"
+          value = var.db_user
+        }
       }
-      env {
-        name  = "SECRET_NAME"
-        value = var.db_secret_name
+      dynamic "env" {
+        for_each = var.db_secret_name != "" ? [1] : []
+        content {
+          name  = "SECRET_NAME"
+          value = var.db_secret_name
+        }
       }
-      env {
-        name  = "BQ_DATASET_ID"
-        value = var.bigquery_dataset_id
+      dynamic "env" {
+        for_each = var.bigquery_dataset_id != "" ? [1] : []
+        content {
+          name  = "BQ_DATASET_ID"
+          value = var.bigquery_dataset_id
+        }
       }
-      env {
-        name = "JWT_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = var.jwt_secret_name
-            version = "latest"
+      dynamic "env" {
+        for_each = var.jwt_secret_name != "" ? [1] : []
+        content {
+          name = "JWT_SECRET"
+          value_source {
+            secret_key_ref {
+              secret  = var.jwt_secret_name
+              version = "latest"
+            }
           }
+        }
+      }
+      # Env supplementaires propres a l'app herbergee (ex: config applicative).
+      dynamic "env" {
+        for_each = var.extra_env
+        content {
+          name  = env.key
+          value = env.value
         }
       }
 
@@ -77,7 +106,7 @@ resource "google_cloud_run_v2_service" "api" {
 
       liveness_probe {
         http_get {
-          path = "/health"
+          path = var.health_check_path
           port = 8080
         }
         initial_delay_seconds = 30

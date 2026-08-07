@@ -1,13 +1,21 @@
 # ── Sink 1 : logs Cloud Run (requetes API) vers BigQuery ─────────────────────
+# Generalise : ingere les logs de TOUS les services listes dans
+# var.cloud_run_services (pas seulement menal-api). Si la liste est vide, on
+# retombe sur le comportement historique (menal-api-<env>).
+locals {
+  cloud_run_services_ops  = length(var.cloud_run_services) > 0 ? var.cloud_run_services : ["menal-api-${var.environment}"]
+  cloudrun_service_filter = join(" OR ", [for r in local.cloud_run_services_ops : "resource.labels.service_name=\"${r}\""])
+}
+
 resource "google_logging_project_sink" "cloudrun_to_bq" {
   name        = "menal-cloudrun-logs-${var.environment}"
   project     = var.project_id
   destination = "bigquery.googleapis.com/projects/${var.project_id}/datasets/${var.bigquery_dataset_id}"
 
-  # Filtrer uniquement les logs Cloud Run de notre service
+  # Filtrer les logs Cloud Run de TOUS les services herberges (pas seulement l'API)
   filter = <<-EOT
     resource.type="cloud_run_revision"
-    resource.labels.service_name="menal-api-${var.environment}"
+    (${local.cloudrun_service_filter})
     (httpRequest.status >= 100 OR severity >= DEFAULT)
   EOT
 
@@ -129,7 +137,8 @@ locals {
         COALESCE(REGEXP_EXTRACT(l.httpRequest.requestUrl, r"^(?:https?://[^/]+)?(/[^?#]*)"), "/") AS path,
         l.httpRequest.status AS status_code,
         l.httpRequest.remoteIp AS ip_address,
-        CAST(l.httpRequest.latency * 1000 AS INT64) AS latency_ms
+        CAST(l.httpRequest.latency * 1000 AS INT64) AS latency_ms,
+        l.resource.labels.service_name AS service
       FROM `${local.src_cloudrun}` l
       WHERE l.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
         AND l.httpRequest.status IS NOT NULL
@@ -140,7 +149,7 @@ locals {
        AND T.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)
     WHEN NOT MATCHED THEN
       INSERT (timestamp, request_id, method, path, status_code, ip_address, latency_ms, service)
-      VALUES (S.timestamp, S.request_id, S.method, S.path, S.status_code, S.ip_address, S.latency_ms, "cloud-run")
+      VALUES (S.timestamp, S.request_id, S.method, S.path, S.status_code, S.ip_address, S.latency_ms, S.service)
   SQL
 
   q_raw_logs_cloudrun = <<-SQL
