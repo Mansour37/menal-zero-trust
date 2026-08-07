@@ -14,6 +14,7 @@ import { cached, invalidate } from "../utils/cache.js";
 import { decodeHtmlEntities } from "../utils/text.js";
 import { listWhatsAppGroups } from "../services/whatsapp.js";
 import { config as appConfig } from "../config.js";
+import { storage } from "../services/storage/index.js";
 import { randomUUID } from "crypto";
 
 const router = Router();
@@ -340,24 +341,22 @@ router.post("/admin/failed-recover", adminMiddleware, async (req, res) => {
   const dupe = await queryOne("SELECT 1 FROM contributions WHERE user_id = $1 AND phrase_id = $2", [f.user_id, f.phrase_id]);
   if (dupe) { res.status(409).json({ error: "Ce user a déjà une contribution pour cette phrase." }); return; }
 
-  // Move the vaulted audio into the user's normal recordings dir.
-  const fsp = await import("fs/promises");
-  const pathMod = await import("path");
-  const { config } = await import("../config.js");
-  const src = pathMod.join(config.uploadDir, f.audio_path);
+  // Move the vaulted audio ("failed/<uuid>.<ext>" key) into the user's normal
+  // recordings prefix, via the storage driver (works for both local and gcs).
   const ext = f.audio_path.split(".").pop() || "webm";
   const fileName = `recovered_phrase${f.phrase_id}_${Date.now()}.${ext}`;
-  const userDir = pathMod.join(config.uploadDir, f.user_id);
-  await fsp.mkdir(userDir, { recursive: true });
+  const destKey = `${f.user_id}/${fileName}`;
   let sizeBytes = 0;
+  let audioBytes: Buffer;
   try {
-    await fsp.rename(src, pathMod.join(userDir, fileName));
-    sizeBytes = (await fsp.stat(pathMod.join(userDir, fileName))).size;
+    await storage.move(f.audio_path, destKey);
+    audioBytes = await storage.get(destKey);
+    sizeBytes = audioBytes.length;
   } catch { res.status(500).json({ error: "Fichier audio du coffre introuvable sur le disque." }); return; }
   const audioUrl = `/recordings/${f.user_id}/${fileName}`;
 
   const crypto = await import("node:crypto");
-  const sha = crypto.createHash("sha256").update(await fsp.readFile(pathMod.join(userDir, fileName))).digest("hex");
+  const sha = crypto.createHash("sha256").update(audioBytes).digest("hex");
 
   const done = await transaction(async (client) => {
     // Atomic claim FIRST — a concurrent recover of the same row loses this race and
@@ -2975,15 +2974,13 @@ router.post("/admin/x/contributions/delete", adminMiddleware, async (req, res) =
     await client.query("DELETE FROM contributions WHERE id = ANY($1::bigint[])", [foundIds]);
   });
 
-  // Remove audio files + their .json sidecars from disk (best-effort, post-commit).
-  const { config } = await import("../config.js");
-  const root = path.resolve(config.uploadDir);
+  // Remove audio files + their .json sidecars via the storage driver (best-effort,
+  // post-commit). The drivers confine keys under the storage root (path-traversal guard).
   const safeUnlink = async (url: string | null) => {
     if (!url || !url.startsWith("/recordings/")) return;
-    const full = path.join(config.uploadDir, url.slice("/recordings/".length));
-    if (!path.resolve(full).startsWith(root)) return; // path-traversal guard
-    try { await fs.unlink(full); } catch { /* already gone */ }
-    try { await fs.unlink(full.replace(/\.[^./\\]+$/, ".json")); } catch { /* no sidecar */ }
+    const key = url.slice("/recordings/".length);
+    await storage.delete(key).catch(() => { /* already gone */ });
+    await storage.delete(key.replace(/\.[^./\\]+$/, ".json")).catch(() => { /* no sidecar */ });
   };
   for (const r of rows) { await safeUnlink(r.audio_url); await safeUnlink(r.audio_url_backup); }
 

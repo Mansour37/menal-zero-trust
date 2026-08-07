@@ -7,6 +7,7 @@ import cors from "cors";
 import helmet from "helmet";
 import jwt from "jsonwebtoken";
 import { config } from "./config.js";
+import { storage, stagingDir, contentTypeFor } from "./services/storage/index.js";
 import { checkConnection, pool, query, queryOne, execute } from "./db.js";
 import { cached, invalidate } from "./utils/cache.js";
 import { globalLimiter, authLimiter } from "./middleware/security.js";
@@ -255,13 +256,62 @@ app.use("/recordings", async (req, res, next) => {
     res.status(401).json({ error: "Invalid token" });
   }
 });
-app.use("/recordings", express.static(config.uploadDir, {
-  maxAge: "1h",
-  setHeaders: (res) => {
+if (config.storageDriver === "local") {
+  // Local driver: exact historical behavior (express.static under uploadDir).
+  app.use("/recordings", express.static(config.uploadDir, {
+    maxAge: "1h",
+    setHeaders: (res) => {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Cache-Control", "private, max-age=3600");
+    },
+  }));
+} else {
+  // GCS driver: stream objects from the private bucket (the HMAC/JWT middleware
+  // above is untouched — this only replaces the file backend). A single
+  // "bytes=start-end" Range is honoured (206) — enough for <audio>/<video>
+  // progressive playback; multi-range requests legally fall back to a full 200.
+  app.use("/recordings", async (req: Request, res: Response) => {
+    if (req.method !== "GET" && req.method !== "HEAD") { res.status(405).json({ error: "Method not allowed" }); return; }
+    let key: string;
+    try { key = decodeURIComponent(req.path).replace(/^\/+/, ""); }
+    catch { res.status(400).json({ error: "Bad request" }); return; }
+    if (!key || key.includes("\0") || key.split("/").some((s) => s === "..")) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const st = await storage.stat(key).catch(() => null);
+    if (!st) { res.status(404).json({ error: "Not found" }); return; }
+
+    let start = 0, end = st.size - 1, status = 200;
+    const range = req.headers.range;
+    const m = range ? /^bytes=(\d*)-(\d*)$/.exec(range) : null;
+    if (m && (m[1] || m[2])) {
+      if (m[1]) { start = parseInt(m[1], 10); end = m[2] ? Math.min(parseInt(m[2], 10), st.size - 1) : st.size - 1; }
+      else { start = Math.max(0, st.size - parseInt(m[2], 10)); }
+      if (start >= st.size || start > end) {
+        res.status(416).setHeader("Content-Range", `bytes */${st.size}`);
+        res.end();
+        return;
+      }
+      status = 206;
+    }
+
+    res.status(status);
+    res.setHeader("Content-Type", contentTypeFor(key));
+    res.setHeader("Content-Length", String(end - start + 1));
+    res.setHeader("Accept-Ranges", "bytes");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Cache-Control", "private, max-age=3600");
-  },
-}));
+    if (status === 206) res.setHeader("Content-Range", `bytes ${start}-${end}/${st.size}`);
+    if (req.method === "HEAD") { res.end(); return; }
+
+    const stream = storage.createReadStream(key, { start, end });
+    // Mid-stream failure (object vanished / GCS hiccup): abort the socket — headers
+    // are already gone, a JSON error body would corrupt the audio payload.
+    stream.on("error", () => res.destroy());
+    stream.pipe(res);
+  });
+}
 
 // ── Health check (public) ──
 // Liveness : repond 200 tant que le PROCESS est vivant, sans toucher la base.
@@ -407,8 +457,9 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   });
 });
 
-// ── Ensure tmp upload dir exists ──
-const tmpDir = config.uploadDir + "/_tmp";
+// ── Ensure the multer/ffmpeg staging dir exists ──
+// local: <uploadDir>/_tmp (historical). gcs: under os.tmpdir() (uploadDir is a bucket).
+const tmpDir = stagingDir();
 if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
 
 // ──────────────────────────────────────────────────────────────────────

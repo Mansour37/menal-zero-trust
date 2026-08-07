@@ -88,6 +88,24 @@ export const config = {
   uploadDir: env("UPLOAD_DIR", "/data/recordings"),
   maxAudioSizeMb: parseInt(env("MAX_AUDIO_SIZE_MB", "10")),
 
+  // File storage driver:
+  //  - "local" (defaut, Hetzner/compose) : fichiers sous uploadDir, comportement historique.
+  //  - "gcs" (Cloud Run, disque ephemere) : bucket GCS prive via ADC (pas de cle).
+  storageDriver: (() => {
+    const v = env("STORAGE_DRIVER", "local");
+    if (v !== "local" && v !== "gcs") throw new Error(`STORAGE_DRIVER invalide: ${v} (attendu: local | gcs)`);
+    return v;
+  })(),
+
+  // GCS bucket for STORAGE_DRIVER=gcs — mandatory in that mode (fail fast at boot).
+  gcsBucket: (() => {
+    const v = process.env.GCS_BUCKET ?? "";
+    if ((process.env.STORAGE_DRIVER ?? "local") === "gcs" && !v) {
+      throw new Error("Missing env var: GCS_BUCKET (obligatoire quand STORAGE_DRIVER=gcs)");
+    }
+    return v;
+  })(),
+
   // SMTP (Zoho) — optional, password reset disabled if not configured
   smtp: {
     host: process.env.SMTP_HOST ?? "smtp.zoho.com",
