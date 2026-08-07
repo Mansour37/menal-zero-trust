@@ -112,19 +112,25 @@ jobs:
         run: docker build -t elson-frontend:ci ./elson-main
 
       - name: Trivy - backend (bloquant sur CRITICAL corrigéable)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: elson-backend:ci
           format: table
           exit-code: 1
           severity: CRITICAL
           ignore-unfixed: true
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+          TRIVY_SKIP_UPDATE: "false"
 
       - name: Trivy - frontend (bloquant sur CRITICAL corrigéable)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: elson-frontend:ci
           format: table
           exit-code: 1
           severity: CRITICAL
           ignore-unfixed: true
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+          TRIVY_SKIP_UPDATE: "false"
