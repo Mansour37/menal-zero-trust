@@ -15,6 +15,7 @@ export const pool = new Pool({
   connectionTimeoutMillis: 10000, // more tolerance under high concurrency
   maxUses: 7500,                  // recycle connections to prevent leaks
   allowExitOnIdle: false,         // keep pool alive
+  ...(config.db.ssl ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 
 // Verify connection on startup

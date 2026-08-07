@@ -22,6 +22,7 @@ const pool = new Pool({
   database: config.db.name,
   user: config.db.user,
   password: config.db.password,
+  ...(config.db.ssl ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 
 const BASE_URL = "https://datasets-server.huggingface.co/rows";
