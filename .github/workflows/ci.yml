@@ -60,6 +60,8 @@ jobs:
       # le pipeline. Sans cela, ces scans etaient du theatre (continue-on-error).
       - name: Gitleaks - Secret Scanning
         uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Semgrep - SAST
         uses: semgrep/semgrep-action@v1
