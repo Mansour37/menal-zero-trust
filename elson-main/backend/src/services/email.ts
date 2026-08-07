@@ -152,7 +152,7 @@ export async function sendWelcomeEmail(
       Commencez a traduire et enregistrer des phrases en Hassaniya pour accumuler des points.
     </p>
     <p style="margin:0 0 24px;text-align:center;">
-      <a href="https://elson.adst.ai/contribute" style="display:inline-block;background:#111;color:#fff;padding:10px 28px;border-radius:6px;font-size:14px;font-weight:500;text-decoration:none;">Commencer</a>
+      <a href="${config.publicBaseUrl}/contribute" style="display:inline-block;background:#111;color:#fff;padding:10px 28px;border-radius:6px;font-size:14px;font-weight:500;text-decoration:none;">Commencer</a>
     </p>
     <p style="margin:0 0 0;font-size:13px;color:#71717a;">
       Prix : 1er 60 000 MRU &middot; 2e 30 000 MRU &middot; 3e 10 000 MRU
@@ -202,7 +202,7 @@ export async function sendCompetitionNotification(
     <p style="margin:0 0 16px;font-size:15px;color:#111;">Bonjour ${escapeHtml(username)},</p>
     ${paragraphs}
     <p style="margin:24px 0 0;text-align:center;">
-      <a href="https://elson.adst.ai" style="display:inline-block;background:#111;color:#fff;padding:10px 28px;border-radius:6px;font-size:14px;font-weight:500;text-decoration:none;">Ouvrir Elson</a>
+      <a href="${config.publicBaseUrl}" style="display:inline-block;background:#111;color:#fff;padding:10px 28px;border-radius:6px;font-size:14px;font-weight:500;text-decoration:none;">Ouvrir Elson</a>
     </p>`;
 
   try {

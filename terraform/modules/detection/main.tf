@@ -188,6 +188,9 @@ locals {
           r"^(curl|python-requests|python-urllib|go-http-client|wget)"
         )
         AND STRING(json_payload.httpRequest.requestUrl) LIKE "%/api/%"
+%{if length(var.r4_excluded_services) > 0}
+        AND (resource_name IS NULL OR resource_name NOT IN (${join(", ", [for s in var.r4_excluded_services : "\"${s}\""])}))
+%{endif}
         AND NOT EXISTS (
           SELECT 1
           FROM `${local.project}.${local.dataset}.detections` d
@@ -200,6 +203,12 @@ locals {
 
   # ── R5 : Latence anormale (> 5s) sur endpoints API critiques ──────────────
   # MITRE T1499 (Endpoint Denial of Service), TA0040 (Impact) — potentiel DoS lent
+  #
+  # Correctif 07/08 : l'ancien filtre `service = "cloud-run"` ne matchait
+  # JAMAIS — depuis la normalisation F4, la colonne service porte le nom reel
+  # du service (menal-api-staging), la regle etait structurellement morte.
+  # Toutes les lignes d'access_logs viennent de Cloud Run : aucun filtre requis.
+  # Le message embarque desormais le service pour l'attribution multi-app.
   r5_high_latency = {
     name     = "Latence > 5s sur endpoints sensibles"
     severity = "LOW"
@@ -212,19 +221,18 @@ locals {
         "Latence anormale > 5s",
         "LOW",
         ip_address,
-        CONCAT("Requete ", method, " ", path, " : ", CAST(latency_ms AS STRING), "ms depuis ", ip_address),
+        CONCAT("[", IFNULL(service, "?"), "] Requete ", method, " ", path, " : ", CAST(latency_ms AS STRING), "ms depuis ", ip_address),
         "cloud_run",
         "TA0040",
         "T1499"
       FROM `${local.project}.${local.dataset}.access_logs`
       WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
         AND latency_ms > 5000
-        AND service = "cloud-run"
         AND NOT EXISTS (
           SELECT 1
           FROM `${local.project}.${local.dataset}.detections` d
           WHERE d.rule_id = "R5"
-            AND d.message = CONCAT("Requete ", method, " ", path, " : ", CAST(latency_ms AS STRING), "ms depuis ", ip_address)
+            AND d.message = CONCAT("[", IFNULL(service, "?"), "] Requete ", method, " ", path, " : ", CAST(latency_ms AS STRING), "ms depuis ", ip_address)
             AND d.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
         )
     SQL

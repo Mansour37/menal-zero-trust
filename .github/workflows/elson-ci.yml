@@ -4,13 +4,22 @@ name: Elson CI
 # Portes locales garantissant qu'un environnement neuf (DB comprise) peut être
 # reconstruit depuis le dépôt, et qu'aucune image fragile n'arrive en production.
 #
-# Point faible (heap backlog §14.2#9) : une CVE critique dans les images Elson
-# (postgres, waha, backend, frontend, caddy) n'était jamais vérifiée. Le scan
-# Trivy bloquant sur CRITICAL corrigéable aligne Elson sur les portes du plateau
-# MENAL (ci.yml).
+# Depuis le 07/08 (onboarding socle §3) : sur main, les images sont poussées
+# vers Artifact Registry (WIF, sans clé) puis déployées sur Cloud Run staging
+# derrière le LB du socle — migration de schéma via le job elson-migrate
+# AVANT le déploiement, smoke test via le domaine public après.
 #
-# Le déploiement Hetzner reste opéré via deploy/deploy.sh (rsync + compose) —
-# pas de secrets SSH dans GitHub, cohérent avec la matrice de risques.
+# Le déploiement est gaté par la variable GitHub ELSON_DEPLOY_ENABLED=true :
+# la basculer en même temps que elson_enabled=true côté Terraform (l'infra
+# doit exister avant le premier deploy).
+#
+# Variables GitHub attendues (en plus de celles du socle WIF_PROVIDER_NAME,
+# CICD_SA_EMAIL, GCP_REGION, GCP_PROJECT_ID, ARTIFACT_REGISTRY_URL, BQ_DATASET) :
+#   ELSON_API_SERVICE_NAME  = elson-api-staging
+#   ELSON_WEB_SERVICE_NAME  = elson-web-staging
+#   ELSON_MIGRATE_JOB_NAME  = elson-migrate-staging
+#   ELSON_DOMAIN            = elson.menal-sarl.com
+#   ELSON_DEPLOY_ENABLED    = true|false
 
 on:
   push:
@@ -23,9 +32,16 @@ on:
     paths:
       - "elson-main/**"
       - ".github/workflows/elson-ci.yml"
+  workflow_dispatch: {}
 
 permissions:
   contents: read
+
+env:
+  REGION: ${{ vars.GCP_REGION }}
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  ARTIFACT_REGISTRY: ${{ vars.ARTIFACT_REGISTRY_URL }}
+  ELSON_DOMAIN: ${{ vars.ELSON_DOMAIN }}
 
 jobs:
   security:
@@ -38,6 +54,8 @@ jobs:
 
       - name: Gitleaks - Secret Scanning
         uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Semgrep - SAST
         uses: semgrep/semgrep-action@v1
@@ -45,7 +63,7 @@ jobs:
           config: p/default
 
   backend:
-    name: Backend (lint, build, db:migrate)
+    name: Backend (lint, build, tests, db:migrate)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -74,6 +92,9 @@ jobs:
       - name: TypeScript build
         run: npm run build
 
+      - name: Tests unitaires (anti-usurpation IP client, porte dure)
+        run: npm run test:unit
+
       - name: Start Postgres (isolé)
         run: docker run -d --name pg-test -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -e POSTGRES_DB=test -p 5433:5432 postgres:17-alpine
 
@@ -100,16 +121,31 @@ jobs:
             "SELECT to_regclass('votes') AS votes, to_regclass('votable_phrases') AS votable_phrases, to_regclass('season0_contributors') AS s0, to_regclass('profiles') AS profiles;"
 
   docker:
-    name: Docker images + Trivy
+    name: Docker images + Trivy (+ push AR sur main)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # WIF (auth sans clé) — utilisé seulement sur main
+    outputs:
+      backend_image: ${{ steps.tags.outputs.backend }}
+      frontend_image: ${{ steps.tags.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Compute image tags
+        id: tags
+        run: |
+          echo "backend=${ARTIFACT_REGISTRY}/elson-backend:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "frontend=${ARTIFACT_REGISTRY}/elson-frontend:${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Build backend image
         run: docker build -t elson-backend:ci ./elson-main/backend
 
+      # NEXT_PUBLIC_API_URL est figée AU BUILD (Next standalone) : sans ce
+      # build-arg l'image retombe sur http://localhost:4000 et n'est pas
+      # déployable. Same-origin : l'API est servie sous le même domaine.
       - name: Build frontend image
-        run: docker build -t elson-frontend:ci ./elson-main
+        run: docker build -t elson-frontend:ci --build-arg NEXT_PUBLIC_API_URL="https://${ELSON_DOMAIN:-elson.invalid}" ./elson-main
 
       - name: Trivy - backend (bloquant sur CRITICAL corrigéable)
         uses: aquasecurity/trivy-action@v0.36.0
@@ -134,3 +170,110 @@ jobs:
         env:
           TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
           TRIVY_SKIP_UPDATE: "false"
+
+      # ── Boucle CVE → SIEM (F6, modèle ci.yml) : rapport JSON chargé dans
+      #    cve_findings pour que le SOC voie les vulnérabilités des images Elson.
+      - name: Trivy - rapports JSON pour le SIEM
+        if: github.ref == 'refs/heads/main'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: elson-backend:ci
+          format: json
+          output: trivy-elson-backend.json
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: false
+        env:
+          TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
+          TRIVY_SKIP_UPDATE: "false"
+
+      - id: auth
+        name: Authenticate to GCP (WIF, sans clé)
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER_NAME }}
+          service_account: ${{ vars.CICD_SA_EMAIL }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+        if: github.ref == 'refs/heads/main'
+
+      - name: Charger les CVE dans le SIEM (cve_findings)
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true # informatif : la porte bloquante est le scan table ci-dessus
+        run: |
+          pip install --quiet google-cloud-bigquery
+          python scripts/load_cve_findings.py \
+            --project "${PROJECT_ID}" \
+            --dataset "${{ vars.BQ_DATASET }}" \
+            --report trivy-elson-backend.json \
+            --image-digest "elson-backend@${GITHUB_SHA}"
+
+      - name: Push vers Artifact Registry
+        if: github.ref == 'refs/heads/main'
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          docker tag elson-backend:ci  "${{ steps.tags.outputs.backend }}"
+          docker tag elson-frontend:ci "${{ steps.tags.outputs.frontend }}"
+          docker push "${{ steps.tags.outputs.backend }}"
+          docker push "${{ steps.tags.outputs.frontend }}"
+
+  deploy:
+    name: Migrate + Deploy Cloud Run (staging)
+    needs: [security, backend, docker]
+    runs-on: ubuntu-latest
+    # Gate : l'infra Elson doit exister (terraform elson_enabled=true) avant le
+    # premier déploiement — basculer ELSON_DEPLOY_ENABLED en même temps.
+    if: github.ref == 'refs/heads/main' && vars.ELSON_DEPLOY_ENABLED == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: Authenticate to GCP (WIF, sans clé)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER_NAME }}
+          service_account: ${{ vars.CICD_SA_EMAIL }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      # Migration AVANT déploiement : le job migre et sort (command override
+      # côté Terraform), --wait fait échouer le pipeline si la migration échoue
+      # — le nouveau code n'est alors jamais déployé sur un schéma en retard.
+      - name: Migration de schéma (job elson-migrate)
+        run: |
+          gcloud run jobs update "${{ vars.ELSON_MIGRATE_JOB_NAME }}" \
+            --image "${{ needs.docker.outputs.backend_image }}" \
+            --region "${REGION}" --quiet
+          gcloud run jobs execute "${{ vars.ELSON_MIGRATE_JOB_NAME }}" \
+            --region "${REGION}" --wait
+
+      - name: Deploy API (elson-api)
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ vars.ELSON_API_SERVICE_NAME }}
+          image: ${{ needs.docker.outputs.backend_image }}
+          region: ${{ env.REGION }}
+
+      - name: Deploy Web (elson-web)
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ vars.ELSON_WEB_SERVICE_NAME }}
+          image: ${{ needs.docker.outputs.frontend_image }}
+          region: ${{ env.REGION }}
+
+      - name: Tag latest (les apply Terraform référencent :latest, ignore_changes)
+        run: |
+          gcloud artifacts docker tags add "${{ needs.docker.outputs.backend_image }}"  "${ARTIFACT_REGISTRY}/elson-backend:latest"  || true
+          gcloud artifacts docker tags add "${{ needs.docker.outputs.frontend_image }}" "${ARTIFACT_REGISTRY}/elson-frontend:latest" || true
+
+      - name: Smoke test (via le domaine public, donc LB + WAF + certs)
+        run: |
+          set -e
+          for path in /api/health /api/ready /; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://${ELSON_DOMAIN}${path}")
+            echo "GET ${path} -> ${code}"
+            [ "$code" = "200" ] || exit 1
+          done

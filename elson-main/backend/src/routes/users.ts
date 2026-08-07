@@ -13,7 +13,7 @@ import { auditLog } from "../utils/audit.js";
 import { cached, invalidate } from "../utils/cache.js";
 import { decodeHtmlEntities } from "../utils/text.js";
 import { listWhatsAppGroups } from "../services/whatsapp.js";
-import { config as appConfig } from "../config.js";
+import { storage, stagingDir } from "../services/storage/index.js";
 import { randomUUID } from "crypto";
 
 const router = Router();
@@ -340,24 +340,22 @@ router.post("/admin/failed-recover", adminMiddleware, async (req, res) => {
   const dupe = await queryOne("SELECT 1 FROM contributions WHERE user_id = $1 AND phrase_id = $2", [f.user_id, f.phrase_id]);
   if (dupe) { res.status(409).json({ error: "Ce user a déjà une contribution pour cette phrase." }); return; }
 
-  // Move the vaulted audio into the user's normal recordings dir.
-  const fsp = await import("fs/promises");
-  const pathMod = await import("path");
-  const { config } = await import("../config.js");
-  const src = pathMod.join(config.uploadDir, f.audio_path);
+  // Move the vaulted audio ("failed/<uuid>.<ext>" key) into the user's normal
+  // recordings prefix, via the storage driver (works for both local and gcs).
   const ext = f.audio_path.split(".").pop() || "webm";
   const fileName = `recovered_phrase${f.phrase_id}_${Date.now()}.${ext}`;
-  const userDir = pathMod.join(config.uploadDir, f.user_id);
-  await fsp.mkdir(userDir, { recursive: true });
+  const destKey = `${f.user_id}/${fileName}`;
   let sizeBytes = 0;
+  let audioBytes: Buffer;
   try {
-    await fsp.rename(src, pathMod.join(userDir, fileName));
-    sizeBytes = (await fsp.stat(pathMod.join(userDir, fileName))).size;
+    await storage.move(f.audio_path, destKey);
+    audioBytes = await storage.get(destKey);
+    sizeBytes = audioBytes.length;
   } catch { res.status(500).json({ error: "Fichier audio du coffre introuvable sur le disque." }); return; }
   const audioUrl = `/recordings/${f.user_id}/${fileName}`;
 
   const crypto = await import("node:crypto");
-  const sha = crypto.createHash("sha256").update(await fsp.readFile(pathMod.join(userDir, fileName))).digest("hex");
+  const sha = crypto.createHash("sha256").update(audioBytes).digest("hex");
 
   const done = await transaction(async (client) => {
     // Atomic claim FIRST — a concurrent recover of the same row loses this race and
@@ -2093,23 +2091,22 @@ router.post("/admin/broadcast-lists/:id/delete", adminMiddleware, async (req, re
 });
 
 // ── Notification media upload (photo / audio / video) — sent via WhatsApp only ──
-// Stored under the public community dir so WAHA can fetch it by URL on the internal network.
-const NOTIF_MEDIA_DIR = path.join(appConfig.uploadDir, "community");
+// Stored under the storage driver's "community" prefix so WAHA can fetch it by
+// URL on the internal network. Multer writes into the staging dir.
 const NOTIF_EXT: Record<string, string> = {
   "audio/webm": "webm", "audio/ogg": "ogg", "audio/wav": "wav", "audio/wave": "wav", "audio/x-wav": "wav", "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/aac": "aac",
   "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
   "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov",
 };
-const notifMediaUpload = multer({ dest: path.join(NOTIF_MEDIA_DIR, "_tmp"), limits: { fileSize: 25 * 1024 * 1024 } });
+const notifMediaUpload = multer({ dest: stagingDir(), limits: { fileSize: 25 * 1024 * 1024 } });
 router.post("/admin/notification-media", adminMiddleware, notifMediaUpload.single("file"), async (req, res) => {
   const file = req.file;
   if (!file) { res.status(400).json({ error: "Fichier requis" }); return; }
   const kind = file.mimetype.startsWith("image/") ? "image" : file.mimetype.startsWith("audio/") ? "audio" : file.mimetype.startsWith("video/") ? "video" : null;
   const ext = NOTIF_EXT[file.mimetype];
   if (!kind || !ext) { await fs.unlink(file.path).catch(() => {}); res.status(400).json({ error: "Type non supporté (photo, audio ou vidéo uniquement)" }); return; }
-  await fs.mkdir(NOTIF_MEDIA_DIR, { recursive: true });
   const name = `notif-${randomUUID()}.${ext}`;
-  await fs.rename(file.path, path.join(NOTIF_MEDIA_DIR, name));
+  await storage.putFile(`community/${name}`, file.path, { contentType: file.mimetype });
   res.json({ url: `/recordings/community/${name}`, type: kind });
 });
 
@@ -2654,13 +2651,16 @@ router.delete("/admin/ip-whitelist/:id", adminMiddleware, async (req, res) => {
 // Dataset CSV upload — sec-audit fix #13: dedicated dir under /var/lib (persistent volume,
 // chmod 700 by the dockerfile owner), reject application/octet-stream (catch-all), and a
 // periodic cleanup job (see below) deletes any leftover files older than 1 hour.
-const datasetUploadDir = process.env.DATASET_UPLOAD_DIR
-  || path.join(process.env.UPLOAD_DIR ?? "/data", "_dataset_uploads");
+// Dataset CSV upload — staging dir (local-disk scratch, even under the GCS
+// driver: the CSV is parsed/imported via streams, the audio stays in storage).
+const datasetUploadDir = process.env.DATASET_UPLOAD_DIR || stagingDir();
 await fs.mkdir(datasetUploadDir, { recursive: true, mode: 0o700 }).catch(() => {});
 
 const datasetUpload = multer({
   dest: datasetUploadDir,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
+  // 🔒 Historique 500 Mo mais le GCLB plafonne les corps > 32 Mo → 30 Mo max
+  // en un seul POST (un dataset plus gros doit être découpé en plusieurs uploads).
+  limits: { fileSize: 30 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     // Only accept genuine CSV mime types or files with .csv extension. Reject octet-stream
     // (catch-all that hides arbitrary binaries) and anything else.
@@ -2975,15 +2975,13 @@ router.post("/admin/x/contributions/delete", adminMiddleware, async (req, res) =
     await client.query("DELETE FROM contributions WHERE id = ANY($1::bigint[])", [foundIds]);
   });
 
-  // Remove audio files + their .json sidecars from disk (best-effort, post-commit).
-  const { config } = await import("../config.js");
-  const root = path.resolve(config.uploadDir);
+  // Remove audio files + their .json sidecars via the storage driver (best-effort,
+  // post-commit). The drivers confine keys under the storage root (path-traversal guard).
   const safeUnlink = async (url: string | null) => {
     if (!url || !url.startsWith("/recordings/")) return;
-    const full = path.join(config.uploadDir, url.slice("/recordings/".length));
-    if (!path.resolve(full).startsWith(root)) return; // path-traversal guard
-    try { await fs.unlink(full); } catch { /* already gone */ }
-    try { await fs.unlink(full.replace(/\.[^./\\]+$/, ".json")); } catch { /* no sidecar */ }
+    const key = url.slice("/recordings/".length);
+    await storage.delete(key).catch(() => { /* already gone */ });
+    await storage.delete(key.replace(/\.[^./\\]+$/, ".json")).catch(() => { /* no sidecar */ });
   };
   for (const r of rows) { await safeUnlink(r.audio_url); await safeUnlink(r.audio_url_backup); }
 

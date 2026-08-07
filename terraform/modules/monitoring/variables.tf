@@ -11,9 +11,20 @@ variable "domain_name" {
 }
 
 variable "service_name" {
-  description = "Service Cloud Run surveille (SLO + alertes). Vide => menal-api-<env> (comportement historique)."
+  description = "Service Cloud Run surveille (SLO + alertes). Vide => menal-api-<env> (comportement historique). Ignore si monitored_services est renseigne."
   type        = string
   default     = ""
+}
+
+variable "monitored_services" {
+  description = "Services Cloud Run surveilles (alertes applicatives + uptime + SLO par service). Cle = identifiant court (ex: 'menal-api', 'elson'). slo_prefix pilote les slo_id (les SLO sont recrees si il change) : garder 'api' pour menal-api afin de preserver api-availability-<env>. Vide => fallback mono-app historique (service_name/domain_name)."
+  type = map(object({
+    service_name = string
+    domain       = string
+    uptime_path  = optional(string, "/health")
+    slo_prefix   = optional(string, "")
+  }))
+  default = {}
 }
 
 variable "db_instance_name" {

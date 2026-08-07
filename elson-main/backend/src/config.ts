@@ -33,6 +33,10 @@ export const config = {
     user: env("DB_USER", "hassaniya"),
     password: env("DB_PASSWORD"),
     maxConnections: parseInt(env("DB_MAX_CONNECTIONS", "100")),
+    // Connexions gardees chaudes. 10 convient a un Postgres dedie ; sur une
+    // instance Cloud SQL partagee (max_connections=100 pour toutes les apps),
+    // chaque connexion oisive compte — baisser via DB_MIN_CONNECTIONS=2.
+    minConnections: parseInt(env("DB_MIN_CONNECTIONS", "10")),
   },
 
   // JWT
@@ -55,6 +59,22 @@ export const config = {
   // CORS
   frontendUrl: env("FRONTEND_URL", "http://localhost:3000"),
 
+  // Public base URL (emails, liens absolus). Historique : elson.adst.ai en dur.
+  publicBaseUrl: env("PUBLIC_BASE_URL", "https://elson.adst.ai"),
+
+  // Chaine de proxys devant l'app — pilote l'extraction de l'IP client :
+  //  - "cloudflare" (defaut, Hetzner/compose) : CF-Connecting-IP fait foi
+  //    (Cloudflare l'ecrase a chaque requete, non forgeable a travers CF).
+  //  - "gclb" (Cloud Run derriere le Google Cloud Load Balancer) : l'IP client
+  //    est l'avant-dernier X-Forwarded-For (ajoute par le GCLB) ; le header
+  //    CF-Connecting-IP serait ici FORGEABLE par le client et ne doit JAMAIS
+  //    etre lu — un attaquant contournerait la whitelist IP admin.
+  trustedProxy: (() => {
+    const v = env("TRUSTED_PROXY", "cloudflare");
+    if (v !== "cloudflare" && v !== "gclb") throw new Error(`TRUSTED_PROXY invalide: ${v} (attendu: cloudflare | gclb)`);
+    return v;
+  })(),
+
   // Rate limiting
   rateLimitWindowMs: parseInt(env("RATE_LIMIT_WINDOW_MS", "60000")),
   rateLimitMax: parseInt(env("RATE_LIMIT_MAX_REQUESTS", "60")),
@@ -67,6 +87,24 @@ export const config = {
   // Audio uploads
   uploadDir: env("UPLOAD_DIR", "/data/recordings"),
   maxAudioSizeMb: parseInt(env("MAX_AUDIO_SIZE_MB", "10")),
+
+  // File storage driver:
+  //  - "local" (defaut, Hetzner/compose) : fichiers sous uploadDir, comportement historique.
+  //  - "gcs" (Cloud Run, disque ephemere) : bucket GCS prive via ADC (pas de cle).
+  storageDriver: (() => {
+    const v = env("STORAGE_DRIVER", "local");
+    if (v !== "local" && v !== "gcs") throw new Error(`STORAGE_DRIVER invalide: ${v} (attendu: local | gcs)`);
+    return v;
+  })(),
+
+  // GCS bucket for STORAGE_DRIVER=gcs — mandatory in that mode (fail fast at boot).
+  gcsBucket: (() => {
+    const v = process.env.GCS_BUCKET ?? "";
+    if ((process.env.STORAGE_DRIVER ?? "local") === "gcs" && !v) {
+      throw new Error("Missing env var: GCS_BUCKET (obligatoire quand STORAGE_DRIVER=gcs)");
+    }
+    return v;
+  })(),
 
   // SMTP (Zoho) — optional, password reset disabled if not configured
   smtp: {

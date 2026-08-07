@@ -29,6 +29,8 @@ interface ProcessResult {
 /**
  * Process an uploaded audio file into a Whisper-ready WAV.
  * The original file is kept; a .wav version is created alongside it.
+ * ffmpeg only works on plain local files: callers run this on the STAGING copy
+ * (services/storage stagingDir()) and then push original + WAV via storage.putFile.
  */
 export async function processAudio(inputPath: string): Promise<ProcessResult> {
   const ext = path.extname(inputPath);

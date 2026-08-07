@@ -11,9 +11,11 @@
     "create-admin": "tsx src/scripts/create-admin.ts",
     "db:migrate": "tsx src/scripts/migrate.ts",
     "db:schema": "tsx src/scripts/build-schema.ts",
+    "test:unit": "node --import tsx --test src/**/*.test.ts",
     "lint": "eslint src/"
   },
   "dependencies": {
+    "@google-cloud/storage": "^7.21.0",
     "@types/archiver": "^8.0.0",
     "archiver": "^7.0.1",
     "bcryptjs": "^2.4.3",

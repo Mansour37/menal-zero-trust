@@ -105,6 +105,14 @@ de bout en bout tant que ces étapes ne sont pas elles-mêmes chronométrées.
 
 ### Procédure
 
+> **⚠️ Instance partagée multi-app (depuis l'onboarding Elson).** Le clone PITR restaure
+> **l'instance entière** : ramener `menal_db` à T-2h ramène AUSSI `elson_db` à T-2h. Avant
+> toute bascule vers l'instance restaurée, décider quoi faire de l'autre base : soit la
+> fenêtre d'incident est commune (bascule totale assumée), soit il faut extraire la seule
+> base sinistrée du clone (`pg_dump` de la base depuis le clone → restore ciblé sur
+> l'instance d'origine) et NE PAS basculer l'instance. Ce second chemin n'a jamais été
+> chronométré — le tester avant de s'engager sur un RTO multi-app.
+
 **Restaurer toujours vers une instance NEUVE**, jamais par-dessus l'originale : tant que la
 cause n'est pas comprise, l'instance d'origine est une pièce à conviction. C'est aussi ce qui
 permet de comparer avant de basculer.
@@ -289,7 +297,50 @@ destructeur en attente sur `cve_findings` et vidé la table (111 lignes perdues)
 
 ---
 
-## 8. Ce que ce runbook ne couvre pas encore
+## 8. Onboarding Elson — opérations (07/08/2026)
+
+L'infra Elson est déclarée dans `terraform/environments/staging/elson.tf`, désactivée par
+`elson_enabled=false`. L'activation se fait **en deux temps**, dans cet ordre strict :
+
+**Temps 1 — refactos socle (déjà commités)** : `terraform plan` doit montrer uniquement les
+`moved` du monitoring (aucun destroy). Appliquer. Toute destruction d'une ressource MENAL
+dans le plan = arrêt immédiat (moved block ou tfvars raté) — lire le plan EN ENTIER.
+
+**Temps 2 — activation Elson**, préconditions TOUTES remplies :
+1. Enregistrement A `elson.menal-sarl.com` → IP du LB staging (`8.232.24.132`) chez le
+   registrar — AVANT l'apply, sinon le certificat managé reste en PROVISIONING.
+2. Variables GitHub créées : `ELSON_API_SERVICE_NAME`, `ELSON_WEB_SERVICE_NAME`,
+   `ELSON_MIGRATE_JOB_NAME`, `ELSON_DOMAIN` (cf. en-tête de `elson-ci.yml`).
+3. Premier passage de `elson-ci.yml` sur main : images `elson-backend`/`elson-frontend`
+   poussées dans Artifact Registry (le module cloud-run référence `:latest`).
+4. Dans `terraform.tfvars` : `elson_enabled=true` + décommenter TOUT le bloc Elson d'un
+   coup (`cloud_run_services`, `auth_paths`, `extra_services`, `monitored_services`,
+   `r4_excluded_services`) — en réincluant les valeurs menal-api (piège des fallbacks).
+5. `terraform apply -target=module.elson_app` (SA/secrets/base/bucket/job), puis apply
+   complet.
+6. **Isolation SQL (une fois, via cloud-sql-proxy)** — les users Postgres Cloud SQL sont
+   membres de `cloudsqlsuperuser`, sans ces REVOKE chaque app lit la base de l'autre :
+   ```sql
+   REVOKE CONNECT ON DATABASE menal_db FROM PUBLIC;
+   REVOKE CONNECT ON DATABASE menal_db FROM elson_user;
+   GRANT  CONNECT ON DATABASE menal_db TO api_user;
+   REVOKE CONNECT ON DATABASE elson_db FROM PUBLIC;
+   REVOKE CONNECT ON DATABASE elson_db FROM api_user;
+   GRANT  CONNECT ON DATABASE elson_db TO elson_user;
+   ```
+   Vérification : `psql -U elson_user -d menal_db` doit être REFUSÉ (et réciproquement).
+7. Basculer `ELSON_DEPLOY_ENABLED=true` (variable GitHub) → le job deploy de `elson-ci.yml`
+   migre (job `elson-migrate-staging`) puis déploie les deux services, smoke test compris.
+8. Premier accès admin Elson : ajouter temporairement `ADMIN_BOOTSTRAP=true` sur
+   `elson-api-staging` (`gcloud run services update --update-env-vars`), créer l'admin et
+   whitelister son IP via l'UI, puis RETIRER la variable (procédure DEPLOY_CHECKLIST §4b).
+
+Post-activation : vérifier logs Elson dans `access_logs` BigQuery, alertes `[staging][elson]`
+dans Cloud Monitoring, règle Armor 1450 active sur `/api/auth`, et smoke MENAL toujours vert.
+
+---
+
+## 9. Ce que ce runbook ne couvre pas encore
 
 | Sujet | État |
 |---|---|

@@ -11,6 +11,7 @@ import { isValidHassaniyaText, normalizeHassaniya } from "../utils/hassaniya.js"
 import { auditLog } from "../utils/audit.js";
 import { queryOne, query, execute, transaction } from "../db.js";
 import { config } from "../config.js";
+import { storage, stagingDir } from "../services/storage/index.js";
 import { processAudio } from "../services/audio-processor.js";
 import { invalidate, invalidatePrefix } from "../utils/cache.js";
 import { decodeHtmlEntities } from "../utils/text.js";
@@ -93,7 +94,7 @@ router.use(starterQuotaGuard);
 // Audio upload config — stored on disk to avoid RAM pressure with many concurrent uploads
 // With 5K users, memory storage would use 500MB+ RAM from audio buffers alone
 const upload = multer({
-  dest: path.join(config.uploadDir, "_tmp"),
+  dest: stagingDir(),
   limits: { fileSize: config.maxAudioSizeMb * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ["audio/webm", "audio/wav", "audio/wave", "audio/x-wav", "audio/ogg", "audio/mpeg"];
@@ -316,9 +317,8 @@ router.post("/report", async (req, res) => {
  */
 // ── "No work is ever lost" vault (v46) ────────────────────────────────────────
 // A submission that REACHES the server but gets rejected is archived with its full
-// payload (text + audio file moved under <uploadDir>/failed/) instead of discarded,
-// so the admin can review and re-credit it. Vaulting must never break the response.
-const FAILED_DIR = path.join(config.uploadDir, "failed");
+// payload (text + audio file moved under the "failed/" storage prefix) instead of
+// discarded, so the admin can review and re-credit it. Vaulting must never break the response.
 async function vaultFailedSubmission(opts: {
   userId: string; phraseId: number | null; text: string | null;
   tmpPath: string | null; durationMs: number | null; reason: string; mimetype?: string;
@@ -326,12 +326,10 @@ async function vaultFailedSubmission(opts: {
   try {
     let audioPath: string | null = null;
     if (opts.tmpPath) {
-      await fs.mkdir(FAILED_DIR, { recursive: true });
       const mt = opts.mimetype ?? "";
       const ext = mt.includes("ogg") ? "ogg" : mt.includes("wav") ? "wav" : mt.includes("mp") ? "mp3" : "webm";
       const name = `${crypto.randomUUID()}.${ext}`;
-      try { await fs.rename(opts.tmpPath, path.join(FAILED_DIR, name)); }
-      catch { await fs.copyFile(opts.tmpPath, path.join(FAILED_DIR, name)); await fs.unlink(opts.tmpPath).catch(() => {}); }
+      await storage.putFile(`failed/${name}`, opts.tmpPath);
       audioPath = `failed/${name}`;
     }
     await execute(
@@ -540,28 +538,31 @@ router.post(
     // File naming: phrase{ID}_user{shortId}_{timestamp}.webm
     const userShort = user.id.slice(0, 8);
     const audioFileName = `phrase${phraseId}_user${userShort}_${ts}.${audioExt}`;
-    const userDir = path.join(config.uploadDir, user.id);
-    await fs.mkdir(userDir, { recursive: true });
-    const audioFilePath = path.join(userDir, audioFileName);
-    // Move from tmp to final location (disk→disk rename, no RAM copy)
+    // ffmpeg works on plain local files: keep the upload in the staging dir under
+    // its final name, then hand the results to the storage driver (disk rename in
+    // local mode, bucket upload in gcs mode). Final keys/paths are unchanged.
+    const audioFilePath = path.join(stagingDir(), audioFileName);
     await fs.rename(uploadedTmpPath, audioFilePath);
 
     // ── Post-process audio: denoise + normalize + convert to WAV 16kHz ──
     let processedAudioUrl = `/recordings/${user.id}/${audioFileName}`;
     let actualDurationMs = audioDurationMs;
     let audioSampleRate = 0;
+    let stagedWavPath: string | null = null;
 
     try {
       const result = await processAudio(audioFilePath);
       if (result.valid && result.outputPath !== audioFilePath) {
         // Use the processed WAV as the canonical audio
         const wavFileName = path.basename(result.outputPath);
+        stagedWavPath = result.outputPath;
         processedAudioUrl = `/recordings/${user.id}/${wavFileName}`;
         actualDurationMs = result.durationMs;
         audioSampleRate = result.sampleRate;
       } else if (!result.valid && result.error) {
         // Sec-audit fix E1: audio silence/corrupt MUST reject — was previously a silent warn
         // which let users earn 15 pts per submission with 2s of silence.
+        if (result.outputPath !== audioFilePath) await fs.unlink(result.outputPath).catch(() => {});
         await vaultFailedSubmission({ userId: user.id, phraseId, text: hassaniyaText, tmpPath: audioFilePath, durationMs: audioDurationMs, reason: "audio_quality_rejected", mimetype: req.file.mimetype });
         await auditLog({
           userId: user.id,
@@ -583,6 +584,10 @@ router.post(
       // audit_log entry above only fires on REAL quality rejection (silence/corrupt).
       console.warn("[AUDIO] Post-processing skipped (FFmpeg error):", err);
     }
+
+    // ── Final placement via the storage driver (original + processed WAV) ──
+    await storage.putFile(`${user.id}/${audioFileName}`, audioFilePath);
+    if (stagedWavPath) await storage.putFile(`${user.id}/${path.basename(stagedWavPath)}`, stagedWavPath);
 
     const audioUrl = processedAudioUrl;
 
@@ -660,8 +665,8 @@ router.post(
         audio_size_bytes: uploadedFileSize,
         recorded_at: new Date().toISOString(),
       };
-      await fs.writeFile(
-        audioFilePath.replace(`.${audioExt}`, ".json"),
+      await storage.put(
+        `${user.id}/${audioFileName.replace(`.${audioExt}`, ".json")}`,
         JSON.stringify(metadata, null, 2),
       );
 

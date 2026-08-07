@@ -214,12 +214,13 @@ module "workflow" {
 }
 
 module "monitoring" {
-  source      = "../../modules/monitoring"
-  project_id  = var.project_id
-  region      = var.region
-  environment = var.environment
-  alert_email = var.support_email
-  domain_name = var.domain_name
+  source             = "../../modules/monitoring"
+  project_id         = var.project_id
+  region             = var.region
+  environment        = var.environment
+  alert_email        = var.support_email
+  domain_name        = var.domain_name
+  monitored_services = var.monitored_services
 
   depends_on = [google_project_service.apis]
 }
@@ -231,6 +232,7 @@ module "detection" {
   environment                    = var.environment
   bigquery_dataset_id            = module.bigquery.dataset_id
   pipeline_service_account_email = module.iam.pipeline_service_account_email
+  r4_excluded_services           = var.r4_excluded_services
 
   depends_on = [google_project_service.apis, module.bigquery, module.iam]
 }

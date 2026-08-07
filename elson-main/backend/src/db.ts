@@ -10,7 +10,7 @@ export const pool = new Pool({
   user: config.db.user,
   password: config.db.password,
   max: config.db.maxConnections,
-  min: Math.min(10, config.db.maxConnections),  // keep warm connections ready
+  min: Math.min(config.db.minConnections, config.db.maxConnections), // keep warm connections ready
   idleTimeoutMillis: 60000,       // keep idle connections longer under load
   connectionTimeoutMillis: 10000, // more tolerance under high concurrency
   maxUses: 7500,                  // recycle connections to prevent leaks

@@ -54,8 +54,11 @@ automatiquement avec un mot de passe connu.
 
 **3.1 Compte de service dédié** — un par application, jamais partagé. Les droits accordés
 sont ceux dont elle a besoin et rien de plus : `cloudsql.client` si elle utilise la base,
-`secretmanager.secretAccessor` sur ses propres secrets. **Aucun accès BigQuery** : une
-application hébergée ne lit pas le SIEM. Voir `terraform/modules/iam`.
+`secretmanager.secretAccessor` sur ses propres secrets (binding par secret, jamais projet).
+**Aucun accès BigQuery** : une application hébergée ne lit pas le SIEM. Depuis le 07/08,
+tout cela est porté par **`terraform/modules/app-service`** (SA + secrets « un par usage » +
+base/user dédiés + bucket + job de migration), instancié une fois par application — voir
+`environments/staging/elson.tf` pour le modèle complet.
 
 **3.2 Image et registre** — image construite par le pipeline CI, poussée dans Artifact
 Registry, scannée par Trivy (une CVE CRITICAL corrigeable bloque la livraison). Pas de
@@ -66,31 +69,43 @@ ingress `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` (joignable **uniquement** par l
 Balancer, jamais par son URL `run.app`), connecteur VPC pour atteindre la base en IP privée,
 `cpu_idle = true` pour la facturation à la requête.
 
-**3.4 Routage** — ajouter un backend, un NEG et une règle d'hôte dans
-`terraform/modules/load-balancer` (le module en gère déjà deux : API et tableau de bord ;
-le troisième suit le même schéma). Prévoir le certificat managé et l'enregistrement DNS.
+**3.4 Routage** — **aucune modification du module** : déclarer l'application dans
+`extra_services` (terraform.tfvars) — domaine, service par défaut, et pour une app
+same-origin les chemins `api_paths` routés vers un second service. Le module génère NEG,
+backend, règle d'hôte et certificat managé. L'enregistrement DNS (A → IP du LB) doit exister
+**avant** l'apply, sinon le certificat reste en PROVISIONING.
 
-**3.5 Journalisation** — le sink Cloud Run capte automatiquement les journaux du nouveau
-service. Vérifier que les requêtes apparaissent dans `access_logs` après normalisation :
-c'est la condition pour que les règles de détection voient quoi que ce soit.
+**3.5 Journalisation** — le sink Cloud Run ne capte **que** les services listés dans
+`cloud_run_services` (terraform.tfvars) : oublier d'y ajouter le nouveau service = app
+absente du SIEM, **sans aucune erreur visible**. En renseignant la liste, toujours réinclure
+`menal-api-<env>` (elle écrase le fallback historique). Vérifier ensuite que les requêtes
+apparaissent dans `access_logs` après normalisation : c'est la condition pour que les règles
+de détection voient quoi que ce soit.
 
 **3.6 Adapter les règles de détection** — R1 cible `status_code IN (401, 403)` sur
 `access_logs`, indépendamment du service : elle fonctionne donc immédiatement pour tout
-endpoint d'authentification. Vérifier en revanche les règles qui filtrent sur des chemins
-(`/api/`) et adapter au préfixe de l'application.
+endpoint d'authentification. Pour R4 (user-agent scripté sur `/api/`), une application grand
+public dont toute la surface est sous `/api` doit être exclue via `r4_excluded_services`
+(terraform.tfvars) — sinon chaque client scripté légitime devient une détection. Ajouter
+aussi l'application à `monitored_services` (alertes, uptime, SLO par service) et ses chemins
+d'authentification à `auth_paths` (règle Cloud Armor 1450) — en réincluant les valeurs
+menal-api existantes dans les deux cas.
 
-## 4. Cas d'Elson
+## 4. Cas d'Elson — l'onboarding réel (en cours depuis le 07/08/2026)
 
-Elson tourne aujourd'hui sur son propre socle (Hetzner, Docker Compose, Caddy, Cloudflare) —
-**ni sur GCP, ni derrière MENAL**. Son audit (`elson-main/DOCUMENTATION_ELSON.md` §14)
-identifie six points bloquants, qui recoupent presque exactement les prérequis du §1 :
-identifiants d'administration par défaut en clair, `JWT_SECRET` unique partagé par sept
-mécanismes, PgBouncer sans authentification, état en mémoire et sur disque incompatible avec
-Cloud Run, schéma de base non reconstructible depuis le dépôt.
+Elson est le **premier cas réel** de cette procédure. Décision du 07/08 : Elson sera déployé
+sur Cloud Run derrière le socle, sous `elson.menal-sarl.com` (abandon de Hetzner à la
+bascule). Sur les six points bloquants de son audit (`elson-main/DOCUMENTATION_ELSON.md`
+§14), cinq sont levés (admin par défaut, secrets séparés, PgBouncer, token d'export, schéma
+reconstructible + runner de migration en CI) ; reste l'état fichier sur disque, en cours de
+migration vers GCS (abstraction `STORAGE_DRIVER=local|gcs`).
 
-Le chemin estimé dans ce même document est de **11 à 21 semaines en 4 phases**. Rien de cela
-n'a été entamé : la plateforme est prête à accueillir une application, Elson n'est pas prête
-à être accueillie.
+État d'avancement : infra complète déclarée (`environments/staging/elson.tf`, activable par
+`elson_enabled`), correctifs Cloud Run applicatifs faits (IP client GCLB anti-usurpation,
+split health/ready, cluster désactivable, migrations via job dédié), CI build+push+deploy
+prête (gate `ELSON_DEPLOY_ENABLED`). La procédure d'activation pas à pas est dans
+`08_RUNBOOK.md` §8 ; la bascule des données réelles (base + corpus audio + VM WAHA) reste
+un chantier distinct avec sa checklist GO/NO-GO.
 
 En attendant, `GUIDE_DEMO_ELSON.md` décrit ce qui est démontrable dès aujourd'hui : le même
 mécanisme de détection qui protégerait Elson, rejoué pour de vrai contre l'API MENAL sur un

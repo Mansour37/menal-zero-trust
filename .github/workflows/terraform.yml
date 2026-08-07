@@ -44,7 +44,7 @@ jobs:
       # Porte bloquante sur CRITICAL : une mauvaise configuration critique de
       # l infra (ex. bucket public, base exposee) ne doit pas atteindre main.
       - name: Trivy config - bloquant sur CRITICAL
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: terraform/
@@ -55,7 +55,7 @@ jobs:
       # Rapport informatif HIGH/MEDIUM : visible dans les journaux.
       - name: Trivy config - rapport HIGH/MEDIUM (informatif)
         if: always()
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: terraform/

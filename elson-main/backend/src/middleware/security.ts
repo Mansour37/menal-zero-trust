@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import jwt from "jsonwebtoken";
 import { config } from "../config.js";
 import { sendSecurityAlert } from "../services/alert.js";
+import { clientIp } from "../utils/client-ip.js";
 
 /**
  * Lightweight, signature-only decode of the Bearer access token for rate-limit
@@ -28,18 +29,13 @@ function tokenClaims(req: Request): Claims {
 }
 
 /**
- * Real client IP for rate-limit keying.
- *
- * The app sits behind Cloudflare → Caddy → Express(trust proxy=1). `req.ip`
- * therefore resolves to the CLOUDFLARE EDGE IP, which is shared by thousands of
- * users — keying a per-IP limit on it buckets the whole region together, so a
- * handful of auth calls blocks EVERYONE ("Too many attempts" at launch).
- * CF-Connecting-IP is the true client IP (still a shared CGNAT IP for Mauritanian
- * telcos, hence the generous caps + skipSuccessfulRequests on the auth limiters).
+ * Real client IP for rate-limit keying — proxy-chain aware (Cloudflare on
+ * Hetzner, GCLB on Cloud Run), see utils/client-ip.ts. Still a shared CGNAT IP
+ * for Mauritanian telcos, hence the generous caps + skipSuccessfulRequests on
+ * the auth limiters.
  */
 function realIp(req: Request): string {
-  const cf = (req.headers["cf-connecting-ip"] as string | undefined)?.split(",")[0]?.trim();
-  return cf || req.ip || "unknown";
+  return clientIp(req);
 }
 
 /**

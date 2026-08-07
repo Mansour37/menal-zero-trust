@@ -57,11 +57,42 @@ variable "auth_paths" {
   default     = []
 }
 
-variable "extra_services" {
-  description = "Mapps de services supplementaires routes derriere le LB staging (ecart 4). Ex: app2 = { service_name = \"app2-staging\", domain = \"app2-staging.elm\" }. Vide = pas de 2e app deployee."
+variable "elson_enabled" {
+  description = "Active l'infrastructure Elson (SA, secrets, base, bucket, job, 2 services Cloud Run). A passer a true APRES le premier push des images elson-* par la CI (cf. elson.tf)."
+  type        = bool
+  default     = false
+}
+
+variable "elson_domain" {
+  description = "Domaine public d'Elson (front + API same-origin). L'enregistrement A doit pointer sur l'IP du LB AVANT l'apply, sinon le certificat managé reste en PROVISIONING."
+  type        = string
+  default     = "elson.menal-sarl.com"
+}
+
+variable "monitored_services" {
+  description = "Services surveilles par le module monitoring (alertes par service + uptime + SLO). Vide = fallback mono-app menal-api. IMPORTANT : en le renseignant, TOUJOURS reinclure menal-api avec slo_prefix=\"api\" (sinon ses alertes/SLO sont detruits). Cf. terraform.tfvars.example."
   type = map(object({
     service_name = string
     domain       = string
+    uptime_path  = optional(string, "/health")
+    slo_prefix   = optional(string, "")
+  }))
+  default = {}
+}
+
+variable "r4_excluded_services" {
+  description = "Services exclus de la regle de detection R4 (user-agent scripte sur /api/) — ex: elson-api-staging dont TOUTE la surface est sous /api."
+  type        = list(string)
+  default     = []
+}
+
+variable "extra_services" {
+  description = "Mapps de services supplementaires routes derriere le LB staging (ecart 4). Ex: app2 = { service_name = \"app2-staging\", domain = \"app2-staging.elm\" }. api_service_name/api_paths (optionnels) : routage same-origin de certains chemins vers un 2e service (ex: elson — front en defaut, /api/* et /recordings/* vers elson-api). Vide = pas de 2e app deployee."
+  type = map(object({
+    service_name     = string
+    domain           = string
+    api_service_name = optional(string, "")
+    api_paths        = optional(list(string), [])
   }))
   default = {}
 }

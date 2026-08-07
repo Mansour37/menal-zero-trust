@@ -11,11 +11,12 @@ import { query, queryOne, execute } from "../db.js";
 import { invalidate } from "../utils/cache.js";
 import { loadCompetitionConfig } from "../utils/schedule.js";
 import { config } from "../config.js";
+import { storage, stagingDir } from "../services/storage/index.js";
 import { processAudio } from "../services/audio-processor.js";
 
 // Audio upload for corrections (re-recording by the reviewer).
 const correctUpload = multer({
-  dest: path.join(config.uploadDir, "_tmp"),
+  dest: stagingDir(),
   limits: { fileSize: config.maxAudioSizeMb * 1024 * 1024 },
   fileFilter: (_req, file, cb) => cb(null, file.mimetype.startsWith("audio/")),
 });
@@ -560,12 +561,14 @@ router.post("/correct", correctUpload.single("audio"), async (req, res) => {
     try {
       const ext = req.file.mimetype.includes("wav") ? "wav" : "webm";
       const fileName = `review_c${contributionId}_${user.id.slice(0, 8)}_${Date.now()}.${ext}`;
-      const userDir = path.join(config.uploadDir, user.id);
-      await fs.mkdir(userDir, { recursive: true });
-      const filePath = path.join(userDir, fileName);
+      // ffmpeg needs a local file: process in staging, then hand over to the storage driver.
+      const filePath = path.join(stagingDir(), fileName);
       await fs.rename(req.file.path, filePath);
       reviewedAudioUrl = `/recordings/${user.id}/${fileName}`;
-      try { const r = await processAudio(filePath); if (r.valid && r.outputPath !== filePath) reviewedAudioUrl = `/recordings/${user.id}/${path.basename(r.outputPath)}`; } catch { /* ffmpeg hiccup → keep the webm */ }
+      let stagedWav: string | null = null;
+      try { const r = await processAudio(filePath); if (r.valid && r.outputPath !== filePath) { stagedWav = r.outputPath; reviewedAudioUrl = `/recordings/${user.id}/${path.basename(r.outputPath)}`; } } catch { /* ffmpeg hiccup → keep the webm */ }
+      await storage.putFile(`${user.id}/${fileName}`, filePath);
+      if (stagedWav) await storage.putFile(`${user.id}/${path.basename(stagedWav)}`, stagedWav);
     } catch { await cleanup(); res.status(500).json({ error: "Échec de l'enregistrement audio." }); return; }
   }
 

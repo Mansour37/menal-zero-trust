@@ -1,10 +1,28 @@
 name: CI - Build & Deploy
 
+# Filtre paths (07/08) : avant, TOUT push sur main — y compris un commit
+# purement Elson ou de la doc — reconstruisait ET redeployait MENAL staging.
+# Perimetre MENAL uniquement ; Elson a son propre workflow (elson-ci.yml),
+# l infra a le sien (terraform.yml, paths terraform/**).
 on:
   push:
     branches: [main]
+    paths:
+      - "api/**"
+      - "dashboard/**"
+      - "frontend/**"
+      - "scripts/**"
+      - "tests/**"
+      - ".github/workflows/ci.yml"
   pull_request:
     branches: [main]
+    paths:
+      - "api/**"
+      - "dashboard/**"
+      - "frontend/**"
+      - "scripts/**"
+      - "tests/**"
+      - ".github/workflows/ci.yml"
 
 # STAGING est l environnement de reference du pipeline : c est lui que le
 # CI-SEC-CD construit, scanne, deploie et teste en E2E. Dev sert aux essais
@@ -18,6 +36,9 @@ env:
   DASHBOARD_SERVICE_NAME: ${{ vars.DASHBOARD_SERVICE_NAME }}
   ARTIFACT_REGISTRY: ${{ vars.ARTIFACT_REGISTRY_URL }}
   BQ_DATASET: ${{ vars.BQ_DATASET }}
+  # Fix BLOB_UNKNOWN (b19259f, reporte depuis elson-ci) : la DB Trivy est tiree
+  # de ghcr.io — le mirror gcr.io repondait BLOB_UNKNOWN par intermittence.
+  TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
 
 permissions:
   contents: read
@@ -39,6 +60,8 @@ jobs:
       # le pipeline. Sans cela, ces scans etaient du theatre (continue-on-error).
       - name: Gitleaks - Secret Scanning
         uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Semgrep - SAST
         uses: semgrep/semgrep-action@v1
@@ -98,7 +121,7 @@ jobs:
       # ignore-unfixed evite de bloquer sur des CVE sans correctif disponible
       # (sinon la porte serait desactivee a la premiere alerte non actionnable).
       - name: Trivy - CVE Scan (bloquant sur CRITICAL)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.build.outputs.image }}
           format: table
@@ -109,7 +132,7 @@ jobs:
       # Rapport informatif HIGH : visible dans les journaux, non bloquant.
       - name: Trivy - rapport HIGH (informatif)
         if: always()
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.build.outputs.image }}
           format: table
@@ -122,7 +145,7 @@ jobs:
       # rien — le pipeline scannait sans que personne ne voie le resultat.
       - name: Trivy - rapport JSON pour le SIEM
         if: always()
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.build.outputs.image }}
           format: json
@@ -200,7 +223,7 @@ jobs:
       # Meme porte que pour l API : le dashboard est expose publiquement via
       # le LB, une CVE CRITICAL corrigeable dans son image bloque la livraison.
       - name: Trivy - CVE Scan (bloquant sur CRITICAL)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.build.outputs.image }}
           format: table
