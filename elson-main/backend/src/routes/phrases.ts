@@ -216,11 +216,16 @@ router.post("/skip", async (req, res) => {
 
 /**
  * POST /api/phrases/report
- * A contributor flags a source phrase as inappropriate. It is hidden IMMEDIATELY
- * (is_active = false) so the /next serving query never returns it to anyone again
- * (including the reporter). Logged as 'phrase_reported' for admin review/abuse-check.
+ * A contributor flags a source phrase as inappropriate. Since P0-7 (audit §11.7),
+ * the phrase is hidden ONLY once REPORT_QUORUM distinct users have reported it —
+ * a single user can no longer disable the corpus. Per-user daily cap
+ * (REPORT_DAILY_CAP) and duplicate reports are no-ops. Logged as
+ * 'phrase_reported' for admin review.
  * The reporter's lock is released so they move straight to a new phrase.
  */
+const REPORT_QUORUM = 3;           // distinct reporters required before hiding
+const REPORTS_DAILY_PER_USER = 5;  // anti-abuse ceiling for one user per day
+
 router.post("/report", async (req, res) => {
   const phraseId = parseInt(req.body?.phraseId);
   if (!phraseId || isNaN(phraseId)) {
@@ -230,10 +235,60 @@ router.post("/report", async (req, res) => {
   const reason = typeof req.body?.reason === "string" ? req.body.reason.slice(0, 300) : null;
   const user = req.user!;
 
-  const hidden = await execute(
-    "UPDATE phrases SET is_active = false WHERE id = $1 AND is_active = true",
+  // Check the phrase exists before recording anything.
+  const phrase = await queryOne<{ id: number; is_active: boolean }>(
+    "SELECT id, is_active FROM phrases WHERE id = $1",
     [phraseId],
   );
+  if (!phrase) {
+    res.status(404).json({ error: "Phrase introuvable" });
+    return;
+
+  }
+
+  // Admin reports are verified content decisions — apply immediately.
+  const isAdmin = user.role === "admin";
+  if (!isAdmin) {
+    // Per-user daily cap.
+    const usedToday = await queryOne<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM phrase_reports
+        WHERE user_id = $1 AND created_at > now() - interval '1 day'`,
+      [user.id],
+    );
+    if ((usedToday?.n ?? 0) >= REPORTS_DAILY_PER_USER) {
+      res.status(429).json({ error: `Limite de ${REPORTS_DAILY_PER_USER} signalements par jour atteinte` });
+      return;
+    }
+  }
+
+  // Record the report (idempotent per (phrase, user)).
+  const report = await execute(
+    `INSERT INTO phrase_reports (phrase_id, user_id, reason)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (phrase_id, user_id) DO NOTHING`,
+    [phraseId, user.id, reason],
+  );
+  const recorded = report > 0;
+
+  // Count distinct reporters and hide when the quorum is reached.
+  let hidden = false;
+  if (isAdmin) {
+    hidden = phrase.is_active ? (await execute(
+      "UPDATE phrases SET is_active = false WHERE id = $1 AND is_active = true",
+      [phraseId],
+    )) > 0 : false;
+  } else {
+    const quorum = await queryOne<{ n: number }>(
+      "SELECT COUNT(DISTINCT user_id)::int AS n FROM phrase_reports WHERE phrase_id = $1",
+      [phraseId],
+    );
+    if ((quorum?.n ?? 0) >= REPORT_QUORUM) {
+      hidden = (await execute(
+        "UPDATE phrases SET is_active = false WHERE id = $1 AND is_active = true",
+        [phraseId],
+      )) > 0;
+    }
+  }
 
   // Free the reporter's lock (best-effort) so they can fetch the next phrase.
   await releaseLock(phraseId, user.id).catch(() => {});
@@ -241,10 +296,10 @@ router.post("/report", async (req, res) => {
   await auditLog({
     userId: user.id, action: "phrase_reported",
     targetType: "phrase", targetId: String(phraseId),
-    details: { reason, hidden: hidden > 0 }, ip: req.ip,
+    details: { reason, recorded, hidden, quorum: REPORT_QUORUM }, ip: req.ip,
   });
 
-  res.json({ success: true });
+  res.json({ success: true, hidden, recorded });
 });
 
 /**

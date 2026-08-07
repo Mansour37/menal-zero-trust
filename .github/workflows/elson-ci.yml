@@ -1,0 +1,130 @@
+name: Elson CI
+
+# ── Elson (Hassaniya crowdevrof) ──
+# Portes locales garantissant qu'un environnement neuf (DB comprise) peut être
+# reconstruit depuis le dépôt, et qu'aucune image fragile n'arrive en production.
+#
+# Point faible (heap backlog §14.2#9) : une CVE critique dans les images Elson
+# (postgres, waha, backend, frontend, caddy) n'était jamais vérifiée. Le scan
+# Trivy bloquant sur CRITICAL corrigéable aligne Elson sur les portes du plateau
+# MENAL (ci.yml).
+#
+# Le déploiement Hetzner reste opéré via deploy/deploy.sh (rsync + compose) —
+# pas de secrets SSH dans GitHub, cohérent avec la matrice de risques.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "elson-main/**"
+      - ".github/workflows/elson-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "elson-main/**"
+      - ".github/workflows/elson-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    name: Security Scans (Elson)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks - Secret Scanning
+        uses: gitleaks/gitleaks-action@v2
+
+      - name: Semgrep - SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/default
+
+  backend:
+    name: Backend (lint, build, db:migrate)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: elson-main/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: elson-main/backend/package-lock.json
+
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      - name: Lint
+        # Dette pré-existante (80 erreurs eslint à travers le code, type any /
+        # no-namespace) : rapport visuel non bloquant tant qu'elle n'est pas à
+        # zéro. Tsc (build) reste la porte dure. Retirer `continue-on-error`
+        # une fois le backlog de dette épuré.
+        continue-on-error: true
+        run: npm run lint
+
+      - name: TypeScript build
+        run: npm run build
+
+      - name: Start Postgres (isolé)
+        run: docker run -d --name pg-test -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -e POSTGRES_DB=test -p 5433:5432 postgres:17-alpine
+
+      - name: Reconstruction complète du schéma (--from-zero)
+        env:
+          DB_HOST: localhost
+          DB_PORT: "5433"
+          DB_NAME: test
+          DB_USER: test
+          DB_PASSWORD: test
+          DB_MAX_CONNECTIONS: "10"
+          JWT_SECRET: ci-test-secret
+          OTP_PEPPER: ci-otp-pepper
+          API_KEY_SECRET: ci-api-key
+          AUDIO_URL_SECRET: ci-audio-key
+        run: |
+          # attendre le Postgres sandbox
+          until docker exec pg-test pg_isready -U test -d test; do sleep 1; done
+          npm run db:migrate -- --from-zero
+          # idempotence : un second passage ne doit rien appliquer
+          npm run db:migrate
+          # les objets de référence (audit §4.4.2) doivent exister
+          docker exec pg-test psql -U test -d test -c \
+            "SELECT to_regclass('votes') AS votes, to_regclass('votable_phrases') AS votable_phrases, to_regclass('season0_contributors') AS s0, to_regclass('profiles') AS profiles;"
+
+  docker:
+    name: Docker images + Trivy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t elson-backend:ci ./elson-main/backend
+
+      - name: Build frontend image
+        run: docker build -t elson-frontend:ci ./elson-main
+
+      - name: Trivy - backend (bloquant sur CRITICAL corrigéable)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: elson-backend:ci
+          format: table
+          exit-code: 1
+          severity: CRITICAL
+          ignore-unfixed: true
+
+      - name: Trivy - frontend (bloquant sur CRITICAL corrigéable)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: elson-frontend:ci
+          format: table
+          exit-code: 1
+          severity: CRITICAL
+          ignore-unfixed: true

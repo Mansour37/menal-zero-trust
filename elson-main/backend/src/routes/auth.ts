@@ -647,7 +647,7 @@ router.post("/verify-email", authMiddleware, validateBody(verifyEmailSchema), as
     return;
   }
 
-  const codeHash = crypto.createHash("sha256").update(code).digest("hex");
+  const codeHash = crypto.createHmac("sha256", config.otpPepper).update(code).digest("hex");
 
   const verif = await queryOne<{ id: number; attempts: number }>(
     "SELECT id, attempts FROM email_verifications WHERE user_id = $1 AND code_hash = $2 AND used = false AND expires_at > now()",
@@ -726,8 +726,8 @@ router.post("/resend-verification", authMiddleware, async (req, res) => {
     return;
   }
 
-  const verifyCode = String(Math.floor(100000 + Math.random() * 900000));
-  const codeHash = crypto.createHash("sha256").update(verifyCode).digest("hex");
+  const verifyCode = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+  const codeHash = crypto.createHmac("sha256", config.otpPepper).update(verifyCode).digest("hex");
   await execute(
     "INSERT INTO email_verifications (user_id, code_hash, expires_at) VALUES ($1, $2, now() + interval '30 minutes')",
     [user.id, codeHash],
@@ -801,9 +801,9 @@ router.post("/forgot-password", validateBody(forgotSchema), async (req, res) => 
     return;
   }
 
-  // Generate 6-digit code
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  const codeHash = crypto.createHash("sha256").update(code).digest("hex");
+  // Generate 6-digit code (P0-5: crypto.randomInt + HMAC peppered — same as OTP)
+  const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+  const codeHash = crypto.createHmac("sha256", config.otpPepper).update(code).digest("hex");
 
   await execute(
     "INSERT INTO password_resets (user_id, code_hash, expires_at) VALUES ($1, $2, now() + interval '15 minutes')",
@@ -860,7 +860,7 @@ router.post("/reset-password", validateBody(resetSchema), async (req, res) => {
     return;
   }
 
-  const codeHash = crypto.createHash("sha256").update(code).digest("hex");
+  const codeHash = crypto.createHmac("sha256", config.otpPepper).update(code).digest("hex");
 
   // Find valid reset code
   const resetRow = await queryOne<{ id: number; attempts: number }>(

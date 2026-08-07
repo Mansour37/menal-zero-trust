@@ -1,7 +1,9 @@
 services:
   # ── PostgreSQL ──
   postgres:
-    image: postgres:17-alpine
+    # Épinglé par digest (P1-1) : une mise à jour d'image n'arrive que par une
+    # PR explicite, jamais par surprise. 17-alpine du 2026-08-06.
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     restart: unless-stopped
     networks:
       - internal
@@ -51,37 +53,6 @@ services:
     shm_size: '256mb'
     # Security: no ports exposed to host, only accessible via internal network
 
-  # ── PgBouncer (connection pooler) ──
-  # Multiplexes 500+ app connections into ~30 real PG connections
-  # Critical for 5K concurrent users with clustered Node.js
-  pgbouncer:
-    image: edoburu/pgbouncer:latest
-    restart: unless-stopped
-    networks:
-      - internal
-    expose:
-      - "5432"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://${DB_USER:-hassaniya}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-hassaniya}
-      POOL_MODE: transaction
-      MAX_CLIENT_CONN: 500
-      DEFAULT_POOL_SIZE: 30
-      MIN_POOL_SIZE: 10
-      RESERVE_POOL_SIZE: 10
-      RESERVE_POOL_TIMEOUT: 3
-      SERVER_IDLE_TIMEOUT: 300
-      LOG_CONNECTIONS: 0
-      LOG_DISCONNECTIONS: 0
-      AUTH_TYPE: trust
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   # ── Backend (Express API) ──
   backend:
     build:
@@ -90,6 +61,7 @@ services:
     restart: unless-stopped
     networks:
       - internal
+      - waha_net   # backend → WAHA call path (WAHA cannot reach `internal`)
     expose:
       - "4000"
     depends_on:
@@ -103,18 +75,21 @@ services:
       DB_NAME: ${DB_NAME:-hassaniya}
       DB_USER: ${DB_USER:-hassaniya}
       DB_PASSWORD: ${DB_PASSWORD}
-      DB_MAX_CONNECTIONS: "100"
+      DB_MAX_CONNECTIONS: "30"
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      API_KEY_SECRET: ${API_KEY_SECRET:?API_KEY_SECRET is required}
+      AUDIO_URL_SECRET: ${AUDIO_URL_SECRET:?AUDIO_URL_SECRET is required}
+      OTP_PEPPER: ${OTP_PEPPER:?OTP_PEPPER is required}
       FRONTEND_URL: ${FRONTEND_URL:-https://app.example.com}
       UPLOAD_DIR: /data/recordings
       SEED_FLORES: ${SEED_FLORES:-false}
+      MIGRATE_MODE: ${MIGRATE_MODE:-auto}
       WEB_CONCURRENCY: "4"
       SMTP_HOST: ${SMTP_HOST:-smtp.zoho.com}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       ALERT_EMAILS: ${ALERT_EMAILS:-}
-      API_KEY: ${API_KEY:-}
       WAHA_URL: ${WAHA_URL:-http://waha:3000}
       WAHA_API_KEY: ${WAHA_API_KEY:-}
       WAHA_SESSION: ${WAHA_SESSION:-default}
@@ -144,7 +119,8 @@ services:
 
   # ── Caddy (Reverse Proxy + HTTPS auto) ──
   caddy:
-    image: caddy:2-alpine
+    # Épinglé par digest (P1-1).
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
     restart: unless-stopped
     ports:
       - "80:80"
@@ -162,7 +138,8 @@ services:
 
   # ── Automated Backups ──
   pg-backup:
-    image: postgres:17-alpine
+    # Même image que postgres, épinglée (P1-1).
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     restart: "no"
     networks:
       - internal
@@ -207,11 +184,17 @@ services:
       - backup
 
   # ── WAHA (WhatsApp HTTP API — OTP sending) ──
+  # P0-4 (audit §11.3): isolated on its OWN network (not `internal`) so this
+  # third-party image (which talks to the public Internet) can never reach
+  # PostgreSQL. The backend reaches it via WAHA_URL which still resolves.
   waha:
-    image: devlikeapro/waha:latest
+    # P1-1 : `latest` n'est pas reproductible en CI ni d'un serveur à l'autre.
+    # Digest du 2026-08-06 (devlikeapro/waha manifest amd64+arm64).
+    # Note : WAHA publie des versions régulières ; mettre à jour en PR.
+    image: devlikeapro/waha@sha256:65e593e30bb702f891550b9da5d65e9e0eff8a926f5451fac6a582db84d3a323
     restart: unless-stopped
     networks:
-      - internal
+      - waha_net
     expose:
       - "3000"
     environment:
@@ -232,7 +215,9 @@ services:
           memory: 256M
 
 networks:
-  internal:
+  internal:      # backend, frontend, caddy, postgres, backups
+    driver: bridge
+  waha_net:      # WAHA alone — isolated from the DB network (P0-4)
     driver: bridge
 
 volumes:

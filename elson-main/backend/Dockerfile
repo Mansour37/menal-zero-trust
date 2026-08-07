@@ -1,12 +1,15 @@
 # ── Backend Dockerfile ──
-FROM node:22-alpine AS builder
+# node:22-alpine épinglé par digest (P1-1) du 2026-08-06 — mise à jour
+# uniquement par PR explicite.
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS builder
 WORKDIR /app
 COPY package.json ./
-RUN npm install
+COPY package-lock.json ./
+RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:22-alpine AS runner
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
@@ -25,9 +28,11 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 
-# Copy seed script source + tsx for running it
-COPY --from=builder /app/src/scripts ./src/scripts
-COPY --from=builder /app/src/config.ts ./src/config.ts
+# Copy TS sources for the seed/migrate/admin scripts (tsx) — src entier,
+# car migrate.ts & create-admin.ts importent ../db.js et ../config.js.
+# init.sql + migrations sont aussi embarqués pour le runner db:migrate (P1-1).
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/sql ./sql
 COPY --from=builder /app/tsconfig.json ./
 
 # Copy entrypoint

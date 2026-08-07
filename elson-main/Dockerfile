@@ -1,8 +1,11 @@
 # ── Frontend Dockerfile ──
-FROM node:22-alpine AS builder
+# ── Frontend Dockerfile ──
+# node:22-alpine épinglé par digest (P1-1) du 2026-08-06.
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS builder
 WORKDIR /app
 COPY package.json ./
-RUN npm install
+COPY package-lock.json ./
+RUN npm ci
 COPY . .
 
 ARG NEXT_PUBLIC_API_URL
@@ -10,7 +13,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 RUN npm run build
 
-FROM node:22-alpine AS runner
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 

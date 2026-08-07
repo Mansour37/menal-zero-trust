@@ -20,12 +20,10 @@
 import crypto from "node:crypto";
 import { config } from "../config.js";
 
-const AUDIO_SECRET = (() => {
-  if (process.env.AUDIO_URL_SECRET) return process.env.AUDIO_URL_SECRET;
-  // Deterministic derivation if not configured — sec-audit allows a fallback warn
-  console.warn("[SEC] AUDIO_URL_SECRET not set — deriving from JWT_SECRET (set a dedicated secret in env: openssl rand -hex 64)");
-  return crypto.createHash("sha256").update("audio-url-domain:" + config.jwtSecret).digest("hex");
-})();
+// P0-2 (audit §11.2): dedicated secret for signed audio URLs, resolved in config.ts.
+// In production a missing AUDIO_URL_SECRET now fails startup instead of deriving
+// deterministically from JWT_SECRET.
+const AUDIO_SECRET = config.audioUrlSecret;
 
 export const AUDIO_URL_TTL_SECONDS = 600; // 10 minutes
 

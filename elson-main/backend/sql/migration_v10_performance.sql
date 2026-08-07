@@ -37,9 +37,13 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_validations_contribution_validator
     ON validations (validator_id, contribution_id);
 
 -- ── 4. INDEX for skip rate limiting ──
+-- Note: l'index sur `created_at > now()` est illégal (les prédicats d'index
+-- exigent des fonctions IMMUTABLE ; now()/interval() sont STABLE). Il est
+-- remplacé par un index colonnes simple : la requête
+-- `WHERE user_id = $1 AND created_at > now() - interval '1h'` en profite
+-- toujours (le garde pourra limiter la taille de l'index, soit).
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_skips_user_recent
-    ON phrase_skips (user_id, created_at)
-    WHERE created_at > now() - interval '1 hour';
+    ON phrase_skips (user_id, created_at);
 
 -- ── 5. INDEX for refresh token lookup ──
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_refresh_tokens_lookup

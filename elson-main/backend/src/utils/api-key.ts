@@ -1,15 +1,10 @@
 import crypto from "node:crypto";
 import { config } from "../config.js";
 
-// Sec-audit fix #3: separate secret from JWT_SECRET so a leak of one doesn't compromise the other.
-// Falls back to a deterministic derivation of JWT_SECRET to keep existing deploys working;
-// log a warning so ops will set API_KEY_SECRET explicitly.
-const API_SECRET = (() => {
-  if (process.env.API_KEY_SECRET) return process.env.API_KEY_SECRET;
-  if (process.env.API_KEY) return process.env.API_KEY; // legacy env name
-  console.warn("[SEC] API_KEY_SECRET not set — deriving from JWT_SECRET. Set a dedicated secret in env (openssl rand -hex 64).");
-  return crypto.createHash("sha256").update("api-key-domain:" + config.jwtSecret).digest("hex");
-})();
+// P0-2 (audit §11.2): dedicated secret for session API keys, resolved in config.ts.
+// In production a missing API_KEY_SECRET now fails startup instead of deriving
+// deterministically from JWT_SECRET.
+const API_SECRET = config.apiKeySecret;
 
 /** Generate a session API key: HMAC(secret, userId + timestamp) */
 export function generateApiKey(userId: string): string {

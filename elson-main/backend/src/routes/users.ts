@@ -657,14 +657,29 @@ router.get("/admin/dataset-stats", adminMiddleware, async (_req, res) => {
 /**
  * GET /api/users/admin/dataset-zip-token?lang=ar&audio=1 (admin) — mint a short-lived
  * signed URL the browser navigates to, to stream the validated-corpus ZIP to disk.
+ * P0-3 (audit §11.4) : the token is bound to the requesting admin, single-use
+ * (nonce stored in dataset_export_tokens), and every download is audit-logged.
  */
 router.get("/admin/dataset-zip-token", adminMiddleware, async (req, res) => {
   const lang = ["ar", "en", "fr"].includes(String(req.query.lang)) ? String(req.query.lang) : "ar";
   const audio = String(req.query.audio ?? "1") !== "0";
+  const adminId = req.user!.id;
+  const nonce = randomUUID();
+
+  const inserted = await execute(
+    `INSERT INTO dataset_export_tokens (user_id, lang, audio, nonce, expires_at)
+     VALUES ($1, $2, $3, $4, now() + interval '5 minutes')`,
+    [adminId, lang, audio, nonce],
+  );
+  if (!inserted) {
+    res.status(500).json({ error: "Impossible de créer le jeton d'export" });
+    return;
+  }
+
   const exp = Date.now() + 5 * 60 * 1000;
   const { signDatasetToken } = await import("../utils/dataset-token.js");
-  const sig = signDatasetToken(lang, audio, exp);
-  res.json({ url: `/api/dataset-zip?lang=${lang}&audio=${audio ? 1 : 0}&exp=${exp}&sig=${sig}` });
+  const sig = signDatasetToken(adminId, lang, audio, exp);
+  res.json({ url: `/api/dataset-zip?u=${encodeURIComponent(adminId)}&lang=${lang}&audio=${audio ? 1 : 0}&n=${encodeURIComponent(nonce)}&exp=${exp}&sig=${sig}` });
 });
 
 /**

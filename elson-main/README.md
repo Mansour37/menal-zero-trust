@@ -10,7 +10,7 @@ A gamified crowdsourcing platform for building parallel **text + audio** dataset
 |---|---|
 | **Frontend** | Next.js 16 (App Router), React 19, TypeScript |
 | **Backend** | Express 5, Node.js cluster (multi‑worker), TypeScript |
-| **Database** | PostgreSQL 17 + PgBouncer |
+| **Database** | PostgreSQL 17 |
 | **Reverse proxy** | Caddy 2 (automatic HTTPS) |
 | **WhatsApp OTP / bot** | WAHA (WhatsApp HTTP API) |
 | **AI features** | OpenAI (transcription, translation, curation) |
@@ -42,7 +42,7 @@ hassaniya-crowdsource/
 ├── deploy/                     # Server setup & deploy scripts, cron helpers
 ├── docs/                       # Technical docs (evaluation, quality scoring)
 │
-├── docker-compose.yml          # Full stack (postgres, pgbouncer, backend, frontend, caddy, waha, backups)
+├── docker-compose.yml          # Full stack (postgres, backend, frontend, caddy, waha, backups)
 ├── Dockerfile                  # Frontend (Next.js) image
 ├── Caddyfile                   # Reverse-proxy / routing
 ├── next.config.ts
@@ -132,14 +132,46 @@ Open **http://localhost:3000**.
 
 ## Database & migrations
 
-- **Schema init:** `backend/sql/init.sql` is mounted into Postgres and runs once on first container start.
-- **Migrations:** additive, versioned files `backend/sql/migration_vNN_*.sql` (all use `IF NOT EXISTS`, safe to re-run). Apply one against a running stack with:
+Le schéma est **entièrement reconstruit depuis le dépôt** (audit §4.4.1) : un environnement
+neuf (GCP Cloud SQL, Dev, staging…) est provisionné sans étape manuelle.
 
 ```bash
-docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" -f - < backend/sql/migration_v73_ingest_source_path.sql
+# Reconstruction complète d'une base vierge : init.sql + les 85 migrations, dans l'ordre
+cd backend && npm run db:migrate -- --from-zero
+
+# Base existante : applique uniquement les migrations en attente (recommandé à chaque déploiement)
+cd backend && npm run db:migrate
+
+# Adoption sur la production actuelle (1 seule fois) : enregistre les migrations comme
+# appliquées SANS les rejouer — à utiliser seulement pour prendre l'outil en main sur une
+# base déjà bâtie manuellement, et uniquement après avoir diffusé pg_dump --schema-only
+# avec backend/sql/schema.sql
+cd backend && npm run db:migrate -- --baseline
+
+# Schéma consolidé de référence (init.sql + migrations concaténées)
+cd backend && npm run db:schema
 ```
 
-- **Seed starter data (FLORES):** set `SEED_FLORES=true` (runs on backend boot) or run manually:
+Au démarrage du conteneur, le backend exécute les migrations en attente
+(`MIGRATE_MODE=auto` est le défaut). Modes disponibles :
+
+| `MIGRATE_MODE` | Comportement |
+|---|---|
+| `auto` (défaut) | Applique les migrations en attente à chaque boot |
+| `baseline` | Enregistre toutes les migrations comme appliquées, sans relecture (adoption sur base existante, une fois) |
+| `off` | Désactive les migrations automatiques |
+
+- **Contraintes de rejouabilité :** chaque fichier est exécuté une seule fois et
+  tracé dans la table `schema_migrations`. Les fichiers contenant leur propre
+  `BEGIN/COMMIT` sont exécutés tels quels; les autres sont enveloppés dans une
+  transaction. Les index `CONCURRENTLY` sont exécutés énoncé par énoncé (interdit
+  dans une transaction). Les migrations sont écrites en `IF NOT EXISTS` et
+  rejouables sans risque.
+- **Ordre déterministe :** tri par (numéro de version, nom de fichier) — les
+  doublons de numéro (v25, v37-40, v48-50, v53-54) restent appliqués dans un
+  ordre stable.
+- **Seed de données de démarrage (FLORES) :** `SEED_FLORES=true` (au boot du
+  backend) ou :
 
 ```bash
 cd backend && npm run seed

@@ -1,9 +1,24 @@
 import "dotenv/config";
+import crypto from "crypto";
 
 function env(key: string, fallback?: string): string {
   const val = process.env[key] ?? fallback;
   if (!val) throw new Error(`Missing env var: ${key}`);
   return val;
+}
+
+function derivedSecret(domain: string, displayName: string): string {
+  // P0-2 (audit §11.2) : une fuite de JWT_SECRET ne doit pas compromettre les autres
+  // mécanismes. En production, un secret manquant fait échouer le démarrage.
+  // Hors production, on dérive de JWT_SECRET avec un avertissement pour préserver
+  // l'expérience de développement locale.
+  const fromEnv = process.env[displayName];
+  if (fromEnv) return fromEnv;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(`Missing env var: ${displayName} (obligatoire en production — ouvrez une session). Générer: openssl rand -hex 64`);
+  }
+  console.warn(`[SEC] ${displayName} not set — deriving from JWT_SECRET (dev only). Set a dedicated secret in env: openssl rand -hex 64`);
+  return crypto.createHash("sha256").update(domain + ":" + process.env.JWT_SECRET).digest("hex");
 }
 
 export const config = {
@@ -25,8 +40,15 @@ export const config = {
 
   // OTP server-side pepper — codes are stored as HMAC(code, pepper) so a DB leak
   // does NOT expose the 6-digit codes (1M-space precompute is otherwise trivial).
-  // Falls back to JWT_SECRET so it works without a new env var.
-  otpPepper: process.env.OTP_PEPPER ?? env("JWT_SECRET"),
+  // P0-2 (audit §11.2) : secret indépendant, obligatoire en production.
+  otpPepper: derivedSecret("otp-pepper-domain", "OTP_PEPPER"),
+
+  // Session API-key HMAC secret — independent of JWT_SECRET (P0-2).
+  apiKeySecret: derivedSecret("api-key-domain", "API_KEY_SECRET"),
+
+  // Signed audio-URL HMAC secret — independent of JWT_SECRET (P0-2).
+  audioUrlSecret: derivedSecret("audio-url-domain", "AUDIO_URL_SECRET"),
+
   jwtAccessExpiresIn: env("JWT_ACCESS_EXPIRES", "3h"),  // 3h: far fewer refreshes → far fewer spurious logouts mid-session
   jwtRefreshExpiresIn: env("JWT_REFRESH_EXPIRES", "7d"),
 

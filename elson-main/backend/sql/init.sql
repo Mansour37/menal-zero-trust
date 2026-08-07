@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     total_contributions   INT NOT NULL DEFAULT 0,
     total_recordings      INT NOT NULL DEFAULT 0,
     total_validations     INT NOT NULL DEFAULT 0,
+    total_votes           INT NOT NULL DEFAULT 0,
     badges                TEXT[] NOT NULL DEFAULT '{}',
     created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -277,17 +278,8 @@ INSERT INTO tags (name, name_ar, category, color) VALUES
 ON CONFLICT DO NOTHING;
 
 -- ══════════════════════════════════════════════════════════
--- DEFAULT ADMIN USER (password: change_me_immediately!)
+-- REMARQUE SÉCURITÉ (P0-1, audit §11.1) :
+-- Plus aucun compte administrateur par défaut n'est inséré ici.
+-- L'admin se crée via `npm run create-admin` (backend/src/scripts/create-admin.ts),
+-- à mot de passe généré aléatoirement et jamais versionné.
 -- ══════════════════════════════════════════════════════════
-
-INSERT INTO users (id, email, password_hash, username, first_name, last_name, role, email_verified)
-VALUES (
-    '2590e64e-8705-4516-b54c-833c9c41788e',
-    'admin@adst.io',
-    crypt('change_me_immediately!', gen_salt('bf', 12)),
-    'admin',
-    'Admin',
-    'ADST',
-    'admin',
-    true
-) ON CONFLICT (id) DO NOTHING;
