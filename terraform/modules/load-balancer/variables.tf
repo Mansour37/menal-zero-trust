@@ -52,9 +52,16 @@ variable "auth_paths" {
 
 variable "extra_services" {
   type = map(object({
-    service_name = string
-    domain       = string
+    service_name     = string
+    domain           = string
+    api_service_name = optional(string, "")
+    api_paths        = optional(list(string), [])
   }))
-  description = "Services supplementaires a router derriere le meme LB (ecart 4 : plus de 2 emplacements fixes api/dashboard). Clee = identifiant court (ex: 'app2'), valeur = service Cloud Run + domaine. Chaque entree genere NEG + backend + host_rule + cert."
+  description = "Services supplementaires a router derriere le meme LB (ecart 4 : plus de 2 emplacements fixes api/dashboard). Clee = identifiant court (ex: 'app2'), valeur = service Cloud Run + domaine. Chaque entree genere NEG + backend + host_rule + cert. api_service_name/api_paths (optionnels) routent certains chemins du meme domaine vers un 2e service Cloud Run (app same-origin : front en defaut, /api/* vers le backend)."
   default     = {}
+
+  validation {
+    condition     = alltrue([for k, v in var.extra_services : v.api_service_name == "" || length(v.api_paths) > 0])
+    error_message = "api_paths est requis quand api_service_name est renseigne (sinon aucun chemin ne serait route vers le service api)."
+  }
 }

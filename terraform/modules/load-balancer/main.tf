@@ -248,6 +248,12 @@ resource "google_compute_backend_service" "dashboard" {
 # ── Services supplementaires (ecart 4 : multi-app) ─────────────────────────
 # Chaque service de var.extra_services est route derriere le meme LB, protege
 # par le meme WAF (Cloud Armor), avec son propre domaine (host) et cert SSL.
+locals {
+  # Sous-ensemble des extra services qui declarent un 2e service Cloud Run
+  # pour certains chemins du meme domaine (app same-origin front + api).
+  extra_apis = { for k, v in var.extra_services : k => v if v.api_service_name != "" }
+}
+
 resource "google_compute_region_network_endpoint_group" "extra_neg" {
   for_each              = var.extra_services
   name                  = "menal-${each.key}-neg-${var.environment}"
@@ -269,6 +275,37 @@ resource "google_compute_backend_service" "extra" {
 
   backend {
     group = google_compute_region_network_endpoint_group.extra_neg[each.key].id
+  }
+
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
+}
+
+# 2e service (api) d'un extra service same-origin : meme domaine, chemins
+# api_paths routes vers ce backend, meme WAF.
+resource "google_compute_region_network_endpoint_group" "extra_api_neg" {
+  for_each              = local.extra_apis
+  name                  = "menal-${each.key}-api-neg-${var.environment}"
+  network_endpoint_type = "SERVERLESS"
+  region                = var.region
+  project               = var.project_id
+
+  cloud_run {
+    service = each.value.api_service_name
+  }
+}
+
+resource "google_compute_backend_service" "extra_api" {
+  for_each        = local.extra_apis
+  name            = "menal-${each.key}-api-backend-${var.environment}"
+  project         = var.project_id
+  protocol        = "HTTPS"
+  security_policy = google_compute_security_policy.api_waf.id
+
+  backend {
+    group = google_compute_region_network_endpoint_group.extra_api_neg[each.key].id
   }
 
   log_config {
@@ -332,6 +369,16 @@ resource "google_compute_url_map" "api" {
     content {
       name            = "extra-${path_matcher.key}-matcher-${var.environment}"
       default_service = google_compute_backend_service.extra[path_matcher.key].id
+
+      # App same-origin : les chemins api (ex: /api/*, /recordings/*) partent
+      # vers le service api, tout le reste vers le service par defaut (front).
+      dynamic "path_rule" {
+        for_each = path_matcher.value.api_service_name != "" ? [1] : []
+        content {
+          paths   = path_matcher.value.api_paths
+          service = google_compute_backend_service.extra_api[path_matcher.key].id
+        }
+      }
     }
   }
 }

@@ -65,6 +65,30 @@ variable "extra_env" {
   default     = {}
 }
 
+variable "extra_secret_env" {
+  description = "Variables d'environnement injectees depuis Secret Manager (nom env -> secret ID). Pour une app herbergee qui lit N secrets en valeurs litterales (ex: DB_PASSWORD, OTP_PEPPER)."
+  type        = map(string)
+  default     = {}
+}
+
+variable "min_instances" {
+  description = "Instances minimum. 0 = scale-to-zero (historique). 1 requis pour une app a workers in-process (setInterval) qui doivent tourner hors requete."
+  type        = number
+  default     = 0
+}
+
+variable "cpu_idle" {
+  description = "true = facturation a la requete (historique, cf. mesure du 02/08). false = CPU toujours allouee, requis si l'app execute des taches hors requete."
+  type        = bool
+  default     = true
+}
+
+variable "startup_probe_path" {
+  description = "Chemin HTTP du startup probe. Vide = probe TCP historique. Renseigner (ex: /api/ready) pour une app dont le boot attend la base — seuils tolerants ~60 s."
+  type        = string
+  default     = ""
+}
+
 variable "health_check_path" {
   description = "Chemin du liveness probe (defaut: /health, historique API)"
   type        = string

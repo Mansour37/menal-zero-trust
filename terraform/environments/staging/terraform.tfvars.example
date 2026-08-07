@@ -4,3 +4,58 @@
 project_id      = "menal-zero-trust-staging"   # projet GCP dedie a la staging, distinct de dev/prod
 support_email   = "soc-team@menal-sarl.com"    # alias d equipe, pas une adresse personnelle
 admin_ip_ranges = ["203.0.113.10/32"]          # IP(s) admin de la staging, distinctes de celles de dev
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MULTI-APP — activation d'Elson (cf. elson.tf), EN DEUX TEMPS :
+#
+#   Temps 1 (refactos socle) : laisser tout ce bloc commente. L'apply est
+#   neutre (moved blocks monitoring seulement).
+#
+#   Temps 2 (apres le premier push des images elson-* par la CI et l'A record
+#   elson.menal-sarl.com -> IP du LB) : decommenter TOUT le bloc d'un coup.
+#
+# ⚠️ PIEGE : renseigner cloud_run_services ou auth_paths ECRASE les fallbacks
+# historiques — TOUJOURS reinclure les valeurs menal-api, sinon on coupe le
+# SIEM et l'anti-brute-force de MENAL en meme temps qu'on ajoute Elson.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# elson_enabled = true
+# elson_domain  = "elson.menal-sarl.com"
+#
+# cloud_run_services = [
+#   "menal-api-staging",   # REINCLURE — sink SIEM (fallback ecrase)
+#   "elson-api-staging",
+#   "elson-web-staging",
+# ]
+#
+# auth_paths = [
+#   "/auth/token",  # REINCLURE — menal-api (fallback ecrase)
+#   "/api/login",   # REINCLURE — menal-api
+#   "/api/auth",    # Elson : couvre /api/auth/login, /register, /refresh... (startsWith)
+# ]
+#
+# extra_services = {
+#   elson = {
+#     service_name     = "elson-web-staging"           # front Next = service par defaut du domaine
+#     domain           = "elson.menal-sarl.com"
+#     api_service_name = "elson-api-staging"           # backend Express
+#     api_paths        = ["/api/*", "/recordings/*"]   # same-origin : chemins API vers le backend
+#   }
+# }
+#
+# monitored_services = {
+#   "menal-api" = {                       # REINCLURE avec CES cles exactes :
+#     service_name = "menal-api-staging"  # cle "menal-api" + slo_prefix "api" = etat existant
+#     domain       = "api-staging.menal-sarl.com"
+#     uptime_path  = "/health"
+#     slo_prefix   = "api"
+#   }
+#   "elson" = {
+#     service_name = "elson-api-staging"
+#     domain       = "elson.menal-sarl.com"
+#     uptime_path  = "/api/health"
+#     slo_prefix   = "elson"
+#   }
+# }
+#
+# r4_excluded_services = ["elson-api-staging"]  # toute la surface d'Elson est sous /api

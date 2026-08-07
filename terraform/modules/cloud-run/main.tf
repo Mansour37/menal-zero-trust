@@ -8,7 +8,7 @@ resource "google_cloud_run_v2_service" "api" {
     service_account = var.api_service_account_email
 
     scaling {
-      min_instance_count = 0
+      min_instance_count = var.min_instances
       max_instance_count = var.max_instances
     }
 
@@ -81,27 +81,63 @@ resource "google_cloud_run_v2_service" "api" {
           value = env.value
         }
       }
+      # Secrets injectes depuis Secret Manager (nom env -> secret ID) : une app
+      # herbergee qui lit ses secrets en valeurs litterales n'a pas a connaitre
+      # l'API Secret Manager (contrairement au pattern SECRET_NAME de menal-api).
+      dynamic "env" {
+        for_each = var.extra_secret_env
+        content {
+          name = env.key
+          value_source {
+            secret_key_ref {
+              secret  = env.value
+              version = "latest"
+            }
+          }
+        }
+      }
 
       resources {
         # cpu_idle : facturation A LA REQUETE. Les trois services tournaient en
         # "CPU toujours alloue" (herite, jamais declare) — factures a l instance
         # 24/7 alors qu aucun ne fait de traitement hors requete. Mesure du
         # 02/08 : ~60 % de la facture staging, sans contrepartie.
-        cpu_idle = true
+        # cpu_idle = false reste necessaire pour une app a workers in-process
+        # (setInterval geles sans CPU hors requete).
+        cpu_idle = var.cpu_idle
         limits = {
           cpu    = var.cpu
           memory = var.memory
         }
       }
 
-      startup_probe {
-        tcp_socket {
-          port = 8080
+      dynamic "startup_probe" {
+        for_each = var.startup_probe_path == "" ? [1] : []
+        content {
+          tcp_socket {
+            port = 8080
+          }
+          initial_delay_seconds = 10
+          timeout_seconds       = 5
+          period_seconds        = 10
+          failure_threshold     = 3
         }
-        initial_delay_seconds = 10
-        timeout_seconds       = 5
-        period_seconds        = 10
-        failure_threshold     = 3
+      }
+
+      # Variante HTTP tolerante (5 s x 12 = 60 s) : couvre un boot qui attend
+      # la base avec retry (ex: 10 x 2 s) avant d'ecouter.
+      dynamic "startup_probe" {
+        for_each = var.startup_probe_path == "" ? [] : [1]
+        content {
+          http_get {
+            path = var.startup_probe_path
+            port = 8080
+          }
+          initial_delay_seconds = 5
+          timeout_seconds       = 5
+          period_seconds        = 5
+          failure_threshold     = 12
+        }
       }
 
       liveness_probe {

@@ -14,11 +14,32 @@ locals {
   service_name_ops = var.service_name != "" ? var.service_name : "menal-api-${var.environment}"
   db_name_ops      = var.db_instance_name != "" ? var.db_instance_name : "menal-db-${var.environment}"
   enrich_job_ops   = var.enrich_job_name != "" ? var.enrich_job_name : "menal-enrich-job-${var.environment}"
+
+  # Multi-app : une entree par service surveille (alertes 1/2/3/5/6/9, uptime,
+  # SLO). Fallback mono-app historique (menal-api) si la map est vide — les
+  # cles et slo_prefix du fallback DOIVENT rester stables, les moved blocks de
+  # moved.tf pointent dessus.
+  monitored = length(var.monitored_services) > 0 ? {
+    for k, v in var.monitored_services : k => {
+      service_name = v.service_name
+      domain       = v.domain
+      uptime_path  = v.uptime_path
+      slo_prefix   = v.slo_prefix != "" ? v.slo_prefix : k
+    }
+    } : {
+    "menal-api" = {
+      service_name = local.service_name_ops
+      domain       = var.domain_name
+      uptime_path  = "/health"
+      slo_prefix   = "api"
+    }
+  }
 }
 
 # ── Alerte 1 : taux d erreur API > 10% ────────────────────────────────────────
 resource "google_monitoring_alert_policy" "high_error_rate" {
-  display_name = "[${var.environment}] Taux d erreur API > 10%"
+  for_each     = local.monitored
+  display_name = "[${var.environment}][${each.key}] Taux d erreur > 10%"
   project      = var.project_id
   combiner     = "OR"
 
@@ -27,7 +48,7 @@ resource "google_monitoring_alert_policy" "high_error_rate" {
     condition_threshold {
       filter = <<-EOT
         resource.type = "cloud_run_revision"
-        AND resource.labels.service_name = "${local.service_name_ops}"
+        AND resource.labels.service_name = "${each.value.service_name}"
         AND metric.type = "run.googleapis.com/request_count"
         AND metric.labels.response_code_class = "5xx"
       EOT
@@ -53,7 +74,8 @@ resource "google_monitoring_alert_policy" "high_error_rate" {
 
 # ── Alerte 2 : latence P99 > 2 secondes ──────────────────────────────────────
 resource "google_monitoring_alert_policy" "high_latency" {
-  display_name = "[${var.environment}] Latence P99 > 2s"
+  for_each     = local.monitored
+  display_name = "[${var.environment}][${each.key}] Latence P99 > 2s"
   project      = var.project_id
   combiner     = "OR"
 
@@ -62,7 +84,7 @@ resource "google_monitoring_alert_policy" "high_latency" {
     condition_threshold {
       filter = <<-EOT
         resource.type = "cloud_run_revision"
-        AND resource.labels.service_name = "${local.service_name_ops}"
+        AND resource.labels.service_name = "${each.value.service_name}"
         AND metric.type = "run.googleapis.com/request_latencies"
       EOT
 
@@ -87,7 +109,8 @@ resource "google_monitoring_alert_policy" "high_latency" {
 
 # ── Alerte 3 : echecs d authentification > 20 en 5 min ───────────────────────
 resource "google_monitoring_alert_policy" "auth_failures" {
-  display_name = "[${var.environment}] Echecs auth > 20 en 5 min"
+  for_each     = local.monitored
+  display_name = "[${var.environment}][${each.key}] Echecs auth > 20 en 5 min"
   project      = var.project_id
   combiner     = "OR"
 
@@ -96,7 +119,7 @@ resource "google_monitoring_alert_policy" "auth_failures" {
     condition_threshold {
       filter = <<-EOT
         resource.type = "cloud_run_revision"
-        AND resource.labels.service_name = "${local.service_name_ops}"
+        AND resource.labels.service_name = "${each.value.service_name}"
         AND metric.type = "run.googleapis.com/request_count"
         AND (metric.labels.response_code = "401" OR metric.labels.response_code = "403")
       EOT
@@ -155,7 +178,8 @@ resource "google_monitoring_alert_policy" "cloudsql_cpu" {
 
 # ── Alerte 5 : pics 5xx > 30 en 5 min ────────────────────────────────────────
 resource "google_monitoring_alert_policy" "fivexx_spike" {
-  display_name = "[${var.environment}] Pics 5xx > 30 en 5 min"
+  for_each     = local.monitored
+  display_name = "[${var.environment}][${each.key}] Pics 5xx > 30 en 5 min"
   project      = var.project_id
   combiner     = "OR"
 
@@ -164,7 +188,7 @@ resource "google_monitoring_alert_policy" "fivexx_spike" {
     condition_threshold {
       filter = <<-EOT
         resource.type = "cloud_run_revision"
-        AND resource.labels.service_name = "${local.service_name_ops}"
+        AND resource.labels.service_name = "${each.value.service_name}"
         AND metric.type = "run.googleapis.com/request_count"
         AND metric.labels.response_code_class = "5xx"
       EOT
@@ -190,13 +214,14 @@ resource "google_monitoring_alert_policy" "fivexx_spike" {
 
 # ── Uptime check : verification toutes les 5 min ─────────────────────────────
 resource "google_monitoring_uptime_check_config" "health_check" {
-  display_name = "${local.service_name_ops}-health"
+  for_each     = local.monitored
+  display_name = "${each.value.service_name}-health"
   project      = var.project_id
   timeout      = "10s"
   period       = "300s"
 
   http_check {
-    path         = "/health"
+    path         = each.value.uptime_path
     port         = 443
     use_ssl      = true
     validate_ssl = true
@@ -206,14 +231,15 @@ resource "google_monitoring_uptime_check_config" "health_check" {
     type = "uptime_url"
     labels = {
       project_id = var.project_id
-      host       = var.domain_name
+      host       = each.value.domain
     }
   }
 }
 
 # ── Alerte 6 : uptime check echoue > 1 min ────────────────────────────────────
 resource "google_monitoring_alert_policy" "uptime_failure" {
-  display_name = "[${var.environment}] API Health Check echoue"
+  for_each     = local.monitored
+  display_name = "[${var.environment}][${each.key}] Health Check echoue"
   project      = var.project_id
   combiner     = "OR"
 
@@ -223,7 +249,7 @@ resource "google_monitoring_alert_policy" "uptime_failure" {
       filter = <<-EOT
         resource.type = "uptime_url"
         AND metric.type = "monitoring.googleapis.com/uptime_check/check_passed"
-        AND metric.labels.check_id = "${google_monitoring_uptime_check_config.health_check.uptime_check_id}"
+        AND metric.labels.check_id = "${google_monitoring_uptime_check_config.health_check[each.key].uptime_check_id}"
       EOT
 
       comparison      = "COMPARISON_LT"
@@ -347,16 +373,17 @@ resource "google_monitoring_alert_policy" "bq_transfer_failure" {
 # soit la cause (sink, transfert, quota) — y compris une cause non prevue par
 # les alertes ci-dessus.
 resource "google_monitoring_alert_policy" "ingestion_stalled" {
-  display_name = "[${var.environment}] Ingestion des journaux a l arret"
+  for_each     = local.monitored
+  display_name = "[${var.environment}][${each.key}] Ingestion des journaux a l arret"
   project      = var.project_id
   combiner     = "OR"
 
   conditions {
-    display_name = "Aucune requete API observee depuis 30 min"
+    display_name = "Aucune requete observee depuis 30 min"
     condition_absent {
       filter   = <<-EOT
         resource.type = "cloud_run_revision"
-        AND resource.labels.service_name = "${local.service_name_ops}"
+        AND resource.labels.service_name = "${each.value.service_name}"
         AND metric.type = "run.googleapis.com/request_count"
       EOT
       duration = "1800s"
@@ -395,9 +422,10 @@ resource "google_monitoring_custom_service" "platform" {
 # ── SLO 1 : disponibilite de l API — 99 % sur 30 jours ────────────────────
 # Budget d erreur : ~7 h 18 par periode de 30 jours.
 resource "google_monitoring_slo" "api_availability" {
+  for_each     = local.monitored
   service      = google_monitoring_custom_service.platform.service_id
-  slo_id       = "api-availability-${var.environment}"
-  display_name = "Disponibilite API — 99 % / 30 j"
+  slo_id       = "${each.value.slo_prefix}-availability-${var.environment}"
+  display_name = "Disponibilite ${each.key} — 99 % / 30 j"
   project      = var.project_id
 
   goal                = 0.99
@@ -408,7 +436,7 @@ resource "google_monitoring_slo" "api_availability" {
       total_service_filter = join(" AND ", [
         "metric.type=\"run.googleapis.com/request_count\"",
         "resource.type=\"cloud_run_revision\"",
-        "resource.label.\"service_name\"=\"${local.service_name_ops}\"",
+        "resource.label.\"service_name\"=\"${each.value.service_name}\"",
       ])
       # « Bon » = tout sauf 5xx. Les 4xx sont exclus du numerateur car ils
       # signalent une requete invalide ou non autorisee : compter un 401 comme
@@ -417,7 +445,7 @@ resource "google_monitoring_slo" "api_availability" {
       good_service_filter = join(" AND ", [
         "metric.type=\"run.googleapis.com/request_count\"",
         "resource.type=\"cloud_run_revision\"",
-        "resource.label.\"service_name\"=\"${local.service_name_ops}\"",
+        "resource.label.\"service_name\"=\"${each.value.service_name}\"",
         "metric.label.\"response_code_class\"!=\"5xx\"",
       ])
     }
@@ -430,9 +458,10 @@ resource "google_monitoring_slo" "api_availability" {
 # deja intenable ne mesure rien — il apprend seulement a ignorer l alerte.
 # Passer l API a une instance chaude permettrait de resserrer a 500 ms.
 resource "google_monitoring_slo" "api_latency" {
+  for_each     = local.monitored
   service      = google_monitoring_custom_service.platform.service_id
-  slo_id       = "api-latency-${var.environment}"
-  display_name = "Latence API — 95 % < 1 s / 30 j"
+  slo_id       = "${each.value.slo_prefix}-latency-${var.environment}"
+  display_name = "Latence ${each.key} — 95 % < 1 s / 30 j"
   project      = var.project_id
 
   goal                = 0.95
@@ -443,7 +472,7 @@ resource "google_monitoring_slo" "api_latency" {
       distribution_filter = join(" AND ", [
         "metric.type=\"run.googleapis.com/request_latencies\"",
         "resource.type=\"cloud_run_revision\"",
-        "resource.label.\"service_name\"=\"${local.service_name_ops}\"",
+        "resource.label.\"service_name\"=\"${each.value.service_name}\"",
       ])
       range {
         max = 1000 # millisecondes
