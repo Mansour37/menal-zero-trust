@@ -58,6 +58,7 @@ export const globalLimiter = rateLimit({
   },
   skip: (req: Request) =>
     req.path === "/api/health" ||
+    req.path === "/api/ready" ||
     req.path === "/api/public/stats" ||
     tokenClaims(req)?.role === "admin", // admins never throttled (testing / dashboards poll a lot)
 });
