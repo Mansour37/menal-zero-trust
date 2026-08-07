@@ -5,6 +5,7 @@ import ipaddr from "ipaddr.js";
 import { config } from "../config.js";
 import { loadCompetitionConfig, loadScheduleSlots, computeScheduleState, readCreditConfig, startCreditWindow, computeCreditState, maybeAutoSwitchEval } from "../utils/schedule.js";
 import { pingActiveCredit } from "../utils/credit-active.js";
+import { clientIp } from "../utils/client-ip.js";
 
 /**
  * Admin whitelist matcher.
@@ -218,17 +219,17 @@ export async function adminMiddleware(req: Request, res: Response, next: NextFun
     return next();
   }
 
-  // Behind Cloudflare, req.ip is the CF edge IP (trust proxy = 1 only sees Caddy →
-  // which sees Cloudflare). The REAL client IP is in CF-Connecting-IP, which Cloudflare
-  // sets and overwrites on every request (a client cannot spoof it through CF).
-  const cfIp = (req.headers["cf-connecting-ip"] as string | undefined)?.trim();
-  const clientIp = cfIp || req.ip || req.socket.remoteAddress || "";
-  const normalizedIp = clientIp.replace(/^::ffff:/, "");
+  // Proxy-chain-aware extraction (utils/client-ip.ts) : CF-Connecting-IP behind
+  // Cloudflare (overwritten by CF, not spoofable through it), the GCLB-appended
+  // X-Forwarded-For entry on Cloud Run (where CF-Connecting-IP WOULD be
+  // client-forgeable and is deliberately never read).
+  const ip = clientIp(req);
+  const normalizedIp = ip.replace(/^::ffff:/, "");
   const allowed = whitelist.some(
-    entry => ipMatchesWhitelistEntry(normalizedIp, entry) || ipMatchesWhitelistEntry(clientIp, entry),
+    entry => ipMatchesWhitelistEntry(normalizedIp, entry) || ipMatchesWhitelistEntry(ip, entry),
   );
   if (!allowed) {
-    console.warn(`[ADMIN-DENY] IP not whitelisted: user=${req.user.id} ip=${normalizedIp} (cf=${cfIp ?? "-"} reqip=${req.ip ?? "-"})`);
+    console.warn(`[ADMIN-DENY] IP not whitelisted: user=${req.user.id} ip=${normalizedIp} (mode=${config.trustedProxy} reqip=${req.ip ?? "-"})`);
     res.status(403).json({ error: "Forbidden", code: "ADMIN_IP_NOT_WHITELISTED" });
     return;
   }

@@ -23,13 +23,19 @@ import evalAdminRoutes from "./routes/eval-admin.js";
 import { buildDigest, getHotAlerts } from "./services/ai-news.js";
 import { resumeOrphanedIngests } from "./services/media-ingest.js";
 import { verifyApiKey } from "./utils/api-key.js";
+import { trustProxyHops } from "./utils/client-ip.js";
 import { sendCompetitionNotification } from "./services/email.js";
 import { sendWhatsAppText, sendWhatsAppMedia, broadcastWhatsAppText } from "./services/whatsapp.js";
 
 // ── Cluster mode: use all CPU cores ──
+// CLUSTER=off (Cloud Run) : un seul process, pas de primaire — le conteneur a
+// 1 vCPU, et un PID 1 qui n'est pas le serveur complique le SIGTERM. L'IPC
+// d'invalidation de cache devient un no-op (une seule instance de toute facon).
 const WORKERS = parseInt(process.env.WEB_CONCURRENCY ?? "") || Math.min(os.availableParallelism?.() ?? os.cpus().length, 4);
 
-if (cluster.isPrimary && config.nodeEnv === "production") {
+if (process.env.CLUSTER === "off") {
+  startWorker();
+} else if (cluster.isPrimary && config.nodeEnv === "production") {
   console.log(`[CLUSTER] Primary ${process.pid} starting ${WORKERS} workers`);
   for (let i = 0; i < WORKERS; i++) cluster.fork();
   cluster.on("exit", (worker, code) => {
@@ -52,8 +58,10 @@ function startWorker() {
 
 const app = express();
 
-// ── Trust proxy (behind Caddy) ──
-app.set("trust proxy", 1);
+// ── Trust proxy — depend de la chaine devant l'app (voir utils/client-ip.ts) ──
+// cloudflare (Caddy) : 1 hop. gclb (Cloud Run) : 2 hops, req.ip = l'entree
+// X-Forwarded-For ajoutee par le GCLB (l'IP client verifiee par le LB).
+app.set("trust proxy", trustProxyHops());
 
 // ── Security headers (Helmet) ──
 app.use(helmet({
@@ -256,7 +264,17 @@ app.use("/recordings", express.static(config.uploadDir, {
 }));
 
 // ── Health check (public) ──
-app.get("/api/health", async (_req, res) => {
+// Liveness : repond 200 tant que le PROCESS est vivant, sans toucher la base.
+// Prerequis n°4 de l'onboarding socle : une panne DB ne doit pas faire
+// redemarrer en boucle des conteneurs sains (le liveness probe Cloud Run
+// tuerait chaque instance a tour de role pendant tout l'incident).
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Readiness / startup : la chaine complete (base incluse). Utilise par le
+// startup probe Cloud Run et par le preflight de deploiement.
+app.get("/api/ready", async (_req, res) => {
   const dbOk = await checkConnection();
   res.status(dbOk ? 200 : 503).json({
     status: dbOk ? "ok" : "degraded",

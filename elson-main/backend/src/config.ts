@@ -33,6 +33,10 @@ export const config = {
     user: env("DB_USER", "hassaniya"),
     password: env("DB_PASSWORD"),
     maxConnections: parseInt(env("DB_MAX_CONNECTIONS", "100")),
+    // Connexions gardees chaudes. 10 convient a un Postgres dedie ; sur une
+    // instance Cloud SQL partagee (max_connections=100 pour toutes les apps),
+    // chaque connexion oisive compte — baisser via DB_MIN_CONNECTIONS=2.
+    minConnections: parseInt(env("DB_MIN_CONNECTIONS", "10")),
   },
 
   // JWT
@@ -54,6 +58,22 @@ export const config = {
 
   // CORS
   frontendUrl: env("FRONTEND_URL", "http://localhost:3000"),
+
+  // Public base URL (emails, liens absolus). Historique : elson.adst.ai en dur.
+  publicBaseUrl: env("PUBLIC_BASE_URL", "https://elson.adst.ai"),
+
+  // Chaine de proxys devant l'app — pilote l'extraction de l'IP client :
+  //  - "cloudflare" (defaut, Hetzner/compose) : CF-Connecting-IP fait foi
+  //    (Cloudflare l'ecrase a chaque requete, non forgeable a travers CF).
+  //  - "gclb" (Cloud Run derriere le Google Cloud Load Balancer) : l'IP client
+  //    est l'avant-dernier X-Forwarded-For (ajoute par le GCLB) ; le header
+  //    CF-Connecting-IP serait ici FORGEABLE par le client et ne doit JAMAIS
+  //    etre lu — un attaquant contournerait la whitelist IP admin.
+  trustedProxy: (() => {
+    const v = env("TRUSTED_PROXY", "cloudflare");
+    if (v !== "cloudflare" && v !== "gclb") throw new Error(`TRUSTED_PROXY invalide: ${v} (attendu: cloudflare | gclb)`);
+    return v;
+  })(),
 
   // Rate limiting
   rateLimitWindowMs: parseInt(env("RATE_LIMIT_WINDOW_MS", "60000")),

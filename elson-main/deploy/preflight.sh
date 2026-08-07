@@ -116,11 +116,13 @@ else
 fi
 
 # 9. Santé API (via node, l'image alpine n'a ni curl ni wget)
+# /api/ready et non /api/health : depuis le split liveness/readiness (Cloud Run),
+# /api/health répond 200 même base coupée — seul /api/ready vérifie la chaîne complète.
 if docker compose exec -T backend node -e \
-  "fetch('http://localhost:4000/api/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"; then
-  ok "/api/health répond 200"
+  "fetch('http://localhost:4000/api/ready').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"; then
+  ok "/api/ready répond 200 (base incluse)"
 else
-  bad "/api/health indisponible — regarder le log backend (docker compose logs backend)"
+  bad "/api/ready indisponible — regarder le log backend (docker compose logs backend)"
 fi
 
 echo ""
