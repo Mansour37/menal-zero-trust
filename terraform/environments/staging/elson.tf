@@ -29,7 +29,8 @@ locals {
     DB_PORT            = "5432"
     DB_NAME            = "elson_db"
     DB_USER            = "elson_user"
-    DB_MAX_CONNECTIONS = "20" # max_connections=100 partage avec menal-api
+    DB_SSL             = "true" # instance ENCRYPTED_ONLY : TCP en clair rejete par pg_hba
+    DB_MAX_CONNECTIONS = "20"   # max_connections=100 partage avec menal-api
     DB_MIN_CONNECTIONS = "2"
   }
 }

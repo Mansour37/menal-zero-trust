@@ -37,6 +37,9 @@ export const config = {
     // instance Cloud SQL partagee (max_connections=100 pour toutes les apps),
     // chaque connexion oisive compte — baisser via DB_MIN_CONNECTIONS=2.
     minConnections: parseInt(env("DB_MIN_CONNECTIONS", "10")),
+    // Cloud SQL en mode ENCRYPTED_ONLY (instance partagee, cf. runbook §8)
+    // rejette tout TCP en clair : DB_SSL=true force TLS via pg.
+    ssl: env("DB_SSL", "false") === "true",
   },
 
   // JWT
