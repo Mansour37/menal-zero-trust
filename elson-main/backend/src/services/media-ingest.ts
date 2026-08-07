@@ -12,6 +12,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "../config.js";
 import { execute, query } from "../db.js";
+import { storage, stagingDir, materialize } from "./storage/index.js";
 
 const exec = promisify(execFile);
 
@@ -21,7 +22,9 @@ const MAX_SEGMENTS = 300; // safeguard
 const SILENCE_DB = "-30dB";
 const SILENCE_MIN = 0.35; // min duration of a silence to act as a cut point (s)
 
-function mediaDir() { return path.join(config.uploadDir, "media"); }
+function mediaKey(key: string) {
+  return key.startsWith("/recordings/") ? key.slice("/recordings/".length) : key;
+}
 
 async function setJob(id: number, status: string, message = "", clips?: number) {
   await execute(
@@ -99,10 +102,12 @@ async function extractClip(src: string, start: number, end: number, out: string,
 /**
  * Orchestrator (call as fire-and-forget). `source` = YouTube URL or local path.
  * `kind` forces video/audio (auto: youtube → video). `uploadedPath` if the file is already on disk.
+ * Scratch files go to the storage staging dir; produced clips are pushed to the
+ * storage driver under "media/<name>" (public URL stays /recordings/media/<name>).
  */
 export async function runIngest(jobId: number, datasetId: number, source: string, opts: { uploadedPath?: string; kind?: "video" | "audio"; maxLen?: number } = {}) {
   const maxLen = Math.max(5, Math.min(60, Math.round(opts.maxLen || MAX_LEN)));
-  const dir = mediaDir();
+  const dir = stagingDir();
   await fs.mkdir(dir, { recursive: true });
   const tmp = path.join(dir, `_src_${randomUUID()}`);
   let srcFile = opts.uploadedPath || "";
@@ -142,7 +147,7 @@ export async function runIngest(jobId: number, datasetId: number, source: string
     const mids = await detectSilenceMids(srcFile);
     const segs = computeSegments(total, mids, maxLen);
 
-    // 3) Extract + insert each short
+    // 3) Extract + insert each short (scrathe → staging, then push to storage)
     let created = 0;
     for (const [s, e] of segs) {
       const ext = kind === "audio" ? "m4a" : "mp4";
@@ -150,6 +155,7 @@ export async function runIngest(jobId: number, datasetId: number, source: string
       const out = path.join(dir, name);
       try {
         await extractClip(srcFile, s, e, out, kind);
+        await storage.putFile(`media/${name}`, out);
         await execute(
           `INSERT INTO video_clips (dataset_id, media_url, kind, duration_ms, start_ms, end_ms, source, ingest_job_id)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -174,6 +180,7 @@ export async function runIngest(jobId: number, datasetId: number, source: string
         ? ["-y", "-i", srcFile, "-vn", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", opath]
         : ["-y", "-i", srcFile, "-vf", "scale=-2:480", "-c:v", "libx264", "-crf", "30", "-preset", "veryfast", "-maxrate", "900k", "-bufsize", "1800k", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", opath];
       await exec("ffmpeg", oargs, { timeout: 1_800_000, maxBuffer: 64 * 1024 * 1024 });
+      await storage.putFile(`media/${oname}`, opath);
       await execute("UPDATE media_ingest_jobs SET original_url = $2, original_kind = $3 WHERE id = $1", [jobId, `/recordings/media/${oname}`, kind]);
     } catch (e) { console.warn("[media-ingest] conservation original ignorée:", (e as Error)?.message); }
 
@@ -214,7 +221,9 @@ export async function resumeOrphanedIngests() {
   console.log(`[ingest-resume] ${jobs.length} orphaned job(s) to resume`);
   for (const j of jobs) {
     let uploadedPath: string | undefined;
-    if (j.source_path) { try { await fs.access(j.source_path); uploadedPath = j.source_path; } catch { /* file gone */ } }
+    if (j.source_path) {
+      try { await fs.access(j.source_path); uploadedPath = j.source_path; } catch { /* staging file gone (crash/restart) */ }
+    }
     const isUrl = /^https?:\/\//i.test(j.source || "");
     if (!uploadedPath && !isUrl) {
       await execute("UPDATE media_ingest_jobs SET status='error', message='Source indisponible pour la reprise (fichier supprimé).' WHERE id=$1", [j.id]);
@@ -227,13 +236,10 @@ export async function resumeOrphanedIngests() {
   }
 }
 
-/** Deletes a clip's file from disk (with anti-traversal guard). */
+/** Deletes a clip's file from the storage driver (anti-traversal handled inside). */
 export async function removeClipFile(mediaUrl: string) {
   if (!mediaUrl?.startsWith("/recordings/")) return;
-  const full = path.join(config.uploadDir, mediaUrl.slice("/recordings/".length));
-  const root = path.resolve(config.uploadDir);
-  if (!path.resolve(full).startsWith(root)) return;
-  await fs.unlink(full).catch(() => {});
+  await storage.delete(mediaKey(mediaUrl));
 }
 
 /**
@@ -246,12 +252,12 @@ export async function recutClip(
   clip: { id: number; dataset_id: number; media_url: string; kind: "video" | "audio"; start_ms: number | null; source: string | null; ingest_job_id: number | null },
   maxLen: number,
 ): Promise<number> {
-  const dir = mediaDir();
+  const dir = stagingDir();
+  await fs.mkdir(dir, { recursive: true });
   if (!clip.media_url.startsWith("/recordings/")) throw new Error("Chemin invalide.");
-  const file = path.join(config.uploadDir, clip.media_url.slice("/recordings/".length));
-  const root = path.resolve(config.uploadDir);
-  if (!path.resolve(file).startsWith(root)) throw new Error("Chemin invalide.");
-  try { await fs.access(file); } catch { throw new Error("Fichier du clip introuvable sur le disque."); }
+  // ffmpeg needs a real local file → materialize (no-op copy under local driver).
+  const file = await materialize(mediaKey(clip.media_url));
+  if (!file) throw new Error("Fichier du clip introuvable dans le stockage.");
 
   const total = await probeDuration(file);
   if (!total || total < 1) throw new Error("Clip illisible.");
@@ -267,6 +273,7 @@ export async function recutClip(
     const out = path.join(dir, name);
     try {
       await extractClip(file, s, e, out, clip.kind);
+      await storage.putFile(`media/${name}`, out);
       await execute(
         `INSERT INTO video_clips (dataset_id, media_url, kind, duration_ms, start_ms, end_ms, source, ingest_job_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -279,6 +286,7 @@ export async function recutClip(
     await execute("DELETE FROM video_clips WHERE id = $1", [clip.id]);
     await removeClipFile(clip.media_url);
   }
+  if (config.storageDriver === "gcs") await fs.unlink(file).catch(() => {});
   return created;
 }
 

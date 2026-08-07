@@ -1,9 +1,7 @@
 import type { Request, Response } from "express";
-import fs from "fs";
-import path from "path";
 import { createRequire } from "node:module";
 import { query, execute } from "../db.js";
-import { config } from "../config.js";
+import { materialize } from "../services/storage/index.js";
 import { verifyDatasetToken } from "../utils/dataset-token.js";
 import { auditLog } from "../utils/audit.js";
 
@@ -97,10 +95,11 @@ export async function datasetZipHandler(req: Request, res: Response) {
     ].join(",") + "\n";
 
     if (audio && r.audio_url) {
-      // audio_url is "/recordings/<uid>/<file>" → disk "<uploadDir>/<uid>/<file>"
-      const rel = r.audio_url.replace(/^\/recordings\//, "");
-      const diskPath = path.join(config.uploadDir, rel);
-      if (fs.existsSync(diskPath)) archive.file(diskPath, { name: audioName });
+      // audio_url is "/recordings/<uid>/<file>" → storage key "<uid>/<file>".
+      // archiver.file needs a REAL path, so materialize (no-op under local driver).
+      const key = r.audio_url.replace(/^\/recordings\//, "");
+      const diskPath = await materialize(key);
+      if (diskPath) archive.file(diskPath, { name: audioName });
     }
   }
 

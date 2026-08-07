@@ -7,7 +7,7 @@ import { authMiddleware, adminMiddleware } from "../middleware/auth.js";
 import { query, queryOne, execute } from "../db.js";
 import { invalidate } from "../utils/cache.js";
 import { auditLog } from "../utils/audit.js";
-import { config } from "../config.js";
+import { storage, stagingDir } from "../services/storage/index.js";
 import { loadCompetitionConfig } from "../utils/schedule.js";
 import { listCreditPlans } from "../utils/credit-active.js";
 import { anonCode } from "../utils/anon.js";
@@ -91,11 +91,14 @@ function cleanUrl(v: unknown): string | null {
 }
 
 // ── Community media (post/comment images + voice notes) ──
-// Stored under <uploadDir>/community/<uuid>.<ext>, served publicly at /recordings/community/<file>.
-const COMMUNITY_DIR = path.join(config.uploadDir, "community");
+// Stored under the storage driver's "community/<uuid>.<ext>", served publicly
+// at /recordings/community/<file>. Multer writes into the staging dir.
+// 🔒 Limite 30 Mo (et non 60) : le Google Cloud Load Balancer rejette les corps
+// de requête > 32 Mo — 30 Mo est le max atteignable en un seul POST. Les plus
+// gros fichiers (ingestion média) passent par l'upload fragmenté (chunks).
 const mediaUpload = multer({
-  dest: path.join(COMMUNITY_DIR, "_tmp"),
-  limits: { fileSize: 60 * 1024 * 1024 }, // 60 MB — wide enough for a short publish video
+  dest: stagingDir(),
+  limits: { fileSize: 30 * 1024 * 1024 },
 });
 const EXT: Record<string, string> = {
   "audio/webm": "webm", "audio/ogg": "ogg", "audio/wav": "wav", "audio/wave": "wav", "audio/x-wav": "wav", "audio/mpeg": "mp3", "audio/mp4": "m4a",
@@ -110,9 +113,8 @@ async function saveMedia(file: UploadedFile | undefined, kind: MediaKind): Promi
   const ok = file.mimetype.startsWith(`${kind}/`);
   const ext = EXT[file.mimetype];
   if (!ok || !ext) { await fs.unlink(file.path).catch(() => {}); return null; }
-  await fs.mkdir(COMMUNITY_DIR, { recursive: true });
   const name = `${randomUUID()}.${ext}`;
-  await fs.rename(file.path, path.join(COMMUNITY_DIR, name));
+  await storage.putFile(`community/${name}`, file.path, { contentType: file.mimetype });
   return `/recordings/community/${name}`;
 }
 // multer .fields() → req.files keyed by field name; grab first file per field.
@@ -544,14 +546,12 @@ router.post("/admin/cards/example", adminMiddleware, async (req, res) => {
   );
   if (!c || !c.audio_url) { res.status(404).json({ error: "Contribution ou audio introuvable." }); return; }
   // Copy the audio into the PUBLIC community media dir (confine to uploadDir).
-  const rel = c.audio_url.replace(/^\/recordings\//, "");
-  const src = path.resolve(config.uploadDir, rel);
-  if (!src.startsWith(path.resolve(config.uploadDir))) { res.status(400).json({ error: "Chemin invalide." }); return; }
-  const ext = (path.extname(src).replace(".", "") || "webm").toLowerCase();
-  await fs.mkdir(COMMUNITY_DIR, { recursive: true });
+  const key = c.audio_url.replace(/^\/recordings\//, "");
+  const buf = await storage.get(key).catch(() => null);
+  if (!buf) { res.status(500).json({ error: "Fichier audio introuvable dans le stockage." }); return; }
+  const ext = (path.extname(key).replace(".", "") || "webm").toLowerCase();
   const name = `${randomUUID()}.${ext}`;
-  try { await fs.copyFile(src, path.join(COMMUNITY_DIR, name)); }
-  catch { res.status(500).json({ error: "Fichier audio introuvable sur le disque." }); return; }
+  await storage.put(`community/${name}`, buf);
   const publicUrl = `/recordings/community/${name}`;
   const question = `🎧 Exemple à imiter\n${c.source_text} → ${c.hassaniya_text}`;
   const row = await queryOne<{ id: number }>(

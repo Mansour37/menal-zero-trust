@@ -11,6 +11,8 @@
 
 import os from "node:os";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
+import fs from "node:fs/promises";
 import { config } from "../../config.js";
 import { LocalStorage } from "./local.js";
 import { GcsStorage } from "./gcs.js";
@@ -89,3 +91,25 @@ export function createStorage(opts: StorageOptions = {}): Storage {
 
 /** App-wide singleton, configured from env. */
 export const storage: Storage = createStorage();
+
+/**
+ * Tools that need a REAL local file path (ffmpeg, yt-dlp, archiver.file, ...)
+ * must materialize the object into the staging dir first.
+ * - local driver: returns the historical path under uploadDir (no copy).
+ * - gcs driver: downloads the object into the staging scratch dir and returns
+ *   that path; the caller must delete it afterwards (or let it be cleaned by
+ *   the ephemeral disk lifecycle).
+ * Returns null if the object does not exist.
+ */
+export async function materialize(key: string): Promise<string | null> {
+  if (config.storageDriver === "local") {
+    const localPath = path.join(config.uploadDir, key);
+    try { await fs.access(localPath); return localPath; } catch { return null; }
+  }
+  const tmp = path.join(stagingDir(), `mat_${randomUUID()}_${path.basename(key)}`);
+  const buf = await storage.get(key).catch(() => null);
+  if (!buf) return null;
+  await fs.mkdir(path.dirname(tmp), { recursive: true });
+  await fs.writeFile(tmp, buf);
+  return tmp;
+}

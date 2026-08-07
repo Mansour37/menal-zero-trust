@@ -13,8 +13,7 @@ import { auditLog } from "../utils/audit.js";
 import { cached, invalidate } from "../utils/cache.js";
 import { decodeHtmlEntities } from "../utils/text.js";
 import { listWhatsAppGroups } from "../services/whatsapp.js";
-import { config as appConfig } from "../config.js";
-import { storage } from "../services/storage/index.js";
+import { storage, stagingDir } from "../services/storage/index.js";
 import { randomUUID } from "crypto";
 
 const router = Router();
@@ -2092,23 +2091,22 @@ router.post("/admin/broadcast-lists/:id/delete", adminMiddleware, async (req, re
 });
 
 // ── Notification media upload (photo / audio / video) — sent via WhatsApp only ──
-// Stored under the public community dir so WAHA can fetch it by URL on the internal network.
-const NOTIF_MEDIA_DIR = path.join(appConfig.uploadDir, "community");
+// Stored under the storage driver's "community" prefix so WAHA can fetch it by
+// URL on the internal network. Multer writes into the staging dir.
 const NOTIF_EXT: Record<string, string> = {
   "audio/webm": "webm", "audio/ogg": "ogg", "audio/wav": "wav", "audio/wave": "wav", "audio/x-wav": "wav", "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/aac": "aac",
   "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif",
   "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov",
 };
-const notifMediaUpload = multer({ dest: path.join(NOTIF_MEDIA_DIR, "_tmp"), limits: { fileSize: 25 * 1024 * 1024 } });
+const notifMediaUpload = multer({ dest: stagingDir(), limits: { fileSize: 25 * 1024 * 1024 } });
 router.post("/admin/notification-media", adminMiddleware, notifMediaUpload.single("file"), async (req, res) => {
   const file = req.file;
   if (!file) { res.status(400).json({ error: "Fichier requis" }); return; }
   const kind = file.mimetype.startsWith("image/") ? "image" : file.mimetype.startsWith("audio/") ? "audio" : file.mimetype.startsWith("video/") ? "video" : null;
   const ext = NOTIF_EXT[file.mimetype];
   if (!kind || !ext) { await fs.unlink(file.path).catch(() => {}); res.status(400).json({ error: "Type non supporté (photo, audio ou vidéo uniquement)" }); return; }
-  await fs.mkdir(NOTIF_MEDIA_DIR, { recursive: true });
   const name = `notif-${randomUUID()}.${ext}`;
-  await fs.rename(file.path, path.join(NOTIF_MEDIA_DIR, name));
+  await storage.putFile(`community/${name}`, file.path, { contentType: file.mimetype });
   res.json({ url: `/recordings/community/${name}`, type: kind });
 });
 
@@ -2653,13 +2651,16 @@ router.delete("/admin/ip-whitelist/:id", adminMiddleware, async (req, res) => {
 // Dataset CSV upload — sec-audit fix #13: dedicated dir under /var/lib (persistent volume,
 // chmod 700 by the dockerfile owner), reject application/octet-stream (catch-all), and a
 // periodic cleanup job (see below) deletes any leftover files older than 1 hour.
-const datasetUploadDir = process.env.DATASET_UPLOAD_DIR
-  || path.join(process.env.UPLOAD_DIR ?? "/data", "_dataset_uploads");
+// Dataset CSV upload — staging dir (local-disk scratch, even under the GCS
+// driver: the CSV is parsed/imported via streams, the audio stays in storage).
+const datasetUploadDir = process.env.DATASET_UPLOAD_DIR || stagingDir();
 await fs.mkdir(datasetUploadDir, { recursive: true, mode: 0o700 }).catch(() => {});
 
 const datasetUpload = multer({
   dest: datasetUploadDir,
-  limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
+  // 🔒 Historique 500 Mo mais le GCLB plafonne les corps > 32 Mo → 30 Mo max
+  // en un seul POST (un dataset plus gros doit être découpé en plusieurs uploads).
+  limits: { fileSize: 30 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     // Only accept genuine CSV mime types or files with .csv extension. Reject octet-stream
     // (catch-all that hides arbitrary binaries) and anything else.

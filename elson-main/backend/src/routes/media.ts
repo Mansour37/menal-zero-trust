@@ -15,13 +15,17 @@ import { auditLog } from "../utils/audit.js";
 import { invalidate, cached } from "../utils/cache.js";
 import { config } from "../config.js";
 import { runIngest, ytDlpAvailable, recutClip, removeClipFile } from "../services/media-ingest.js";
+import { stagingDir, materialize } from "../services/storage/index.js";
 import { signAudioUrl } from "../utils/audio-token.js";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 const pexec = promisify(execFile);
 
-// Mean volume (dB) of a file — to detect near-silent shorts.
-async function meanVolumeDb(filePath: string): Promise<number> {
+// Mean volume (dB) of a file — to detect near-silent shorts. ffmpeg needs a real
+// local path → materialize (no-op local copy under the local driver).
+async function meanVolumeDb(key: string): Promise<number> {
+  const filePath = await materialize(key);
+  if (!filePath) return 0;
   try {
     const { stderr } = await pexec("ffmpeg", ["-hide_banner", "-i", filePath, "-af", "volumedetect", "-f", "null", "-"], { maxBuffer: 8 * 1024 * 1024 });
     const m = (stderr || "").match(/mean_volume:\s*(-?\d+(?:\.\d+)?)\s*dB/);
@@ -29,16 +33,20 @@ async function meanVolumeDb(filePath: string): Promise<number> {
   } catch (e: any) {
     const m = String(e?.stderr || "").match(/mean_volume:\s*(-?\d+(?:\.\d+)?)\s*dB/);
     return m ? parseFloat(m[1]) : 0;
+  } finally {
+    if (config.storageDriver === "gcs") await fs.unlink(filePath).catch(() => {});
   }
 }
 
 const router = Router();
 router.use(authMiddleware);
 
-// Media upload (video/audio) — large files, up to 800 MB.
+// Media upload (video/audio). 🔒 Défaut historique 800 Mo mais le Google Cloud
+// Load Balancer rejette les corps > 32 Mo → plafonné à 30 Mo en un seul POST ;
+// les gros fichiers passent par l'upload fragmenté (/upload-chunk, < 32 Mo/bloc).
 const mediaUpload = multer({
-  dest: path.join(config.uploadDir, "_tmp"),
-  limits: { fileSize: 800 * 1024 * 1024 },
+  dest: stagingDir(),
+  limits: { fileSize: 30 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (file.mimetype.startsWith("video/") || file.mimetype.startsWith("audio/")) cb(null, true);
     else cb(new Error("Format non supporté (vidéo/audio uniquement)."));
@@ -157,17 +165,18 @@ router.post("/ingest-file", adminMiddleware, mediaUpload.single("file"), async (
   res.json({ success: true, jobId: job?.id });
 });
 
-// ── CHUNKED upload (works around Cloudflare's ~100 MB limit) ──
-// The client sends chunks < 100 MB; the server concatenates them, then starts the ingestion.
-const chunkUpload = multer({ dest: path.join(config.uploadDir, "_tmp"), limits: { fileSize: 30 * 1024 * 1024 } });
-const chunkPath = (uploadId: string) => path.join(config.uploadDir, "_chunks", uploadId.replace(/[^a-z0-9-]/gi, "").slice(0, 64));
+// ── CHUNKED upload (works around Cloudflare's ~100 MB limit / GCLB 32 MB) ──
+// The client sends chunks < 32 MB; the server concatenates them in the staging
+// dir, then starts the ingestion.
+const chunkUpload = multer({ dest: stagingDir(), limits: { fileSize: 30 * 1024 * 1024 } });
+const chunkPath = (uploadId: string) => path.join(stagingDir(), "_chunks", uploadId.replace(/[^a-z0-9-]/gi, "").slice(0, 64));
 
 router.post("/upload-chunk", adminMiddleware, chunkUpload.single("chunk"), async (req, res) => {
   const uploadId = String(req.query.uploadId || "").replace(/[^a-z0-9-]/gi, "").slice(0, 64);
   const index = parseInt(String(req.query.index), 10);
   if (!uploadId || !req.file) { if (req.file) await fs.unlink(req.file.path).catch(() => {}); res.status(400).json({ error: "uploadId + chunk requis." }); return; }
   try {
-    await fs.mkdir(path.join(config.uploadDir, "_chunks"), { recursive: true });
+    await fs.mkdir(path.join(stagingDir(), "_chunks"), { recursive: true });
     const target = chunkPath(uploadId);
     if (index === 0) await fs.rm(target, { force: true }).catch(() => {}); // reset when restarting from the beginning
     await fs.appendFile(target, await fs.readFile(req.file.path));
@@ -260,16 +269,16 @@ router.post("/clean", adminMiddleware, async (req, res) => {
       ORDER BY id LIMIT $3`,
     [jobId, afterId, limit],
   );
-  let removed = 0, kept = 0, lastId = afterId;
+let removed = 0, kept = 0, lastId = afterId;
   const TASH = /[ً-ْٰـ]/g, RE_WORD = /[؀-ۿݐ-ݿ]+/g;
   for (const c of clips) {
     lastId = c.id;
-    const filePath = path.join(config.uploadDir, c.media_url.replace(/^\/recordings/, ""));
+    const key = c.media_url.replace(/^\/recordings/, "");
     let speech = false;
     try {
-      const vol = await meanVolumeDb(filePath);
+      const vol = await meanVolumeDb(key);
       if (vol > -45) { // not near-silent → we check there is actual SPEECH
-        const draft = await aiDraftFor(filePath);
+        const draft = await aiDraftFor(key);
         const words = (draft.replace(TASH, "").match(RE_WORD) || []).filter((w) => w.length >= 2);
         if (words.length >= 1) { speech = true; await execute("UPDATE video_clips SET ai_draft = $2, ai_draft_at = now() WHERE id = $1", [c.id, draft]); }
       }
@@ -451,17 +460,23 @@ async function mediaFlags(): Promise<{ enabled: boolean; noSkip: boolean; assist
 }
 
 // AI draft of a clip (gpt-4o-transcribe) — for distributed assisted correction.
-async function aiDraftFor(filePath: string): Promise<string> {
-  const key = process.env.OPENAI_API_KEY; if (!key) return "";
+async function aiDraftFor(key: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY; if (!apiKey) return "";
   try {
-    const { Blob } = await import("node:buffer");
-    const buf = await fs.readFile(filePath);
-    const fd = new (globalThis as any).FormData();
-    fd.append("file", new Blob([buf], { type: "video/mp4" }), path.basename(filePath));
-    fd.append("model", "gpt-4o-transcribe"); fd.append("language", "ar");
-    const r = await (globalThis as any).fetch("https://api.openai.com/v1/audio/transcriptions", { method: "POST", headers: { Authorization: "Bearer " + key }, body: fd });
-    const j: any = await r.json();
-    return r.ok ? (j.text || "").trim() : "";
+    const filePath = await materialize(key);
+    if (!filePath) return "";
+    try {
+      const { Blob } = await import("node:buffer");
+      const buf = await fs.readFile(filePath);
+      const fd = new (globalThis as any).FormData();
+      fd.append("file", new Blob([buf], { type: "video/mp4" }), path.basename(filePath));
+      fd.append("model", "gpt-4o-transcribe"); fd.append("language", "ar");
+      const r = await (globalThis as any).fetch("https://api.openai.com/v1/audio/transcriptions", { method: "POST", headers: { Authorization: "Bearer " + apiKey }, body: fd });
+      const j: any = await r.json();
+      return r.ok ? (j.text || "").trim() : "";
+    } finally {
+      if (config.storageDriver === "gcs") await fs.unlink(filePath).catch(() => {});
+    }
   } catch { return ""; }
 }
 
@@ -511,8 +526,8 @@ router.get("/next", scheduleGuard("contribute"), async (req, res) => {
   if (flags.assist) {
     aiDraft = clip.ai_draft || "";
     if (!aiDraft) {
-      const filePath = path.join(config.uploadDir, clip.media_url.replace(/^\/recordings/, ""));
-      aiDraft = await aiDraftFor(filePath);
+      const key = clip.media_url.replace(/^\/recordings/, "");
+      aiDraft = await aiDraftFor(key);
       if (aiDraft) await execute("UPDATE video_clips SET ai_draft = $2, ai_draft_at = now() WHERE id = $1", [clip.id, aiDraft]);
     }
   }
