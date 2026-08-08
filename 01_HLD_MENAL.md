@@ -250,9 +250,9 @@ Chaque décision est **validée** (conservée telle quelle), **retouchée** (aju
 
 | Exigence | Cible PFE | Commentaire |
 |---|---|---|
-| Disponibilité | « Best effort » mono-région ; uptime check sur `/health` | Suffisant pour la démonstration. |
-| Scalabilité | **Volontairement limitée** (cadrage projet) | Limites connues et documentées : rate-limits par instance, `min-instances` 0–1. |
-| Performance L6 | +30–50 ms par alerte enrichie ; démarrage à froid 2–4 s amorti par lots | Chiffres du doc ATT&CK-BERT §6.1, à confirmer par mesure. |
+| Disponibilité | SLO réels instrumentés (99% dispo / 30j, latence p95 < 1s) sur `menal-api` et `elson-api` ; Cloud SQL passé en **régional** (HA) le 08/08/2026 (décision explicite, coût doublé) | Mesuré en continu (Cloud Monitoring), au-delà du "best effort" initialement visé — voir `09_AUDIT_E2E_STAGING_2026-08-07.md` §2 |
+| Scalabilité | **Volontairement limitée** (cadrage projet) | Limites connues et documentées : rate-limits par instance, `min-instances` 0–1 sur l'API (relâche le SLO latence de 800ms à 1s, assumé). |
+| Performance L6 | Cold start `ml-embed` mesuré : ~27s en moyenne, pic réel ~94s (Cloud Monitoring, 7j) — cause des 503 du 05/08, corrigée le 07/08 (budget de sonde élargi à 150s) | Chiffres initiaux du doc ATT&CK-BERT §6.1 (30-50ms, 2-4s) non recoupés par la mesure réelle ; la mesure fait foi (`09_AUDIT_E2E_STAGING_2026-08-07.md` §3) |
 | Sécurité | Zero Trust NIST 800-207 ; DevSecOps avec 3 portes bloquantes (secrets, SAST, CVE) | Cœur du projet. |
 | Coût | Paliers gratuits / quelques dizaines d'€/mois ; poste dominant = ingestion de logs (filtres au sink) | Cohérent avec le doc ATT&CK-BERT §6.4. |
 | Auditabilité | Chaque inférence ML journalisée (hachage d'entrée, score, version du modèle) ; audit logs GCP activés | Prérequis de la valeur « SIEM ». |
@@ -267,4 +267,7 @@ Chaque décision est **validée** (conservée telle quelle), **retouchée** (aju
 | `03_CAS_UTILISATION.md` | Cas d'utilisation avec flux nominaux, alternatifs et contrôles exercés |
 | `04_METHODOLOGIE_IMPLEMENTATION.md` | Phases, livrables, critères de sortie, plan de tests de démonstration |
 | `05_DOCUMENTS_COMPLEMENTAIRES.md` | Matrices (flux, IAM), checklist de mise en service, runbook exemple, modèle de menaces léger |
+| `06_ECARTS_IMPLEMENTATION.md` | Écarts vérifiés entre cette conception et l'implémentation réelle — document vivant |
+| `08_RUNBOOK.md` | Procédures d'incident (restauration Cloud SQL, rollback Cloud Run) |
+| `09_AUDIT_E2E_STAGING_2026-08-07.md` | Audit E2E staging (sécurité, dispo, perf, scalabilité, résilience, reproductibilité) + remédiation appliquée |
 | `architecture_HLD.mermaid` | Schéma détaillé rendu graphiquement |
