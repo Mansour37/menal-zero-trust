@@ -122,8 +122,9 @@ module "cloud_sql" {
   environment               = var.environment
   vpc_id                    = module.vpc.vpc_id
   api_service_account_email = module.iam.api_service_account_email
+  kms_key_id                = module.kms.crypto_key_id_secrets
 
-  depends_on = [google_project_service.apis, module.vpc, module.iam]
+  depends_on = [google_project_service.apis, module.vpc, module.iam, module.kms]
 }
 
 module "kms" {
@@ -136,13 +137,59 @@ module "kms" {
   depends_on = [google_project_service.apis, module.iam]
 }
 
+# ── Resolution des images par digest (pas par tag mutable) ─────────────────
+# CORRECTION 07/08/2026 (Tier 1, 09_AUDIT_E2E_STAGING_2026-08-07.md §6, ecart
+# E24) : ':latest' est un tag mutable — un `terraform apply` de reconstruction
+# (bootstrap, disaster recovery) redeployait "ce qui est actuellement le plus
+# recent" au lieu de l'artefact reellement audite par Trivy au moment du push
+# CI. Le lifecycle `ignore_changes` sur l'image (modules/cloud-run,
+# modules/dashboard, modules/ml-pipeline) protege deja le regime permanent —
+# la CI reste seule maitresse du champ image une fois le service cree. Cette
+# resolution ne joue donc qu'a la creation initiale/reconstruction d'un
+# service, exactement le cas ou la garantie manquait. Le tag `:latest` devait
+# de toute facon deja exister avant le tout premier apply (Cloud Run refuse de
+# creer un service sur une image absente) — cette contrainte n'est pas
+# nouvelle, elle est juste rendue explicite ici au lieu d'echouer plus tard
+# cote Cloud Run avec un message moins clair.
+data "google_artifact_registry_docker_image" "menal_api" {
+  location      = var.region
+  project       = var.project_id
+  repository_id = "menal-docker-${var.environment}"
+  image_name    = "menal-api:latest"
+  depends_on    = [module.artifact_registry]
+}
+
+data "google_artifact_registry_docker_image" "menal_dashboard" {
+  location      = var.region
+  project       = var.project_id
+  repository_id = "menal-docker-${var.environment}"
+  image_name    = "menal-dashboard:latest"
+  depends_on    = [module.artifact_registry]
+}
+
+data "google_artifact_registry_docker_image" "menal_ml_embed" {
+  location      = var.region
+  project       = var.project_id
+  repository_id = "menal-docker-${var.environment}"
+  image_name    = "menal-ml-embed:latest"
+  depends_on    = [module.artifact_registry]
+}
+
+data "google_artifact_registry_docker_image" "menal_enrich_job" {
+  location      = var.region
+  project       = var.project_id
+  repository_id = "menal-docker-${var.environment}"
+  image_name    = "menal-enrich-job:latest"
+  depends_on    = [module.artifact_registry]
+}
+
 module "cloud_run" {
   source                    = "../../modules/cloud-run"
   project_id                = var.project_id
   region                    = var.region
   environment               = var.environment
   service_name              = "menal-api-${var.environment}"
-  container_image           = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-api:latest"
+  container_image           = trimprefix(data.google_artifact_registry_docker_image.menal_api.self_link, "https://")
   api_service_account_email = module.iam.api_service_account_email
   vpc_connector_id          = module.vpc.vpc_connector_id
   cloudsql_instance_name    = "menal-db-${var.environment}"
@@ -186,8 +233,9 @@ module "bigquery" {
   api_service_account_email        = module.iam.api_service_account_email
   cicd_service_account_email       = module.iam.cicd_service_account_email
   enrich_job_service_account_email = module.iam.enrich_job_service_account_email
+  kms_key_id                       = module.kms.crypto_key_id
 
-  depends_on = [google_project_service.apis, module.iam]
+  depends_on = [google_project_service.apis, module.iam, module.kms]
 }
 
 module "logging" {
@@ -214,13 +262,14 @@ module "workflow" {
 }
 
 module "monitoring" {
-  source             = "../../modules/monitoring"
-  project_id         = var.project_id
-  region             = var.region
-  environment        = var.environment
-  alert_email        = var.support_email
-  domain_name        = var.domain_name
-  monitored_services = var.monitored_services
+  source                = "../../modules/monitoring"
+  project_id            = var.project_id
+  region                = var.region
+  environment           = var.environment
+  alert_email           = var.support_email
+  secondary_alert_email = var.secondary_alert_email
+  domain_name           = var.domain_name
+  monitored_services    = var.monitored_services
 
   depends_on = [google_project_service.apis]
 }
@@ -247,8 +296,8 @@ module "ml_pipeline" {
   pipeline_sa_email   = module.iam.pipeline_service_account_email
   enrich_job_sa_email = module.iam.enrich_job_service_account_email
   project_number      = data.google_project.current.number
-  ml_embed_image      = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-ml-embed:latest"
-  enrich_job_image    = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-enrich-job:latest"
+  ml_embed_image      = trimprefix(data.google_artifact_registry_docker_image.menal_ml_embed.self_link, "https://")
+  enrich_job_image    = trimprefix(data.google_artifact_registry_docker_image.menal_enrich_job.self_link, "https://")
 
   depends_on = [google_project_service.apis, module.vpc, module.bigquery, module.iam]
 }
@@ -260,7 +309,7 @@ module "dashboard" {
   environment                = var.environment
   vpc_connector_id           = module.vpc.vpc_connector_id
   bigquery_dataset_id        = module.bigquery.dataset_id
-  dashboard_image            = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-dashboard:latest"
+  dashboard_image            = trimprefix(data.google_artifact_registry_docker_image.menal_dashboard.self_link, "https://")
   api_url                    = "https://${var.domain_name}"
   cicd_service_account_email = module.iam.cicd_service_account_email
   depends_on                 = [google_project_service.apis, module.vpc, module.bigquery]

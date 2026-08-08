@@ -28,6 +28,12 @@ variable "support_email" {
   type        = string
 }
 
+variable "secondary_alert_email" {
+  description = "2e canal d'alerte Cloud Monitoring (Tier 0, 09_AUDIT_E2E_STAGING_2026-08-07.md §0) : reduit le risque de canal unique. Vide = pas de 2e canal."
+  type        = string
+  default     = ""
+}
+
 variable "domain_name" {
   description = "Domaine public de l API staging (ex: api-staging.menal-sarl.com)"
   type        = string

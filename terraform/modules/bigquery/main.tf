@@ -11,6 +11,17 @@ resource "google_bigquery_dataset" "security" {
     environment = var.environment
     project     = "menal-zero-trust"
   }
+
+  # Tier 2 (09_AUDIT_E2E_STAGING_2026-08-07.md) : CMEK, mutable en place sur le
+  # dataset (datasets.patch) — s'applique aux NOUVELLES tables creees apres ce
+  # changement, ne re-chiffre pas retroactivement detections/security_events/
+  # etc. deja existantes.
+  dynamic "default_encryption_configuration" {
+    for_each = var.kms_key_id != "" ? [1] : []
+    content {
+      kms_key_name = var.kms_key_id
+    }
+  }
 }
 
 # ── IAM : sa-pipeline peut ecrire dans le dataset ─────────────────────────────
@@ -38,11 +49,20 @@ resource "google_project_iam_member" "api_bq_job_user" {
 }
 
 # ── IAM : sa-cicd charge les rapports Trivy dans le dataset (boucle F6) ───────
-# Portee DATASET uniquement, pas projet : le pipeline CI ecrit le resultat de
-# ses propres scans (cve_findings) et rien d autre. jobUser est necessaire pour
-# executer le load job BigQuery (scripts/load_cve_findings.py).
-resource "google_bigquery_dataset_iam_member" "cicd_editor" {
+# CORRECTION 07/08/2026 (Tier 1, 09_AUDIT_E2E_STAGING_2026-08-07.md §1) : la
+# portee etait commentee "dataset uniquement" mais le binding reel
+# (google_bigquery_dataset_iam_member) donnait dataEditor sur TOUT le dataset,
+# y compris detections/security_events/access_logs/alert_enrichment — un
+# pipeline CI compromis aurait pu falsifier des preuves, pas seulement charger
+# ses CVE. Seul usage CI reel confirme : scripts/load_cve_findings.py
+# (ci.yml:160) ecrit uniquement dans cve_findings — scripts/load_attack_catalogue.py
+# ecrit dans attack_embeddings mais n est invoque par aucun workflow (execution
+# manuelle, credentials operateur, hors sa-cicd). Meme principe que sa-enrich-job
+# (table-level uniquement, cf. enrich_job_writes_enrichment ci-dessus). jobUser
+# reste necessaire pour executer le load job BigQuery.
+resource "google_bigquery_table_iam_member" "cicd_editor" {
   dataset_id = google_bigquery_dataset.security.dataset_id
+  table_id   = google_bigquery_table.cve_findings.table_id
   role       = "roles/bigquery.dataEditor"
   member     = "serviceAccount:${var.cicd_service_account_email}"
   project    = var.project_id

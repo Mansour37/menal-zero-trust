@@ -32,7 +32,7 @@ resource "google_sql_database_instance" "postgres" {
 
   settings {
     tier              = "db-f1-micro"
-    availability_type = "ZONAL"
+    availability_type = "REGIONAL"
 
     ip_configuration {
       ipv4_enabled                                  = false
@@ -76,14 +76,23 @@ resource "google_sql_user" "api" {
 }
 
 # Secret Manager : stocker le mot de passe
+# Tier 2 (09_AUDIT_E2E_STAGING_2026-08-07.md) : CMEK, verifie mutable en place
+# (terraform plan sans "forces replacement" le 07/08 — a la difference de
+# encryption_key_name sur l'instance elle-meme, qui LUI force un remplacement).
 resource "google_secret_manager_secret" "db_password" {
   secret_id = "db-password-${var.environment}"
   project   = var.project_id
 
   replication {
-    auto {}
+    auto {
+      dynamic "customer_managed_encryption" {
+        for_each = var.kms_key_id != "" ? [1] : []
+        content {
+          kms_key_name = var.kms_key_id
+        }
+      }
+    }
   }
-
 }
 
 resource "google_secret_manager_secret_version" "db_password" {
@@ -110,9 +119,15 @@ resource "google_secret_manager_secret" "jwt_secret" {
   project   = var.project_id
 
   replication {
-    auto {}
+    auto {
+      dynamic "customer_managed_encryption" {
+        for_each = var.kms_key_id != "" ? [1] : []
+        content {
+          kms_key_name = var.kms_key_id
+        }
+      }
+    }
   }
-
 }
 
 resource "google_secret_manager_secret_version" "jwt_secret" {

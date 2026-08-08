@@ -90,11 +90,16 @@ resource "google_cloud_run_v2_service" "ml_embed" {
         tcp_socket {
           port = 8080
         }
-        # uvicorn n'ouvre le port qu'apres chargement du modele fp32 (~15-30 s).
+        # uvicorn n'ouvre le port qu'apres chargement du modele fp32 (~15-30 s
+        # en moyenne). Mesure reelle (Cloud Monitoring startup_latencies, p99
+        # sur 7 jours, audit du 07/08/2026) : pic observe a ~94 s. L'ancien
+        # budget (10 + 6*10 = 70 s) etait trop court et a cause directement les
+        # 503 du 05/08 (sonde en echec avant la fin du chargement du modele).
+        # Nouveau budget : 10 + 14*10 = 150 s, marge ~1,6x au-dessus du pic mesure.
         initial_delay_seconds = 10
         timeout_seconds       = 5
         period_seconds        = 10
-        failure_threshold     = 6
+        failure_threshold     = 14
       }
     }
 

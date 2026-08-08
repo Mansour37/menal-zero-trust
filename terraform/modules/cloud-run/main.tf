@@ -4,6 +4,18 @@ resource "google_cloud_run_v2_service" "api" {
   project  = var.project_id
   client   = "terraform"
 
+  # Tier 1 (09_AUDIT_E2E_STAGING_2026-08-07.md §5) : bloc explicite, identique
+  # au comportement par defaut de Cloud Run (100% vers la derniere revision
+  # prete) — declare ici uniquement pour que `traffic` figure dans le
+  # `lifecycle.ignore_changes` ci-dessous. Sans ca, un futur rollout progressif
+  # pilote hors Terraform (`gcloud run services update-traffic`, canary /
+  # rollback) serait ecrase au prochain `apply`, comme l etait l image avant le
+  # meme traitement. Ce bloc ne change AUCUN comportement actuel.
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+
   template {
     service_account = var.api_service_account_email
 
@@ -160,11 +172,23 @@ resource "google_cloud_run_v2_service" "api" {
 
   ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
-  # Frontiere F3/F7 (04_METHODOLOGIE §1) : le pipeline CI deploie par digest
-  # (tag SHA immuable + labels commit-sha/managed-by) via `gcloud run deploy`,
-  # jamais par un nouvel `apply`. Sans ce lifecycle, chaque `terraform apply`
-  # ecraserait le deploiement CI le plus recent en revenant au tag `:latest`
-  # mutable connu de l etat Terraform — guerre d etats entre les deux pipelines.
+  # Frontiere F3/F7 (04_METHODOLOGIE §1) : le pipeline CI deploie par tag SHA
+  # de commit (immuable par construction : un tag par commit, jamais reecrit
+  # une fois pousse) + labels commit-sha/managed-by, via `gcloud run deploy`,
+  # jamais par un nouvel `apply`.
+  # CORRECTION 07/08/2026 (09_AUDIT_E2E_STAGING_2026-08-07.md §6, ecart E24) :
+  # ce commentaire affirmait a tort un deploiement "par digest". Ce n'est PAS
+  # un digest cryptographique @sha256 — c'est un tag mutable en theorie, meme
+  # si en pratique jamais reecrit par la CI. Consequence reelle : un
+  # `terraform apply` de reconstruction (bootstrap, disaster recovery) ne
+  # redeploierait pas cet artefact precis, il retomberait sur les valeurs par
+  # defaut `:latest` des variables racine — pas l'image auditee par Trivy au
+  # commit courant. Fermeture de cet ecart = Tier 1 du plan de remediation
+  # (propager le digest resolu par Artifact Registry jusqu'a `deploy-cloudrun`
+  # ET jusqu'aux valeurs par defaut Terraform).
+  # Sans ce lifecycle, chaque `terraform apply` ecraserait de toute facon le
+  # deploiement CI le plus recent en revenant au tag `:latest` mutable connu de
+  # l'etat Terraform — guerre d'etats entre les deux pipelines.
   lifecycle {
     prevent_destroy = false
     ignore_changes = [
@@ -172,6 +196,7 @@ resource "google_cloud_run_v2_service" "api" {
       client_version,
       template[0].labels,
       template[0].containers[0].image,
+      traffic,
     ]
   }
 }

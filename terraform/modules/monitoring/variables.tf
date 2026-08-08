@@ -5,6 +5,11 @@ variable "alert_email" {
   description = "Email de notification pour les alertes"
   type        = string
 }
+variable "secondary_alert_email" {
+  description = "2e canal d'alerte, reduit le risque de canal unique (Tier 0, 09_AUDIT_E2E_STAGING_2026-08-07.md §0). Vide = pas de 2e canal."
+  type        = string
+  default     = ""
+}
 variable "domain_name" {
   description = "Nom de domaine de l'API"
   type        = string

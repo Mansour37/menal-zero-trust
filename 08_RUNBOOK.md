@@ -318,8 +318,8 @@ dans le plan = arrêt immédiat (moved block ou tfvars raté) — lire le plan E
    `r4_excluded_services`) — en réincluant les valeurs menal-api (piège des fallbacks).
 5. `terraform apply -target=module.elson_app` (SA/secrets/base/bucket/job), puis apply
    complet.
-6. **Isolation SQL (une fois, via cloud-sql-proxy)** — les users Postgres Cloud SQL sont
-   membres de `cloudsqlsuperuser`, sans ces REVOKE chaque app lit la base de l'autre :
+6. **Isolation SQL (une fois)** — les users Postgres Cloud SQL sont membres de
+   `cloudsqlsuperuser`, sans ces REVOKE chaque app lit la base de l'autre :
    ```sql
    REVOKE CONNECT ON DATABASE menal_db FROM PUBLIC;
    REVOKE CONNECT ON DATABASE menal_db FROM elson_user;
@@ -328,7 +328,20 @@ dans le plan = arrêt immédiat (moved block ou tfvars raté) — lire le plan E
    REVOKE CONNECT ON DATABASE elson_db FROM api_user;
    GRANT  CONNECT ON DATABASE elson_db TO elson_user;
    ```
-   Vérification : `psql -U elson_user -d menal_db` doit être REFUSÉ (et réciproquement).
+   Exécution : **via le job `elson-migrate-staging`** (`src/scripts/sql-isolation.ts`,
+   retag `:latest` + `--command "npx,tsx,src/scripts/sql-isolation.ts"`), pas via
+   cloud-sql-proxy : l'instance n'a pas d'IP publique, le proxy local ne la joint pas.
+   **Durcissement complémentaire** (`src/scripts/sql-isolation-harden.ts`, après un test
+   probe qui montrait la persistance de l'accès croisé par héritage) :
+   ```sql
+   GRANT  ALL ON SCHEMA public TO elson_user;  -- sur elson_db (migrations futures)
+   GRANT  ALL ON SCHEMA public TO api_user;    -- sur menal_db
+   REVOKE cloudsqlsuperuser FROM api_user;
+   REVOKE cloudsqlsuperuser FROM elson_user;
+   ```
+   Vérification (job, puis logs) : `has_database_privilege` → `CONNECT=true` sur
+   `api_user→menal_db` et `elson_user→elson_db` uniquement, probe croisé vers la base
+   de l'autre app **REJETÉ**, accès propre toujours OK.
 7. Basculer `ELSON_DEPLOY_ENABLED=true` (variable GitHub) → le job deploy de `elson-ci.yml`
    migre (job `elson-migrate-staging`) puis déploie les deux services, smoke test compris.
 8. Premier accès admin Elson : ajouter temporairement `ADMIN_BOOTSTRAP=true` sur

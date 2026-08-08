@@ -287,3 +287,7 @@ La dernière ligne est le point de couture classique entre les deux pipelines : 
 
 ### 10.4 Détection de dérive
 `terraform plan` planifié (hebdomadaire ou avant chaque jalon) : un plan non vide sans commit correspondant = dérive → investigation (qui a modifié quoi : Cloud Audit Logs). C'est le test T15 du plan de tests.
+
+**Écarts connus vis-à-vis de ce principe** (audit du 07-08/08/2026, `09_AUDIT_E2E_STAGING_2026-08-07.md`) :
+- `.terraform.lock.hcl` est gitignoré et `terraform.yml` (F7) fait un `init -backend=false` sans lock committé — la CI de validation n'a donc aucune garantie d'utiliser la même version de provider que les `apply` réellement passés sur staging (E28).
+- Le plan seul ne suffit pas toujours à prédire l'effet réel d'un `apply` : lors du câblage CMEK du 08/08, un `apply` en échec (contrainte API non visible au plan — validation cross-champs côté GCP) a laissé l'état local Terraform enregistrer une valeur jamais réellement appliquée côté infrastructure (`google_secret_manager_secret.db_password`, `customer_managed_encryption` fantôme). Détecté par comparaison explicite état/réel (`gcloud secrets describe`) et corrigé par `terraform apply -refresh-only` avant de poursuivre — leçon retenue : après tout `apply` en échec partiel, revérifier l'état contre la réalité avant de replanifier, ne pas supposer que l'échec a laissé l'état intact.

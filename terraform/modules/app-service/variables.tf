@@ -47,6 +47,18 @@ variable "create_bucket" {
   default     = false
 }
 
+variable "kms_key_id" {
+  description = "ID de la cle KMS (region quelconque) pour le CMEK du bucket (Tier 2, 09_AUDIT_E2E_STAGING_2026-08-07.md). Vide = chiffrement Google-managed par defaut."
+  type        = string
+  default     = ""
+}
+
+variable "secrets_kms_key_id" {
+  description = "ID de la cle KMS GLOBALE pour le CMEK des secrets Secret Manager (la replication auto de Secret Manager exige une cle en location global, distincte de kms_key_id qui peut etre regionale). Vide = chiffrement Google-managed."
+  type        = string
+  default     = ""
+}
+
 # ── Job de migration de schema (MIGRATE_MODE=off dans le service) ────────────
 variable "migrate_image" {
   description = "Image du job de migration (en pratique l'image backend de l'app, le meme runner). Vide = pas de job."

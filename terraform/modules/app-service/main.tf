@@ -59,7 +59,14 @@ resource "google_secret_manager_secret" "db_password" {
   project   = var.project_id
 
   replication {
-    auto {}
+    auto {
+      dynamic "customer_managed_encryption" {
+        for_each = var.secrets_kms_key_id != "" ? [1] : []
+        content {
+          kms_key_name = var.secrets_kms_key_id
+        }
+      }
+    }
   }
 }
 
@@ -88,7 +95,14 @@ resource "google_secret_manager_secret" "usage" {
   project   = var.project_id
 
   replication {
-    auto {}
+    auto {
+      dynamic "customer_managed_encryption" {
+        for_each = var.secrets_kms_key_id != "" ? [1] : []
+        content {
+          kms_key_name = var.secrets_kms_key_id
+        }
+      }
+    }
   }
 }
 
@@ -119,6 +133,15 @@ resource "google_storage_bucket" "media" {
 
   versioning {
     enabled = false
+  }
+
+  # Tier 2 (09_AUDIT_E2E_STAGING_2026-08-07.md) : CMEK, mutable en place (ne
+  # s'applique qu'aux nouveaux objets, n'affecte pas ceux deja stockes).
+  dynamic "encryption" {
+    for_each = var.kms_key_id != "" ? [1] : []
+    content {
+      default_kms_key_name = var.kms_key_id
+    }
   }
 }
 
