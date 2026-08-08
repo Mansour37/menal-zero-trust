@@ -50,6 +50,16 @@ resource "google_cloud_run_v2_service" "dashboard" {
   project  = var.project_id
   client   = "terraform"
 
+  # Tier 1 (09_AUDIT_E2E_STAGING_2026-08-07.md §5) : meme raison que
+  # modules/cloud-run/main.tf — bloc explicite identique au comportement par
+  # defaut (100% derniere revision), ne change rien aujourd'hui, permet juste
+  # a `traffic` de figurer dans le lifecycle.ignore_changes ci-dessous pour un
+  # futur rollout progressif hors Terraform.
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+
   template {
     service_account = google_service_account.dashboard.email
     timeout         = "300s"
@@ -126,8 +136,20 @@ resource "google_cloud_run_v2_service" "dashboard" {
 
   ingress = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
-  # Meme raison que modules/cloud-run/main.tf : ce service est deploye par
-  # scripts/hotfix.sh (tag immuable hotfix-<timestamp>), jamais par apply.
+  # CORRECTION 07/08/2026 (09_AUDIT_E2E_STAGING_2026-08-07.md §6, ecart E24) :
+  # ce commentaire affirmait a tort que ce service est deploye par
+  # scripts/hotfix.sh. En realite le dashboard est deploye par le job
+  # `dashboard` de ci.yml (tag SHA de commit, scanne par Trivy), au meme titre
+  # que l'API — voir modules/cloud-run/main.tf pour la meme reserve sur
+  # tag vs digest cryptographique.
+  # scripts/hotfix.sh reste une echappatoire manuelle DISTINCTE et plus a
+  # risque : tag horodate sans lien avec un commit git, push vers un Docker Hub
+  # personnel en plus d'Artifact Registry, AUCUN scan Trivy, hardcode sur
+  # menal-zero-trust-dev uniquement. Ne pas l'utiliser comme chemin normal de
+  # deploiement (risque assume, cf. M2 dans project_menal_commercialisation_gaps).
+  # Sans ce lifecycle, un `terraform apply` ecraserait quand meme le
+  # deploiement CI le plus recent en revenant au tag `:latest` mutable connu de
+  # l'etat Terraform — guerre d'etats entre les deux pipelines.
   lifecycle {
     prevent_destroy = false
     ignore_changes = [
@@ -135,6 +157,7 @@ resource "google_cloud_run_v2_service" "dashboard" {
       client_version,
       template[0].labels,
       template[0].containers[0].image,
+      traffic,
     ]
   }
 

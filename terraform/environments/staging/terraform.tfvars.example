@@ -5,6 +5,11 @@ project_id      = "menal-zero-trust-staging"   # projet GCP dedie a la staging, 
 support_email   = "soc-team@menal-sarl.com"    # alias d equipe, pas une adresse personnelle
 admin_ip_ranges = ["203.0.113.10/32"]          # IP(s) admin de la staging, distinctes de celles de dev
 
+# 2e canal d'alerte (Tier 0, 09_AUDIT_E2E_STAGING_2026-08-07.md) : reduit le
+# risque de canal unique non surveille. Adresse distincte de support_email.
+# Vide/absent = pas de 2e canal (comportement par defaut, non bloquant).
+secondary_alert_email = "backup-oncall@menal-sarl.com"
+
 # ═══════════════════════════════════════════════════════════════════════════
 # MULTI-APP — activation d'Elson (cf. elson.tf), EN DEUX TEMPS :
 #

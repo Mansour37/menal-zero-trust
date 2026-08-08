@@ -51,7 +51,9 @@ module "elson_app" {
   db_user           = "elson_user"
   secret_usages     = ["jwt-secret", "otp-pepper", "api-key-secret", "audio-url-secret"]
 
-  create_bucket = true
+  create_bucket      = true
+  kms_key_id         = module.kms.crypto_key_id
+  secrets_kms_key_id = module.kms.crypto_key_id_secrets
 
   migrate_image   = "${local.elson_registry}/elson-backend:latest"
   migrate_command = ["npx", "tsx", "src/scripts/migrate.ts", "--from-zero"]
@@ -63,11 +65,154 @@ module "elson_app" {
   migrate_secret_env = local.elson_secret_env
   vpc_connector_id   = module.vpc.vpc_connector_id
 
-  depends_on = [google_project_service.apis, module.iam, module.cloud_sql]
+  depends_on = [google_project_service.apis, module.iam, module.cloud_sql, module.kms]
 }
 
 # Backend Express — workers in-process (setInterval) : 1 instance chaude, CPU
 # toujours allouee, cluster coupe (WEB_CONCURRENCY=1 + CLUSTER=off).
+# ── Verification automatique de l'isolation SQL (Tier 1, 09_AUDIT_E2E_STAGING
+# 2026-08-07.md §1) ───────────────────────────────────────────────────────
+# L'isolation menal_db/elson_db (REVOKE cloudsqlsuperuser, sql-isolation-harden.ts)
+# est appliquee au runtime, hors Terraform : rien ne detectait automatiquement
+# une derive (restauration PITR posterieure au harden, google_sql_user
+# recree...). Ce job rejoue une verification READ-ONLY quotidiennement et
+# echoue (exit 1) si l'isolation n'est plus vraie — visible via le meme
+# mecanisme d'alerte que enrich_job_failure (execution echouee).
+resource "google_cloud_run_v2_job" "sql_isolation_check" {
+  count    = var.elson_enabled ? 1 : 0
+  name     = "elson-sql-isolation-check-${var.environment}"
+  location = var.region
+  project  = var.project_id
+
+  template {
+    task_count = 1
+
+    template {
+      service_account = module.elson_app[0].service_account_email
+      timeout         = "120s"
+      max_retries     = 0
+
+      containers {
+        image   = "${local.elson_registry}/elson-backend:latest"
+        command = ["npx", "tsx", "src/scripts/sql-isolation-check.ts"]
+
+        dynamic "env" {
+          for_each = merge(local.elson_db_env, { NODE_ENV = "production" })
+          content {
+            name  = env.key
+            value = env.value
+          }
+        }
+
+        dynamic "env" {
+          for_each = local.elson_secret_env
+          content {
+            name = env.key
+            value_source {
+              secret_key_ref {
+                secret  = env.value
+                version = "latest"
+              }
+            }
+          }
+        }
+
+        resources {
+          limits = {
+            cpu    = "1"
+            memory = "512Mi"
+          }
+        }
+      }
+
+      vpc_access {
+        connector = module.vpc.vpc_connector_id
+        egress    = "PRIVATE_RANGES_ONLY"
+      }
+    }
+  }
+
+  lifecycle {
+    prevent_destroy = false
+    ignore_changes = [
+      client,
+      client_version,
+      template[0].template[0].containers[0].image,
+    ]
+  }
+
+  depends_on = [google_project_service.apis, module.elson_app]
+}
+
+# sa-pipeline est deja utilisee comme identite de declenchement pour
+# enrich_trigger (ml-pipeline) : Cloud Scheduler a deja serviceAccountTokenCreator
+# dessus, pas besoin de le reaccorder pour un 2e job declenche.
+resource "google_cloud_run_v2_job_iam_member" "sql_isolation_check_executor" {
+  count    = var.elson_enabled ? 1 : 0
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_job.sql_isolation_check[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${module.iam.pipeline_service_account_email}"
+}
+
+resource "google_cloud_scheduler_job" "sql_isolation_check_trigger" {
+  count       = var.elson_enabled ? 1 : 0
+  name        = "elson-sql-isolation-check-trigger-${var.environment}"
+  project     = var.project_id
+  region      = var.region
+  description = "Verifie quotidiennement que l'isolation SQL menal_db/elson_db n'a pas derive"
+  schedule    = "0 4 * * *"
+  time_zone   = "UTC"
+
+  http_target {
+    http_method = "POST"
+    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${google_cloud_run_v2_job.sql_isolation_check[0].name}:run"
+    oauth_token {
+      service_account_email = module.iam.pipeline_service_account_email
+    }
+  }
+
+  depends_on = [google_cloud_run_v2_job_iam_member.sql_isolation_check_executor]
+}
+
+# Meme forme que monitoring.enrich_job_failure : alerte sur execution echouee
+# du job Cloud Run (built-in metric, pas de log-based metric a maintenir).
+resource "google_monitoring_alert_policy" "sql_isolation_drift" {
+  count        = var.elson_enabled ? 1 : 0
+  display_name = "[${var.environment}] Derive de l'isolation SQL Elson/menal"
+  project      = var.project_id
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Executions echouees de elson-sql-isolation-check"
+    condition_threshold {
+      filter = <<-EOT
+        resource.type = "cloud_run_job"
+        AND resource.labels.job_name = "${google_cloud_run_v2_job.sql_isolation_check[0].name}"
+        AND metric.type = "run.googleapis.com/job/completed_execution_count"
+        AND metric.labels.result = "failed"
+      EOT
+
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "0s"
+
+      aggregations {
+        alignment_period   = "86400s" # une periode = un cycle du scheduler (quotidien)
+        per_series_aligner = "ALIGN_SUM"
+      }
+    }
+  }
+
+  notification_channels = module.monitoring.notification_channel_ids
+  alert_strategy {
+    auto_close = "86400s"
+  }
+
+  depends_on = [google_cloud_run_v2_job.sql_isolation_check]
+}
+
 module "elson_api" {
   count  = var.elson_enabled ? 1 : 0
   source = "../../modules/cloud-run"

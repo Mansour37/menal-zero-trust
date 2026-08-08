@@ -9,11 +9,31 @@ resource "google_monitoring_notification_channel" "email" {
   }
 }
 
+# Tier 0 (09_AUDIT_E2E_STAGING_2026-08-07.md §0) : 2e canal, adresse distincte
+# de var.alert_email — reduit le risque de canal d'alerte unique non surveille.
+resource "google_monitoring_notification_channel" "email_secondary" {
+  count        = var.secondary_alert_email != "" ? 1 : 0
+  display_name = "MENAL Alertes Email (secondaire)"
+  type         = "email"
+  project      = var.project_id
+
+  labels = {
+    email_address = var.secondary_alert_email
+  }
+}
+
 # ── Services surveilles : parametrables, fallback historique si vide ─────────
 locals {
   service_name_ops = var.service_name != "" ? var.service_name : "menal-api-${var.environment}"
   db_name_ops      = var.db_instance_name != "" ? var.db_instance_name : "menal-db-${var.environment}"
   enrich_job_ops   = var.enrich_job_name != "" ? var.enrich_job_name : "menal-enrich-job-${var.environment}"
+
+  # Tier 0 : toutes les alertes du module pointent sur cette liste (1 ou 2
+  # canaux selon secondary_alert_email) au lieu du seul canal historique.
+  notification_channels = compact([
+    google_monitoring_notification_channel.email.name,
+    try(google_monitoring_notification_channel.email_secondary[0].name, ""),
+  ])
 
   # Multi-app : une entree par service surveille (alertes 1/2/3/5/6/9, uptime,
   # SLO). Fallback mono-app historique (menal-api) si la map est vide — les
@@ -65,7 +85,7 @@ resource "google_monitoring_alert_policy" "high_error_rate" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.name]
+  notification_channels = local.notification_channels
 
   alert_strategy {
     auto_close = "1800s"
@@ -100,7 +120,7 @@ resource "google_monitoring_alert_policy" "high_latency" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.name]
+  notification_channels = local.notification_channels
 
   alert_strategy {
     auto_close = "1800s"
@@ -136,7 +156,7 @@ resource "google_monitoring_alert_policy" "auth_failures" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.name]
+  notification_channels = local.notification_channels
 
   alert_strategy {
     auto_close = "1800s"
@@ -169,7 +189,7 @@ resource "google_monitoring_alert_policy" "cloudsql_cpu" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.name]
+  notification_channels = local.notification_channels
 
   alert_strategy {
     auto_close = "1800s"
@@ -205,7 +225,7 @@ resource "google_monitoring_alert_policy" "fivexx_spike" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.name]
+  notification_channels = local.notification_channels
 
   alert_strategy {
     auto_close = "1800s"
@@ -268,7 +288,7 @@ resource "google_monitoring_alert_policy" "uptime_failure" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.name]
+  notification_channels = local.notification_channels
 
   alert_strategy {
     auto_close = "1800s"
@@ -311,7 +331,7 @@ resource "google_monitoring_alert_policy" "enrich_job_failure" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.name]
+  notification_channels = local.notification_channels
   alert_strategy {
     auto_close = "3600s"
   }
@@ -360,7 +380,7 @@ resource "google_monitoring_alert_policy" "bq_transfer_failure" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.name]
+  notification_channels = local.notification_channels
   alert_strategy {
     auto_close = "3600s"
   }
@@ -395,7 +415,7 @@ resource "google_monitoring_alert_policy" "ingestion_stalled" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.name]
+  notification_channels = local.notification_channels
   alert_strategy {
     auto_close = "3600s"
   }
@@ -577,7 +597,7 @@ resource "google_monitoring_alert_policy" "enrichment_stale" {
     }
   }
 
-  notification_channels = [google_monitoring_notification_channel.email.name]
+  notification_channels = local.notification_channels
   alert_strategy {
     auto_close = "3600s"
   }
