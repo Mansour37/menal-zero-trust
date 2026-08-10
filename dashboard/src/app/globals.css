@@ -1,3 +1,67 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Jetons de la "Console d'operations sombre" — direction retenue le 08/08/2026
+ * apres comparaison a 7 SOC/SIEM du marche + recherche UX (voir memoire
+ * project_menal_dashboard_redesign). Sombre par defaut (.light bascule en clair) :
+ * c'est l'ecart #1 releve face aux concurrents (Sentinel, Splunk, Elastic...),
+ * qui l'offrent tous en option. Une seule source de verite ici, plutot que des
+ * classes dark: eparpillees sur chaque page — cf. tailwind.config.js ou
+ * primary/danger/warning/success existaient deja sans etre jamais utilises.
+ */
+:root {
+  color-scheme: dark;
+
+  --bg: #0B0D10;
+  --surface: #15181C;
+  --surface-2: #1D2126;
+  --surface-hover: #20242A;
+  --border: #262B31;
+
+  --ink: #E7EAEE;
+  --ink-muted: #9AA3B0;
+  --ink-faint: #6B7280;
+
+  --accent: #3B6FE8;
+  --accent-ink: #DCE5FC;
+  --accent-soft: #1B2440;
+
+  --sev-critical: #F87171; --sev-critical-bg: rgba(127, 29, 29, 0.35);
+  --sev-high:     #FB923C; --sev-high-bg:     rgba(124, 58, 15, 0.35);
+  --sev-medium:   #FBBF24; --sev-medium-bg:   rgba(120, 83, 10, 0.35);
+  --sev-low:      #94A3B8; --sev-low-bg:      rgba(51, 65, 85, 0.35);
+
+  --ok: #4ADE80; --ok-bg: rgba(20, 83, 45, 0.35);
+}
+
+:root.light {
+  color-scheme: light;
+
+  --bg: #F5F7FB;
+  --surface: #FFFFFF;
+  --surface-2: #EEF1F7;
+  --surface-hover: #E7ECF5;
+  --border: #DDE3EA;
+
+  --ink: #101726;
+  --ink-muted: #4B5568;
+  --ink-faint: #8993A8;
+
+  --accent: #2451C4;
+  --accent-ink: #17348C;
+  --accent-soft: #E8EEFC;
+
+  --sev-critical: #C6303E; --sev-critical-bg: #FBE7E9;
+  --sev-high:     #B96A1F; --sev-high-bg:     #FBEEE1;
+  --sev-medium:   #93700A; --sev-medium-bg:   #FBF2DC;
+  --sev-low:      #64748B; --sev-low-bg:      #F1F5F9;
+
+  --ok: #1F8A5F; --ok-bg: #E4F5EC;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+}

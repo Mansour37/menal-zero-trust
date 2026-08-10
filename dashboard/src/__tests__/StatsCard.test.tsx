@@ -18,16 +18,16 @@ describe("StatsCard", () => {
     expect(screen.queryByText(/dernieres heures/i)).not.toBeInTheDocument();
   });
 
-  it("applique la couleur blue par defaut", () => {
+  it("applique la couleur blue (accent) par defaut", () => {
     const { container } = render(<StatsCard title="T" value="V" />);
     const card = container.firstChild as HTMLElement;
-    expect(card.className).toContain("blue");
+    expect(card.className).toContain("--accent");
   });
 
-  it("applique la couleur red quand specifie", () => {
+  it("applique la couleur red (severite critique) quand specifie", () => {
     const { container } = render(<StatsCard title="T" value="V" color="red" />);
     const card = container.firstChild as HTMLElement;
-    expect(card.className).toContain("red");
+    expect(card.className).toContain("--sev-critical");
   });
 
   it("accepte une valeur numerique et l affiche comme chaine", () => {

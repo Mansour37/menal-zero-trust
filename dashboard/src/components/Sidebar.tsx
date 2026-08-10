@@ -3,9 +3,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, ScrollText, AlertTriangle, LogOut, Shield,
-  Radar, Siren, Target, Bug, KeyRound,
+  Radar, Siren, Target, Bug, KeyRound, HeartPulse,
 } from "lucide-react";
 import clsx from "clsx";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const navGroups = [
   {
@@ -23,6 +24,7 @@ const navGroups = [
       { href: "/incidents",      label: "Incidents",         icon: Siren },
       { href: "/coverage",       label: "Couverture ATT&CK", icon: Target },
       { href: "/vulnerabilities", label: "Vulnérabilités",   icon: Bug },
+      { href: "/rules",           label: "Santé des règles", icon: HeartPulse },
     ],
   },
   {
@@ -44,19 +46,20 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-64 min-h-screen bg-slate-900 text-white flex flex-col shrink-0">
-      <div className="px-6 py-5 border-b border-slate-700/60 flex items-center gap-2.5">
-        <Shield className="text-blue-400" size={24} />
+    <aside className="w-64 min-h-screen bg-[var(--surface)] border-r border-[var(--border)] text-[var(--ink)] flex flex-col shrink-0">
+      <div className="px-6 py-5 border-b border-[var(--border)] flex items-center gap-2.5">
+        {/* Emplacement logo : pictogramme generique en attente du fichier reel (voir memoire project_menal_dashboard_redesign) */}
+        <Shield className="text-[var(--accent)]" size={24} />
         <span className="font-bold text-sm leading-tight">
           MENAL SOC<br />
-          <span className="text-slate-400 font-normal text-xs">Zero Trust</span>
+          <span className="text-[var(--ink-faint)] font-normal text-xs">Zero Trust</span>
         </span>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
         {navGroups.map((group) => (
           <div key={group.label}>
-            <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-faint)]">
               {group.label}
             </p>
             <div className="space-y-1">
@@ -68,7 +71,9 @@ export default function Sidebar() {
                     href={href}
                     className={clsx(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition",
-                      active ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800"
+                      active
+                        ? "bg-[var(--accent)] text-white"
+                        : "text-[var(--ink-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
                     )}
                   >
                     <Icon size={18} />
@@ -81,10 +86,11 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-3 pb-5">
+      <div className="px-3 pb-5 space-y-1 border-t border-[var(--border)] pt-3">
+        <ThemeToggle />
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition"
+          className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm text-[var(--ink-faint)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)] transition"
         >
           <LogOut size={18} />
           Déconnexion

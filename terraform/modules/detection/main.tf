@@ -19,7 +19,7 @@ locals {
     severity = "HIGH"
     query    = <<-SQL
       INSERT INTO `${local.project}.${local.dataset}.detections`
-        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service)
+        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service, id)
       SELECT
         CURRENT_TIMESTAMP(),
         "R1",
@@ -30,7 +30,12 @@ locals {
         "cloud_run",
         "TA0006",
         "T1110",
-        f.service
+        f.service,
+        TO_HEX(SHA256(CONCAT(
+          "R1", "|", IFNULL(f.ip_address, ""), "|",
+          CONCAT(CAST(f.auth_failures AS STRING), " echecs auth depuis ", f.ip_address, " en 15 min"), "|",
+          CAST(CURRENT_TIMESTAMP() AS STRING)
+        )))
       FROM (
         -- Regroupe aussi par service : deux salves distinctes contre menal et
         -- elson depuis la meme IP dans la fenetre doivent rester deux
@@ -70,7 +75,7 @@ locals {
     severity = "MEDIUM"
     query    = <<-SQL
       INSERT INTO `${local.project}.${local.dataset}.detections`
-        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service)
+        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service, id)
       SELECT
         CURRENT_TIMESTAMP(),
         "R2",
@@ -81,7 +86,12 @@ locals {
         "cloud_armor",
         "TA0040",
         "T1498",
-        f.service
+        f.service,
+        TO_HEX(SHA256(CONCAT(
+          "R2", "|", IFNULL(f.src_ip, ""), "|",
+          CONCAT(CAST(f.waf_blocks AS STRING), " requetes bloquees par Cloud Armor depuis ", f.src_ip, " en 15 min"), "|",
+          CAST(CURRENT_TIMESTAMP() AS STRING)
+        )))
       FROM (
         -- resource_name porte le backend_service_name du LB (menal-*-backend-
         -- <env>) depuis la correction de q_raw_logs_armor — distinct du nom de
@@ -117,7 +127,7 @@ locals {
     severity = "HIGH"
     query    = <<-SQL
       INSERT INTO `${local.project}.${local.dataset}.detections`
-        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service)
+        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service, id)
       SELECT
         CURRENT_TIMESTAMP(),
         "R3",
@@ -128,7 +138,11 @@ locals {
         f.src,
         "TA0001",
         "T1190",
-        f.service
+        f.service,
+        TO_HEX(SHA256(CONCAT(
+          "R3", "|", IFNULL(f.entity, ""), "|", IFNULL(f.message, ""), "|",
+          CAST(CURRENT_TIMESTAMP() AS STRING)
+        )))
       FROM (
         -- Tentatives ayant atteint l application
         SELECT
@@ -185,7 +199,7 @@ locals {
     severity = "MEDIUM"
     query    = <<-SQL
       INSERT INTO `${local.project}.${local.dataset}.detections`
-        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service)
+        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service, id)
       SELECT
         CURRENT_TIMESTAMP(),
         "R4",
@@ -196,7 +210,12 @@ locals {
         "cloud_run",
         "TA0007",
         "T1046",
-        resource_name
+        resource_name,
+        TO_HEX(SHA256(CONCAT(
+          "R4", "|", IFNULL(STRING(json_payload.httpRequest.remoteIp), ""), "|",
+          CONCAT("User-agent suspect (", SUBSTR(STRING(json_payload.httpRequest.userAgent), 1, 40), ") sur ", STRING(json_payload.httpRequest.requestUrl), " depuis ", STRING(json_payload.httpRequest.remoteIp)), "|",
+          CAST(CURRENT_TIMESTAMP() AS STRING)
+        )))
       FROM `${local.project}.${local.dataset}.raw_logs`
       WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
         AND log_source = "cloudrun"
@@ -231,7 +250,7 @@ locals {
     severity = "LOW"
     query    = <<-SQL
       INSERT INTO `${local.project}.${local.dataset}.detections`
-        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service)
+        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service, id)
       SELECT
         CURRENT_TIMESTAMP(),
         "R5",
@@ -242,7 +261,12 @@ locals {
         "cloud_run",
         "TA0040",
         "T1499",
-        service
+        service,
+        TO_HEX(SHA256(CONCAT(
+          "R5", "|", IFNULL(ip_address, ""), "|",
+          CONCAT("[", IFNULL(service, "?"), "] Requete ", method, " ", path, " : ", CAST(latency_ms AS STRING), "ms depuis ", ip_address), "|",
+          CAST(CURRENT_TIMESTAMP() AS STRING)
+        )))
       FROM `${local.project}.${local.dataset}.access_logs`
       WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
         AND latency_ms > 5000
@@ -263,7 +287,7 @@ locals {
     severity = "CRITICAL"
     query    = <<-SQL
       INSERT INTO `${local.project}.${local.dataset}.detections`
-        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service)
+        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service, id)
       SELECT
         CURRENT_TIMESTAMP(),
         "R6",
@@ -274,7 +298,11 @@ locals {
         f.src,
         "TA0001",
         "T1190",
-        f.service
+        f.service,
+        TO_HEX(SHA256(CONCAT(
+          "R6", "|", IFNULL(f.entity, ""), "|", IFNULL(f.message, ""), "|",
+          CAST(CURRENT_TIMESTAMP() AS STRING)
+        )))
       FROM (
         -- Tentatives ayant atteint l application
         SELECT
@@ -324,7 +352,7 @@ locals {
     severity = "HIGH"
     query    = <<-SQL
       INSERT INTO `${local.project}.${local.dataset}.detections`
-        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service)
+        (timestamp, rule_id, rule_name, severity, entity, message, source, mitre_tactic, mitre_technique, service, id)
       SELECT
         CURRENT_TIMESTAMP(),
         "R7",
@@ -335,7 +363,12 @@ locals {
         "cloud_run",
         "TA0009",
         "T1005",
-        service
+        service,
+        TO_HEX(SHA256(CONCAT(
+          "R7", "|", IFNULL(ip_address, ""), "|",
+          CONCAT("Tentative acces ", path, " depuis ", ip_address), "|",
+          CAST(CURRENT_TIMESTAMP() AS STRING)
+        )))
       FROM `${local.project}.${local.dataset}.access_logs`
       WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
         AND (path LIKE "%.env%" OR path LIKE "%.git%" OR path LIKE "%/config%"

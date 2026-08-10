@@ -30,31 +30,28 @@ def step(msg):
 LOOKBACK_INTERVAL = "INTERVAL 2 HOUR"
 
 
-def detection_key(rule_id, timestamp) -> str:
-    """
-    Identite d une detection. La table `detections` n a pas de colonne id :
-    l identite est le couple (regle, horodatage).
-
-    Construite ICI et nulle part ailleurs : c est la meme fonction qui sert a
-    filtrer les detections deja traitees et a ecrire `detection_id`, donc les
-    deux ne peuvent pas diverger. Ne pas reconstruire cette cle en SQL —
-    TO_JSON_STRING et CAST(timestamp AS STRING) de BigQuery produisent une
-    autre chaine (pas d espaces, suffixe " UTC") qui ne correspondrait a
-    aucune ligne existante, et la deduplication serait silencieusement inerte.
-    """
-    return json.dumps({"rule_id": rule_id, "timestamp": str(timestamp)})
-
-
 def fetch_pending_detections(limit=BATCH_SIZE):
     """
     Detections recentes PAS ENCORE enrichies.
 
-    Sans ce filtre, la fenetre de rattrapage etant bien plus large que la
-    cadence du scheduler, chaque detection etait re-embarquee a CHAQUE cycle :
-    jusqu a 21 lignes alert_enrichment pour une meme detection en staging
-    (349 lignes pour 38 detections distinctes, mesure le 02/08). Consequences :
-    inference ONNX et VECTOR_SEARCH refacturees a vide a chaque passage, et
-    tout compteur d enrichissements gonfle d un facteur ~9.
+    Identite d une detection : la colonne `detections.id` (hash deterministe
+    SHA256 calcule par chaque regle Sigma a l insertion, cf. modules/detection).
+    Avant son ajout, l identite etait reconstruite ici via un JSON synthetique
+    (rule_id+timestamp) fragile — cf. historique git — jamais garanti de
+    correspondre a une reconstruction independante en SQL (T14 en a heurte
+    l exemple). Lire une colonne reelle plutot que recalculer une cle des
+    deux cotes elimine ce risque de divergence par construction.
+
+    Les lignes anterieures a l ajout de `id` (NULL) sont ignorees : elles
+    sortent de la fenetre de rattrapage de 2h peu apres le deploiement et
+    n ont donc besoin d aucune migration retroactive.
+
+    Sans le filtre "deja enrichie", la fenetre de rattrapage etant bien plus
+    large que la cadence du scheduler, chaque detection etait re-embarquee a
+    CHAQUE cycle : jusqu a 21 lignes alert_enrichment pour une meme detection
+    en staging (349 lignes pour 38 detections distinctes, mesure le 02/08).
+    Consequences : inference ONNX et VECTOR_SEARCH refacturees a vide a
+    chaque passage, et tout compteur d enrichissements gonfle d un facteur ~9.
     """
     enriched = {
         row.detection_id
@@ -66,16 +63,14 @@ def fetch_pending_detections(limit=BATCH_SIZE):
     }
 
     candidates = list(client.query(f"""
-        SELECT timestamp, rule_id, rule_name, severity, entity, message, source
+        SELECT id, timestamp, rule_id, rule_name, severity, entity, message, source
         FROM `{DETECTIONS_TABLE}`
         WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), {LOOKBACK_INTERVAL})
+          AND id IS NOT NULL
         ORDER BY timestamp DESC
     """).result())
 
-    pending = [
-        det for det in candidates
-        if detection_key(det.get("rule_id"), det.get("timestamp")) not in enriched
-    ]
+    pending = [det for det in candidates if det.get("id") not in enriched]
 
     emit_backlog_metric(pending, len(candidates))
     step(f"  {len(pending)} detections à traiter ({len(enriched)} déjà enrichies)")
@@ -218,7 +213,7 @@ def main():
             continue
         texts.append(text)
         metas.append({
-            "detection_id": detection_key(det.get("rule_id"), det.get("timestamp")),
+            "detection_id": det["id"],
             "input_hash": hashlib.sha256(text.encode()).hexdigest(),
             "entity": det.get("entity", ""),
         })
@@ -269,6 +264,14 @@ def main():
             "status": "mapped" if mapped else "unmapped",
             "model_version": model_version,
             "input_hash": meta["input_hash"],
+            # Rangs 2+ de VECTOR_SEARCH, deja calcules (top_k=3) et jusque-la
+            # jetes. Persistes pour permettre une mesure agregee de la qualite
+            # du modele (ecart rang1/rang2) - jamais exposes par detection cote
+            # API (voir modules/bigquery : risque de calibration d evasion).
+            "alternates": [
+                {"technique_id": c["technique_id"], "tactic": c["tactic"], "similarity": c["similarity"]}
+                for c in candidates[1:3]
+            ],
         })
 
     write_enrichment(enrichment_rows)

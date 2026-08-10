@@ -15,10 +15,24 @@ export const metadata: Metadata = {
   description: "Centre de supervision securite - MENAL SARL",
 };
 
+// Applique le theme AVANT l hydratation React pour eviter un flash clair->sombre
+// au chargement (le theme par defaut est sombre ; .light n est ajoute que si
+// l utilisateur a explicitement choisi le clair via <ThemeToggle/>).
+const THEME_INIT_SCRIPT = `
+try {
+  if (localStorage.getItem("menal-theme") === "light") {
+    document.documentElement.classList.add("light");
+  }
+} catch (e) {}
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body className="bg-slate-50 text-slate-900 font-sans antialiased">{children}</body>
+    <html lang="fr" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="font-sans antialiased">{children}</body>
     </html>
   );
 }

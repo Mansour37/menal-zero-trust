@@ -48,6 +48,22 @@ resource "google_project_iam_member" "api_bq_job_user" {
   member  = "serviceAccount:${var.api_service_account_email}"
 }
 
+# ── IAM : sa-api ecrit UNIQUEMENT sur analyst_verdicts ────────────────────────
+# Seule exception au principe "sa-api ne modifie jamais les preuves" ci-dessus :
+# un verdict humain n est pas une preuve technique, c est une annotation posee
+# PAR-DESSUS. Meme portee que sa-enrich-job -> alert_enrichment (table-level,
+# pas dataset-level) : sa-api ne peut toujours pas toucher detections, raw_logs,
+# access_logs ou security_events. Cote applicatif, seul un role "admin" peut
+# emettre cet appel (require_role dans siem.py) — cette restriction-la vit dans
+# l API, pas dans l IAM GCP, puisque le JWT n existe pas a ce niveau.
+resource "google_bigquery_table_iam_member" "api_writes_verdicts" {
+  dataset_id = google_bigquery_dataset.security.dataset_id
+  table_id   = google_bigquery_table.analyst_verdicts.table_id
+  role       = "roles/bigquery.dataEditor"
+  member     = "serviceAccount:${var.api_service_account_email}"
+  project    = var.project_id
+}
+
 # ── IAM : sa-cicd charge les rapports Trivy dans le dataset (boucle F6) ───────
 # CORRECTION 07/08/2026 (Tier 1, 09_AUDIT_E2E_STAGING_2026-08-07.md §1) : la
 # portee etait commentee "dataset uniquement" mais le binding reel
@@ -165,6 +181,7 @@ resource "google_bigquery_table" "detections" {
   }
 
   schema = jsonencode([
+    { name = "id", type = "STRING", mode = "NULLABLE", description = "Hash deterministe SHA256(rule_id|entity|message|timestamp), calcule a l insertion. NULL sur les lignes anterieures a ce champ — jamais recalcule retroactivement." },
     { name = "timestamp", type = "TIMESTAMP", mode = "REQUIRED", description = "Heure de detection" },
     { name = "rule_id", type = "STRING", mode = "REQUIRED", description = "Identifiant de la regle Sigma" },
     { name = "rule_name", type = "STRING", mode = "REQUIRED", description = "Nom de la regle" },
@@ -204,7 +221,22 @@ resource "google_bigquery_table" "alert_enrichment" {
     { name = "similarity", type = "FLOAT", mode = "NULLABLE", description = "Score de similarite semantique" },
     { name = "status", type = "STRING", mode = "REQUIRED", description = "mapped / unmapped" },
     { name = "model_version", type = "STRING", mode = "NULLABLE", description = "Version du modele ML" },
-    { name = "input_hash", type = "STRING", mode = "NULLABLE", description = "SHA-256 du texte encode" }
+    { name = "input_hash", type = "STRING", mode = "NULLABLE", description = "SHA-256 du texte encode" },
+    # Rangs 2 et 3 de VECTOR_SEARCH (top_k=3), deja calcules par enrich-job
+    # mais jusque-la jetes - seul le rang 1 (technique_id/tactic/similarity
+    # ci-dessus) etait conserve. Champ REPEATED plutot que colonnes
+    # technique_id_2/3 : evite de figer top_k=3 dans le schema. Expose UNIQUEMENT
+    # en agrege cote API (/siem/enrichment-quality) - jamais par detection sur
+    # un endpoint accessible au role viewer, qui donnerait a un attaquant de
+    # quoi calibrer une evasion ("mon payload est a 0.61, le suivant a 0.59").
+    {
+      name = "alternates", type = "RECORD", mode = "REPEATED", description = "Candidats MITRE rang 2+ (top_k=3), jamais exposes par detection",
+      fields = [
+        { name = "technique_id", type = "STRING", mode = "NULLABLE", description = "ID technique MITRE ATT&CK" },
+        { name = "tactic", type = "STRING", mode = "NULLABLE", description = "Tactique MITRE associee" },
+        { name = "similarity", type = "FLOAT", mode = "NULLABLE", description = "Score de similarite semantique" }
+      ]
+    }
   ])
 }
 
@@ -242,7 +274,9 @@ resource "google_bigquery_table" "cve_findings" {
     { name = "installed_version", type = "STRING", mode = "NULLABLE", description = "Version installee" },
     { name = "fixed_version", type = "STRING", mode = "NULLABLE", description = "Version corrective" },
     { name = "image_digest", type = "STRING", mode = "NULLABLE", description = "Digest de l image" },
-    { name = "mitre_technique", type = "STRING", mode = "NULLABLE", description = "Technique MITRE associee (F6)" }
+    { name = "mitre_technique", type = "STRING", mode = "NULLABLE", description = "Technique MITRE associee (F6)" },
+    { name = "kev", type = "BOOLEAN", mode = "NULLABLE", description = "Presente au catalogue CISA KEV (exploitation confirmee). NULL = catalogue injoignable au moment du scan, PAS 'non presente'." },
+    { name = "epss_score", type = "FLOAT", mode = "NULLABLE", description = "Score EPSS (FIRST.org) : probabilite d exploitation sous 30j, 0-1. NULL = score indisponible." }
   ])
 
   # Cette table a herite le CMEK par defaut du dataset (default_encryption_
@@ -293,6 +327,44 @@ resource "google_bigquery_table" "api_metrics" {
     { name = "unique_ips", type = "INTEGER", mode = "NULLABLE", description = "Nombre d IPs uniques" },
     { name = "waf_blocks", type = "INTEGER", mode = "REQUIRED", description = "Requetes bloquees par Cloud Armor" }
   ])
+}
+
+# ── Table : analyst_verdicts (jugement humain sur un incident) ───────────────
+# Append-only : chaque verdict est une nouvelle ligne, jamais une mise a jour
+# (coherent avec sa-api qui n a que dataEditor, pas de droit de suppression/
+# modification retroactive — meme logique que alert_enrichment). L API lit le
+# DERNIER verdict par entite (ORDER BY timestamp DESC LIMIT 1), ce qui donne
+# un historique audit-able gratuitement plutot qu un UPDATE qui l effacerait.
+resource "google_bigquery_table" "analyst_verdicts" {
+  dataset_id          = google_bigquery_dataset.security.dataset_id
+  table_id            = "analyst_verdicts"
+  project             = var.project_id
+  deletion_protection = false
+
+  time_partitioning {
+    type  = "DAY"
+    field = "timestamp"
+  }
+
+  schema = jsonencode([
+    { name = "timestamp", type = "TIMESTAMP", mode = "REQUIRED", description = "Heure d enregistrement du verdict" },
+    { name = "entity", type = "STRING", mode = "REQUIRED", description = "Entite jugee (meme cle que /siem/incidents)" },
+    { name = "verdict", type = "STRING", mode = "REQUIRED", description = "CONFIRMED / FALSE_POSITIVE / ACKNOWLEDGED / IGNORED" },
+    { name = "comment", type = "STRING", mode = "NULLABLE", description = "Note libre de l analyste" },
+    { name = "analyst_sub", type = "STRING", mode = "REQUIRED", description = "UUID de l auteur (JWT sub) - pas l email : siem.py n a aucun acces a Postgres/User, seul le service d auth peut resoudre sub -> email" }
+  ])
+
+  # Meme piege que cve_findings (cf. commentaire associe) : sans ce bloc,
+  # la table herite quand meme le CMEK par defaut du dataset a la creation,
+  # puis Terraform veut le retirer au plan suivant - remplacement destructeur
+  # d une table pourtant fraichement creee. Declare des la premiere version
+  # cette fois, pas rattrape apres coup.
+  dynamic "encryption_configuration" {
+    for_each = var.kms_key_id != "" ? [1] : []
+    content {
+      kms_key_name = var.kms_key_id
+    }
+  }
 }
 
 # ── IAM : sa-enrich-job — lecture du dataset, ecriture sur alert_enrichment ───
