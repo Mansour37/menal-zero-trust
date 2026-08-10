@@ -6,6 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import StatsCard from "@/components/StatsCard";
 import Card from "@/components/Card";
 import RequestsChart from "@/components/charts/RequestsChart";
+import SeverityDonut from "@/components/SeverityDonut";
 
 function buildChartData(logs: AuditLog[]) {
   // Cle = minute en epoch, pas un libelle "H:MM" : l API renvoie les logs du
@@ -59,10 +60,10 @@ export default async function OverviewPage() {
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 p-8">
-        <h1 className="text-xl font-bold text-slate-800 mb-6">Vue d&apos;ensemble</h1>
+        <h1 className="text-xl font-bold text-[var(--ink)] mb-6">Vue d&apos;ensemble</h1>
 
         {apiFailed && (
-          <div className="mb-6 rounded-xl border border-red-300 bg-red-50 p-4 text-sm font-semibold text-red-700">
+          <div className="mb-6 rounded-xl border border-[var(--sev-critical)]/40 bg-[var(--sev-critical-bg)] p-4 text-sm font-semibold text-[var(--sev-critical)]">
             API injoignable — les compteurs ci-dessous sont incomplets et ne
             reflètent pas l&apos;état réel du système.
           </div>
@@ -81,55 +82,72 @@ export default async function OverviewPage() {
           />
         </div>
 
-        <div className="mb-8">
-          <Card title="Détection & analyse (SIEM, 24h)">
-            {overview ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Détections</p>
-                  <p className="text-2xl font-bold text-slate-800 mt-0.5">{overview.detections_count}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{overview.unique_entities} entités distinctes</p>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-8">
+          <div className="lg:col-span-3">
+            <Card title="Détection & analyse (SIEM, 24h)" className="h-full">
+              {overview ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-xs text-[var(--ink-faint)] uppercase tracking-wide font-semibold">Détections</p>
+                    <p className="text-2xl font-bold text-[var(--ink)] mt-0.5 font-mono tabular-nums">{overview.detections_count}</p>
+                    <p className="text-xs text-[var(--ink-faint)] mt-0.5">{overview.unique_entities} entités distinctes</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[var(--ink-faint)] uppercase tracking-wide font-semibold">Blocages WAF</p>
+                    <p className="text-2xl font-bold text-[var(--ink)] mt-0.5 font-mono tabular-nums">{overview.waf_blocks}</p>
+                    <p className="text-xs text-[var(--ink-faint)] mt-0.5">Cloud Armor</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[var(--ink-faint)] uppercase tracking-wide font-semibold">Non mappé (ML)</p>
+                    <p className="text-2xl font-bold text-[var(--ink)] mt-0.5 font-mono tabular-nums">
+                      {overview.unmapped_rate != null ? `${overview.unmapped_rate}%` : "N/A"}
+                    </p>
+                    <p className="text-xs text-[var(--ink-faint)] mt-0.5">
+                      {overview.enrichment_mapped + overview.enrichment_unmapped} alertes enrichies
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[var(--ink-faint)] uppercase tracking-wide font-semibold">Modèle ML</p>
+                    <p className="text-sm font-bold text-[var(--ink)] mt-1.5 font-mono truncate" title={overview.model_version ?? undefined}>
+                      {overview.model_version ?? "inactif"}
+                    </p>
+                    <Link href="/incidents" className="text-xs text-[var(--accent)] hover:underline mt-0.5 inline-block">
+                      Voir les incidents →
+                    </Link>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Blocages WAF</p>
-                  <p className="text-2xl font-bold text-slate-800 mt-0.5">{overview.waf_blocks}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Cloud Armor</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Non mappé (ML)</p>
-                  <p className="text-2xl font-bold text-slate-800 mt-0.5">
-                    {overview.unmapped_rate != null ? `${overview.unmapped_rate}%` : "N/A"}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {overview.enrichment_mapped + overview.enrichment_unmapped} alertes enrichies
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-400 uppercase tracking-wide font-semibold">Modèle ML</p>
-                  <p className="text-sm font-bold text-slate-800 mt-1.5 font-mono truncate" title={overview.model_version ?? undefined}>
-                    {overview.model_version ?? "inactif"}
-                  </p>
-                  <Link href="/incidents" className="text-xs text-blue-600 hover:underline mt-0.5 inline-block">
-                    Voir les incidents →
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-400">
-                Données SIEM indisponibles (session expirée ou pipeline BigQuery pas encore alimenté).
-              </p>
-            )}
-          </Card>
+              ) : (
+                <p className="text-sm text-[var(--ink-faint)]">
+                  Données SIEM indisponibles (session expirée ou pipeline BigQuery pas encore alimenté).
+                </p>
+              )}
+            </Card>
+          </div>
+
+          <div className="lg:col-span-2">
+            <Card title="Répartition par sévérité (24h)" className="h-full">
+              {overview && overview.detections_count > 0 ? (
+                <SeverityDonut
+                  critical={overview.critical_count}
+                  high={overview.high_count}
+                  medium={overview.medium_count}
+                  low={overview.low_count}
+                />
+              ) : (
+                <p className="text-sm text-[var(--ink-faint)]">Aucune détection sur la fenêtre.</p>
+              )}
+            </Card>
+          </div>
         </div>
 
         <RequestsChart data={chartData} />
 
-        <div className="mt-8 bg-white rounded-xl border border-gray-200 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Dernières requêtes</h3>
+        <div className="mt-8 bg-[var(--surface)] rounded-xl border border-[var(--border)] p-5">
+          <h3 className="text-sm font-semibold text-[var(--ink)] mb-4">Dernières requêtes</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 border-b">
+                <tr className="text-left text-[var(--ink-faint)] border-b border-[var(--border)]">
                   <th className="pb-2 pr-4">Timestamp</th>
                   <th className="pb-2 pr-4">Méthode</th>
                   <th className="pb-2 pr-4">Ressource</th>
@@ -139,20 +157,22 @@ export default async function OverviewPage() {
               </thead>
               <tbody>
                 {logs.slice(0, 10).map((l) => (
-                  <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="py-2 pr-4 text-gray-400 text-xs">
+                  <tr key={l.id} className="border-b border-[var(--border)] hover:bg-[var(--surface-2)]">
+                    <td className="py-2 pr-4 text-[var(--ink-faint)] text-xs">
                       {new Date(l.created_at).toLocaleTimeString("fr-FR")}
                     </td>
-                    <td className="py-2 pr-4 font-mono font-bold text-xs text-blue-600">{l.action}</td>
-                    <td className="py-2 pr-4 font-mono text-xs">{l.resource}</td>
+                    <td className="py-2 pr-4 font-mono font-bold text-xs text-[var(--accent)]">{l.action}</td>
+                    <td className="py-2 pr-4 font-mono text-xs text-[var(--ink-muted)]">{l.resource}</td>
                     <td className="py-2 pr-4">
                       <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                        l.status_code < 400 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                        l.status_code < 400
+                          ? "bg-[var(--ok-bg)] text-[var(--ok)]"
+                          : "bg-[var(--sev-critical-bg)] text-[var(--sev-critical)]"
                       }`}>
                         {l.status_code}
                       </span>
                     </td>
-                    <td className="py-2 text-gray-400 text-xs">{l.ip_address ?? "—"}</td>
+                    <td className="py-2 text-[var(--ink-faint)] text-xs font-mono">{l.ip_address ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

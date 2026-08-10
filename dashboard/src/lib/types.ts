@@ -67,10 +67,14 @@ export interface Detection {
   source: string | null;
   mitre_tactic: string | null;
   mitre_technique: string | null;
+  service: string | null;
 }
+
+export type Verdict = "CONFIRMED" | "FALSE_POSITIVE" | "ACKNOWLEDGED" | "IGNORED";
 
 export interface Incident {
   entity: string;
+  service: string | null;
   detection_count: number;
   tactic_count: number;
   techniques: string[];
@@ -79,6 +83,8 @@ export interface Incident {
   chained: boolean;
   first_seen: string;
   last_seen: string;
+  verdict: Verdict | null;
+  verdict_comment: string | null;
 }
 
 export interface IncidentDetail {
@@ -88,6 +94,16 @@ export interface IncidentDetail {
   tactic_count: number;
   chained: boolean;
   detections: Detection[];
+  verdict: Verdict | null;
+  verdict_comment: string | null;
+}
+
+// Une technique observee et les regles Sigma statiques qui la produisent —
+// pas de calcul vectoriel ici (voir 09_.. / conversation d audit), c est une
+// simple appartenance d ensemble entre `detections` et le catalogue.
+export interface TechniqueObservation {
+  technique_id: string;
+  rule_ids: string[];
 }
 
 export interface CoverageTactic {
@@ -96,7 +112,27 @@ export interface CoverageTactic {
   total_techniques: number;
   observed_techniques: number;
   coverage_pct: number;
-  techniques: string[];
+  techniques: TechniqueObservation[];
+}
+
+export interface EnrichmentQuality {
+  window_hours: number;
+  sample_size: number;
+  avg_top1_similarity: number | null;
+  avg_rank1_rank2_gap: number | null;
+}
+
+export interface RuleHealth {
+  rule_id: string;
+  rule_name: string;
+  severity: Severity;
+  mitre_technique: string;
+  trigger_count: number;
+  last_occurrence: string | null;
+  // null = aucune detection de cette regle n a encore de verdict analyste
+  // (taux inconnu, pas 0 %) — voir api/app/routers/siem.py::get_rule_health.
+  false_positive_rate: number | null;
+  verdicted_count: number;
 }
 
 export interface Vulnerability {
@@ -108,4 +144,8 @@ export interface Vulnerability {
   scan_date: string;
   mitre_technique: string | null;
   times_observed_30d: number;
+  // null = catalogue KEV / score EPSS injoignable au moment du scan, pas
+  // "non concerne" — voir scripts/load_cve_findings.py.
+  kev: boolean | null;
+  epss_score: number | null;
 }

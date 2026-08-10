@@ -191,9 +191,38 @@ jobs:
             *)       echo "ECHEC: statut inattendu $HTTP_STATUS"; exit 1 ;;
           esac
 
+  dashboard-test:
+    name: Dashboard Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      # `npm test` (pas `test:coverage`) : fait echouer le pipeline sur un test
+      # QUI ECHOUE, sans faire respecter le seuil de couverture 70 % declare
+      # dans jest.config.js — la couverture reelle mesuree le 08/08 est de
+      # 2,99 %, l activer maintenant bloquerait tout deploiement legitime pour
+      # une dette deja connue plutot que pour une regression introduite ici.
+      # Fermer cet ecart-la est une decision d equipe a part, pas un effet de
+      # bord de ce changement. Le vrai gap comble ici est ailleurs : avant, la
+      # CI n executait ABSOLUMENT AUCUN test dashboard, echec ou pas.
+      - name: Run dashboard unit tests
+        working-directory: dashboard
+        run: npm test
+
   dashboard:
     name: Build & Deploy Dashboard
-    needs: [security, test]
+    needs: [security, test, dashboard-test]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -293,4 +322,58 @@ jobs:
         with:
           name: e2e-results
           path: e2e-results.xml
+          retention-days: 7
+
+  e2e-gcp:
+    name: E2E Tests (pipeline reel, marques gcp/slow)
+    needs: [build, dashboard]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    # continue-on-error : premiere execution automatisee de T13/T14, jamais
+    # verifiees en CI jusqu ici (seul "not slow and not gcp" tournait, cf.
+    # job e2e ci-dessus). Ne bloque pas le deploiement (deja fait par build/
+    # dashboard) le temps de mesurer leur stabilite reelle en continu -
+    # T13/T14 pollent jusqu a 12-20 min et dependent de la cadence des
+    # schedulers BigQuery, pas seulement du code. A retirer une fois une
+    # fenetre de reference observee (cf. 06_ECARTS_IMPLEMENTATION.md).
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: pip install -r tests/requirements-e2e.txt
+
+      - id: auth
+        name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER_NAME }}
+          service_account: ${{ vars.CICD_SA_EMAIL }}
+
+      - name: Run E2E pipeline tests (real traffic, real BigQuery)
+        run: |
+          pytest tests/e2e/ -v -m "gcp" \
+            --timeout=1200 \
+            -o "junit_family=xunit2" \
+            --junit-xml=e2e-gcp-results.xml
+        env:
+          E2E_API_URL: https://${{ vars.LB_DOMAIN }}
+          E2E_DASHBOARD_URL: https://${{ vars.DASH_DOMAIN }}
+          E2E_API_RUN_URL: ${{ vars.API_RUN_URL }}
+          E2E_ML_EMBED_URL: ${{ vars.ML_EMBED_URL }}
+          GCP_PROJECT_ID: ${{ env.PROJECT_ID }}
+          BQ_DATASET: ${{ env.BQ_DATASET }}
+          E2E_RUN_SLOW: "1"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-gcp-results
+          path: e2e-gcp-results.xml
           retention-days: 7

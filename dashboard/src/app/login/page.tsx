@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Shield } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -73,14 +74,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 to-slate-900 px-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--bg)] px-4">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl shadow-black/40 p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="text-4xl mb-2" aria-hidden>🛡️</div>
-          <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider">
+          {/* Emplacement logo : icone + nom en attente du fichier reel (voir memoire project_menal_dashboard_redesign) */}
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--accent-soft)] mb-3">
+            <Shield className="text-[var(--accent)]" size={28} />
+          </div>
+          <p className="text-[var(--ink-faint)] text-xs font-semibold uppercase tracking-wider">
             MENAL Zero Trust — Centre de supervision
           </p>
-          <h1 className="text-2xl font-bold text-slate-800 mt-1">
+          <h1 className="text-2xl font-bold text-[var(--ink)] mt-1">
             {step === "credentials" ? "Connexion" : "Vérification en deux étapes"}
           </h1>
         </div>
@@ -88,7 +92,7 @@ export default function LoginPage() {
         {step === "credentials" ? (
           <form onSubmit={handleCredentialsSubmit} className="space-y-5" noValidate>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-[var(--ink-muted)] mb-1">
                 Adresse email
               </label>
               <input
@@ -99,12 +103,12 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full px-4 py-2 bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:outline-none"
                 placeholder="admin@menal-sarl.mr"
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="password" className="block text-sm font-medium text-[var(--ink-muted)] mb-1">
                 Mot de passe
               </label>
               <input
@@ -115,13 +119,13 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full px-4 py-2 bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:outline-none"
                 placeholder="••••••••"
               />
             </div>
 
             {error && (
-              <p role="alert" className="text-red-600 text-sm bg-red-50 border border-red-200 rounded px-3 py-2">
+              <p role="alert" className="text-[var(--sev-critical)] text-sm bg-[var(--sev-critical-bg)] border border-[var(--sev-critical)]/30 rounded px-3 py-2">
                 {error}
               </p>
             )}
@@ -129,19 +133,19 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-60"
+              className="w-full bg-[var(--accent)] hover:brightness-110 text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-60"
             >
               {loading ? "Connexion..." : "Connexion"}
             </button>
           </form>
         ) : (
           <form onSubmit={handleMfaSubmit} className="space-y-5" noValidate>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-[var(--ink-faint)]">
               Saisissez le code à 6 chiffres généré par votre application d authentification
               (Google Authenticator, Authy...).
             </p>
             <div>
-              <label htmlFor="code" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="code" className="block text-sm font-medium text-[var(--ink-muted)] mb-1">
                 Code de vérification
               </label>
               <input
@@ -156,13 +160,13 @@ export default function LoginPage() {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 required
                 autoFocus
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none tracking-[0.5em] text-center text-lg font-mono"
+                className="w-full px-4 py-2 bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--border)] rounded-lg focus:ring-2 focus:ring-[var(--accent)] focus:outline-none tracking-[0.5em] text-center text-lg font-mono"
                 placeholder="000000"
               />
             </div>
 
             {error && (
-              <p role="alert" className="text-red-600 text-sm bg-red-50 border border-red-200 rounded px-3 py-2">
+              <p role="alert" className="text-[var(--sev-critical)] text-sm bg-[var(--sev-critical-bg)] border border-[var(--sev-critical)]/30 rounded px-3 py-2">
                 {error}
               </p>
             )}
@@ -170,14 +174,14 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || code.length !== 6}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-60"
+              className="w-full bg-[var(--accent)] hover:brightness-110 text-white font-semibold py-2.5 rounded-lg transition disabled:opacity-60"
             >
               {loading ? "Vérification..." : "Vérifier"}
             </button>
             <button
               type="button"
               onClick={() => { setStep("credentials"); setCode(""); setError(""); }}
-              className="w-full text-slate-500 text-sm hover:text-slate-700 transition"
+              className="w-full text-[var(--ink-faint)] text-sm hover:text-[var(--ink)] transition"
             >
               Retour
             </button>

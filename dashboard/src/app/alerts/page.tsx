@@ -5,11 +5,11 @@ import Sidebar from "@/components/Sidebar";
 import { AlertTriangle } from "lucide-react";
 
 function severityLabel(code: number): { label: string; cls: string } {
-  if (code === 429) return { label: "HIGH",     cls: "bg-orange-100 text-orange-700" };
-  if (code === 401) return { label: "MEDIUM",   cls: "bg-yellow-100 text-yellow-700" };
-  if (code === 403) return { label: "MEDIUM",   cls: "bg-yellow-100 text-yellow-700" };
-  if (code >= 500)  return { label: "CRITICAL", cls: "bg-red-100 text-red-700"       };
-  return                   { label: "LOW",      cls: "bg-gray-100 text-gray-600"     };
+  if (code === 429) return { label: "HIGH",     cls: "bg-[var(--sev-high-bg)] text-[var(--sev-high)]" };
+  if (code === 401) return { label: "MEDIUM",   cls: "bg-[var(--sev-medium-bg)] text-[var(--sev-medium)]" };
+  if (code === 403) return { label: "MEDIUM",   cls: "bg-[var(--sev-medium-bg)] text-[var(--sev-medium)]" };
+  if (code >= 500)  return { label: "CRITICAL", cls: "bg-[var(--sev-critical-bg)] text-[var(--sev-critical)]" };
+  return                   { label: "LOW",      cls: "bg-[var(--sev-low-bg)] text-[var(--sev-low)]" };
 }
 
 function eventType(code: number): string {
@@ -41,31 +41,31 @@ export default async function AlertsPage() {
       <Sidebar />
       <main className="flex-1 p-8">
         <div className="flex items-center gap-2 mb-6">
-          <AlertTriangle className="text-red-500" size={22} />
-          <h1 className="text-xl font-bold text-gray-800">Alertes de sécurité</h1>
-          <span className="ml-auto text-sm text-gray-500">{alerts.length} événements</span>
+          <AlertTriangle className="text-[var(--sev-critical)]" size={22} />
+          <h1 className="text-xl font-bold text-[var(--ink)]">Alertes de sécurité</h1>
+          <span className="ml-auto text-sm text-[var(--ink-faint)]">{alerts.length} événements</span>
         </div>
 
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-            <p className="text-xs font-semibold text-red-600 uppercase">Critique (5xx)</p>
-            <p className="text-3xl font-bold text-red-700 mt-1">{critical}</p>
+          <div className="bg-[var(--sev-critical-bg)] border border-[var(--sev-critical)]/30 rounded-xl p-4 text-center">
+            <p className="text-xs font-semibold text-[var(--sev-critical)] uppercase">Critique (5xx)</p>
+            <p className="text-3xl font-bold text-[var(--sev-critical)] mt-1 font-mono tabular-nums">{critical}</p>
           </div>
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
-            <p className="text-xs font-semibold text-orange-600 uppercase">Élevé (429)</p>
-            <p className="text-3xl font-bold text-orange-700 mt-1">{high}</p>
+          <div className="bg-[var(--sev-high-bg)] border border-[var(--sev-high)]/30 rounded-xl p-4 text-center">
+            <p className="text-xs font-semibold text-[var(--sev-high)] uppercase">Élevé (429)</p>
+            <p className="text-3xl font-bold text-[var(--sev-high)] mt-1 font-mono tabular-nums">{high}</p>
           </div>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
-            <p className="text-xs font-semibold text-yellow-600 uppercase">Moyen (401/403)</p>
-            <p className="text-3xl font-bold text-yellow-700 mt-1">{medium}</p>
+          <div className="bg-[var(--sev-medium-bg)] border border-[var(--sev-medium)]/30 rounded-xl p-4 text-center">
+            <p className="text-xs font-semibold text-[var(--sev-medium)] uppercase">Moyen (401/403)</p>
+            <p className="text-3xl font-bold text-[var(--sev-medium)] mt-1 font-mono tabular-nums">{medium}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr className="text-left text-gray-600">
+              <thead className="bg-[var(--surface-2)] border-b border-[var(--border)]">
+                <tr className="text-left text-[var(--ink-muted)]">
                   <th className="px-4 py-3">Timestamp</th>
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Sévérité</th>
@@ -74,15 +74,15 @@ export default async function AlertsPage() {
                   <th className="px-4 py-3">IP Source</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-[var(--border)]">
                 {alerts.map((a) => {
                   const sev = severityLabel(a.status_code);
                   return (
-                    <tr key={a.id} className="hover:bg-red-50 transition">
-                      <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                    <tr key={a.id} className="hover:bg-[var(--sev-critical-bg)]/30 transition">
+                      <td className="px-4 py-3 text-[var(--ink-faint)] text-xs whitespace-nowrap">
                         {new Date(a.created_at).toLocaleString("fr-FR")}
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-gray-600">
+                      <td className="px-4 py-3 font-mono text-xs text-[var(--ink-muted)]">
                         {eventType(a.status_code)}
                       </td>
                       <td className="px-4 py-3">
@@ -90,11 +90,11 @@ export default async function AlertsPage() {
                           {sev.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs">{a.resource}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-[var(--ink)]">{a.resource}</td>
                       <td className="px-4 py-3">
-                        <span className="text-xs font-bold text-red-700">{a.status_code}</span>
+                        <span className="text-xs font-bold text-[var(--sev-critical)]">{a.status_code}</span>
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-gray-400">
+                      <td className="px-4 py-3 font-mono text-xs text-[var(--ink-faint)]">
                         {a.ip_address ?? "—"}
                       </td>
                     </tr>
@@ -104,7 +104,7 @@ export default async function AlertsPage() {
                   <tr>
                     <td
                       colSpan={6}
-                      className={`px-4 py-8 text-center ${failed ? "font-semibold text-red-600" : "text-gray-400"}`}
+                      className={`px-4 py-8 text-center ${failed ? "font-semibold text-[var(--sev-critical)]" : "text-[var(--ink-faint)]"}`}
                     >
                       {failed
                         ? "Impossible de charger les alertes — état du système inconnu (API injoignable)."

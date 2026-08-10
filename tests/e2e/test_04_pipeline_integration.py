@@ -103,11 +103,17 @@ class TestPipelineIntegration:
             qui est le comportement correct, mais faisait echouer le test.
 
         On mesure donc la COUVERTURE : combien de detections recentes n ont
-        pas encore d enrichissement. Le rapprochement utilise la meme cle que
-        le job (JSON {rule_id, timestamp} produit par json.dumps cote Python),
-        reconstruite ici en SQL a l identique — d ou le FORMAT_TIMESTAMP et
-        les espaces apres ':' et ',', qui doivent correspondre au caractere
-        pres a la sortie de json.dumps.
+        pas encore d enrichissement. Le rapprochement utilisait auparavant un
+        JSON {rule_id, timestamp} reconstruit en SQL a l identique de la sortie
+        de json.dumps cote Python (FORMAT_TIMESTAMP + espaces exacts) — fragile
+        par construction, deux implementations independantes d une meme cle.
+        Depuis l ajout de la colonne `detections.id` (hash calcule une seule
+        fois, cote SQL, par chaque regle Sigma), le rapprochement est une
+        simple egalite de colonnes.
+
+        Les lignes anterieures a l ajout de `id` (NULL) sont exclues : elles
+        ne peuvent plus jamais etre enrichies sous ce schema et signaleraient
+        un faux blocage permanent sinon.
         """
         from google.cloud import bigquery
         from google.api_core import exceptions
@@ -116,25 +122,23 @@ class TestPipelineIntegration:
         dataset = os.getenv("BQ_DATASET", "menal_security_dev")
         bq = bigquery.Client(project=project)
 
-        detection_key_sql = (
-            """CONCAT('{"rule_id": "', d.rule_id, '", "timestamp": "',"""
-            """ FORMAT_TIMESTAMP('%Y-%m-%d %H:%M:%E6S+00:00', d.timestamp), '"}')"""
+        recent_where = (
+            "timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 HOUR) "
+            "AND id IS NOT NULL"
         )
         unenriched_sql = f"""
             SELECT COUNT(*) AS cnt
             FROM `{project}.{dataset}.detections` d
             WHERE d.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 HOUR)
+              AND d.id IS NOT NULL
               AND NOT EXISTS (
                 SELECT 1 FROM `{project}.{dataset}.alert_enrichment` e
-                WHERE e.detection_id = {detection_key_sql}
+                WHERE e.detection_id = d.id
               )
         """
 
         try:
-            recent = _count(
-                bq, project, dataset, "detections",
-                "timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 HOUR)",
-            )
+            recent = _count(bq, project, dataset, "detections", recent_where)
         except exceptions.NotFound:
             pytest.skip("Table detections introuvable")
         if recent == 0:

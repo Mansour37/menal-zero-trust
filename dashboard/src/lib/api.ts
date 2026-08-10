@@ -1,6 +1,6 @@
 import {
   LoginResponse, AuditLog, Alert, User,
-  Overview, Detection, Incident, IncidentDetail, CoverageTactic, Vulnerability,
+  Overview, Detection, Incident, IncidentDetail, CoverageTactic, Vulnerability, RuleHealth,
 } from "./types";
 
 import { apiUrl } from "./apiUrl";
@@ -68,4 +68,8 @@ export async function getCoverage(token: string, days = 30): Promise<CoverageTac
 
 export async function getVulnerabilities(token: string, days = 30): Promise<Vulnerability[]> {
   return apiFetch<Vulnerability[]>(`/siem/vulnerabilities?days=${days}`, token);
+}
+
+export async function getRuleHealth(token: string, days = 30): Promise<RuleHealth[]> {
+  return apiFetch<RuleHealth[]>(`/siem/rule-health?days=${days}`, token);
 }

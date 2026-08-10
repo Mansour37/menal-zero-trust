@@ -42,6 +42,24 @@ MITRE_TACTICS = {
 }
 
 
+# Reference statique des 7 regles Sigma (module Terraform detection/) : nom,
+# severite, technique. Necessaire pour /siem/rule-health car une regle
+# silencieuse sur la fenetre demandee n a AUCUNE ligne dans `detections` — la
+# lister quand meme (avec 0 declenchement) est le signal utile, pas une
+# GROUP BY qui l omettrait silencieusement. Tenu a jour a la main : ne
+# reflete PAS automatiquement modules/detection/main.tf, a resynchroniser en
+# cas d ajout/retrait de regle.
+SIGMA_RULES = {
+    "R1": {"name": "Force brute auth", "severity": "HIGH", "mitre_technique": "T1110"},
+    "R2": {"name": "Pic WAF", "severity": "MEDIUM", "mitre_technique": "T1498"},
+    "R3": {"name": "Path traversal", "severity": "HIGH", "mitre_technique": "T1190"},
+    "R4": {"name": "User-agent suspect", "severity": "MEDIUM", "mitre_technique": "T1046"},
+    "R5": {"name": "Latence anormale > 5s", "severity": "LOW", "mitre_technique": "T1499"},
+    "R6": {"name": "Pattern injection detecte", "severity": "CRITICAL", "mitre_technique": "T1190"},
+    "R7": {"name": "Acces fichier sensible", "severity": "HIGH", "mitre_technique": "T1005"},
+}
+
+
 def get_bq_client() -> bigquery.Client:
     global _client
     if _client is None:

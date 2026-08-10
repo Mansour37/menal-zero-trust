@@ -209,7 +209,7 @@ locals {
         )) AS json_payload,
         l.severity,
         l.resource.type AS resource_type,
-        CAST(NULL AS STRING) AS resource_name,
+        l.resource.labels.backend_service_name AS resource_name,
         l.insertId AS insert_id
       FROM `${local.src_lb}` l
       WHERE l.timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 15 MINUTE)
