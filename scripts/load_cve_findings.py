@@ -158,18 +158,36 @@ def main() -> int:
 
     # WRITE_TRUNCATE : la table reflete l'etat du DERNIER scan, pas un
     # historique — sinon la page listerait des CVE deja corrigees.
-    # ALLOW_FIELD_ADDITION : cve_findings a `lifecycle { ignore_changes =
-    # [schema] }` cote Terraform (l'ordre des champs n'est pas garanti par un
-    # load job, cf. commentaire du module bigquery) — Terraform ne fera donc
-    # JAMAIS apparaitre kev/epss_score sur la table reelle. Sans cette option,
-    # le premier chargement portant ces nouveaux champs echouerait purement et
-    # simplement (schema du JSON plus large que celui de la table).
+    #
+    # Schema declare EXPLICITEMENT (pas d'autodetect, pas de
+    # schema_update_options) : cve_findings a `lifecycle { ignore_changes =
+    # [schema] }` cote Terraform, donc kev/epss_score n'apparaitront JAMAIS
+    # sur la table reelle via `terraform apply` - seul ce load job peut les
+    # faire apparaitre. ALLOW_FIELD_ADDITION a ete tente en premier et rejete
+    # par l'API (400) : ce mode n'est autorise qu'avec WRITE_APPEND, ou
+    # WRITE_TRUNCATE sur une PARTITION precise - jamais sur la table entiere,
+    # qui est justement ce que fait ce script. Fournir le schema complet
+    # directement contourne le probleme : un WRITE_TRUNCATE avec schema
+    # explicite remplace table ET schema d'un coup, sans avoir besoin
+    # d'"ajouter" quoi que ce soit a un schema existant.
+    schema = [
+        bigquery.SchemaField("scan_date", "DATE", mode="REQUIRED"),
+        bigquery.SchemaField("cve_id", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("severity", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("package", "STRING", mode="NULLABLE"),
+        bigquery.SchemaField("installed_version", "STRING", mode="NULLABLE"),
+        bigquery.SchemaField("fixed_version", "STRING", mode="NULLABLE"),
+        bigquery.SchemaField("image_digest", "STRING", mode="NULLABLE"),
+        bigquery.SchemaField("mitre_technique", "STRING", mode="NULLABLE"),
+        bigquery.SchemaField("kev", "BOOLEAN", mode="NULLABLE"),
+        bigquery.SchemaField("epss_score", "FLOAT", mode="NULLABLE"),
+    ]
     job = client.load_table_from_json(
         rows,
         table_ref,
         job_config=bigquery.LoadJobConfig(
             write_disposition="WRITE_TRUNCATE",
-            schema_update_options=[bigquery.SchemaUpdateOption.ALLOW_FIELD_ADDITION],
+            schema=schema,
         ),
     )
     job.result()
