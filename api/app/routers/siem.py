@@ -18,6 +18,16 @@ Limites connues (documentees plutot que masquees) :
   export Trivy -> BigQuery, WRITE_TRUNCATE = etat du dernier scan). Reste vide
   tant que ce script n'a jamais tourne dans un environnement donne : l'endpoint
   /vulnerabilities repond alors une liste vide (etat honnete, pas une erreur).
+
+Filtrage par app (`service`) : `detections` porte depuis peu le nom du service
+Cloud Run/backend LB d'origine (menal-*/elson-* — plusieurs apps partagent ce
+meme dataset SIEM). Le parametre `service`, quand fourni, filtre /detections,
+/incidents, /incidents/{entity} et /coverage. Explicitement PAS applique a
+/overview au-dela des compteurs par severite (security_events, api_metrics et
+alert_enrichment n'ont pas cette colonne : rester agrege est le comportement
+honnete tant que ces tables ne l'ont pas aussi) ni a /vulnerabilities
+(cve_findings n'a pas non plus de colonne service - voir 06_ECARTS_IMPLEMENTATION.md
+E22). Sans le parametre, le comportement est inchange (vue globale).
 """
 from datetime import date, datetime, timedelta, timezone
 
@@ -46,6 +56,16 @@ def _severity_from_score(score: int) -> str:
 
 def _cutoff(hours: int) -> datetime:
     return datetime.now(timezone.utc) - timedelta(hours=hours)
+
+
+_SERVICE_FILTER_DESC = "Filtre par app d'origine (menal-*/elson-*)"
+
+
+def _apply_service_filter(where: str, params: list, service: str | None) -> str:
+    if service:
+        where += " AND service = @service"
+        params.append(bigquery.ScalarQueryParameter("service", "STRING", service))
+    return where
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
@@ -82,10 +102,12 @@ class DetectionOut(BaseModel):
     source: str | None
     mitre_tactic: str | None
     mitre_technique: str | None
+    service: str | None
 
 
 class IncidentOut(BaseModel):
     entity: str
+    service: str | None
     detection_count: int
     tactic_count: int
     techniques: list[str]
@@ -130,11 +152,14 @@ class VulnerabilityOut(BaseModel):
 @router.get("/overview", response_model=OverviewOut)
 def get_overview(
     hours: int = Query(default=24, ge=1, le=168),
+    service: str | None = Query(default=None, description="Filtre par app (menal/elson) sur les compteurs par severite uniquement — voir limites en tete de fichier"),
     current_user: dict = Depends(require_role("admin", "viewer")),
 ):
     client = get_bq_client()
     cutoff = _cutoff(hours)
     cutoff_param = [bigquery.ScalarQueryParameter("cutoff", "TIMESTAMP", cutoff)]
+    detections_params = list(cutoff_param)
+    detections_where = _apply_service_filter("timestamp >= @cutoff", detections_params, service)
 
     sev_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
     unique_entities = 0
@@ -142,10 +167,10 @@ def get_overview(
         f"""
         SELECT severity, COUNT(*) AS cnt, COUNT(DISTINCT entity) AS entities
         FROM `{table('detections')}`
-        WHERE timestamp >= @cutoff
+        WHERE {detections_where}
         GROUP BY severity
         """,
-        job_config=bigquery.QueryJobConfig(query_parameters=cutoff_param),
+        job_config=bigquery.QueryJobConfig(query_parameters=detections_params),
     ).result():
         if row.severity in sev_counts:
             sev_counts[row.severity] = row.cnt
@@ -222,6 +247,7 @@ def get_overview(
 def list_detections(
     hours: int = Query(default=24, ge=1, le=168),
     severity: str | None = Query(default=None, pattern="^(CRITICAL|HIGH|MEDIUM|LOW)$"),
+    service: str | None = Query(default=None, description=_SERVICE_FILTER_DESC),
     limit: int = Query(default=100, le=500),
     current_user: dict = Depends(require_role("admin", "viewer")),
 ):
@@ -234,11 +260,12 @@ def list_detections(
     if severity:
         where += " AND severity = @severity"
         params.append(bigquery.ScalarQueryParameter("severity", "STRING", severity))
+    where = _apply_service_filter(where, params, service)
 
     rows = client.query(
         f"""
         SELECT timestamp, rule_id, rule_name, severity, entity, message, source,
-               mitre_tactic, mitre_technique
+               mitre_tactic, mitre_technique, service
         FROM `{table('detections')}`
         WHERE {where}
         ORDER BY timestamp DESC
@@ -260,6 +287,7 @@ def _score_incident(detection_count: int, tactic_count: int, sev_sum: int) -> tu
 @router.get("/incidents", response_model=list[IncidentOut])
 def list_incidents(
     hours: int = Query(default=24, ge=1, le=168),
+    service: str | None = Query(default=None, description=_SERVICE_FILTER_DESC),
     limit: int = Query(default=50, le=200),
     current_user: dict = Depends(require_role("admin", "viewer")),
 ):
@@ -268,10 +296,18 @@ def list_incidents(
         bigquery.ScalarQueryParameter("cutoff", "TIMESTAMP", _cutoff(hours)),
         bigquery.ScalarQueryParameter("limit", "INT64", limit),
     ]
+    where = _apply_service_filter(
+        "timestamp >= @cutoff AND entity IS NOT NULL AND entity != ''", params, service
+    )
+
     rows = client.query(
         f"""
         SELECT
           entity,
+          -- Un meme entity (IP) peut en theorie toucher les 2 apps ; sans
+          -- filtre, ANY_VALUE ne montre qu un indice, pas une garantie
+          -- d unicite (voir limite documentee en tete de fichier).
+          ANY_VALUE(service) AS service,
           COUNT(*) AS detection_count,
           COUNT(DISTINCT mitre_tactic) AS tactic_count,
           ARRAY_AGG(DISTINCT mitre_technique IGNORE NULLS) AS techniques,
@@ -281,7 +317,7 @@ def list_incidents(
                 WHEN 'CRITICAL' THEN 40 WHEN 'HIGH' THEN 25
                 WHEN 'MEDIUM' THEN 10 WHEN 'LOW' THEN 5 ELSE 0 END) AS sev_sum
         FROM `{table('detections')}`
-        WHERE timestamp >= @cutoff AND entity IS NOT NULL AND entity != ''
+        WHERE {where}
         GROUP BY entity
         ORDER BY sev_sum DESC
         LIMIT @limit
@@ -294,6 +330,7 @@ def list_incidents(
         score, chained = _score_incident(r.detection_count, r.tactic_count, int(r.sev_sum))
         incidents.append(IncidentOut(
             entity=r.entity,
+            service=r.service,
             detection_count=r.detection_count,
             tactic_count=r.tactic_count,
             techniques=list(r.techniques),
@@ -311,6 +348,7 @@ def list_incidents(
 def get_incident(
     entity: str,
     hours: int = Query(default=24, ge=1, le=168),
+    service: str | None = Query(default=None, description=_SERVICE_FILTER_DESC),
     current_user: dict = Depends(require_role("admin", "viewer")),
 ):
     client = get_bq_client()
@@ -318,12 +356,14 @@ def get_incident(
         bigquery.ScalarQueryParameter("cutoff", "TIMESTAMP", _cutoff(hours)),
         bigquery.ScalarQueryParameter("entity", "STRING", entity),
     ]
+    where = _apply_service_filter("timestamp >= @cutoff AND entity = @entity", params, service)
+
     rows = list(client.query(
         f"""
         SELECT timestamp, rule_id, rule_name, severity, entity, message, source,
-               mitre_tactic, mitre_technique
+               mitre_tactic, mitre_technique, service
         FROM `{table('detections')}`
-        WHERE timestamp >= @cutoff AND entity = @entity
+        WHERE {where}
         ORDER BY timestamp DESC
         LIMIT 200
         """,
@@ -350,6 +390,7 @@ def get_incident(
 @router.get("/coverage", response_model=list[CoverageTacticOut])
 def get_coverage(
     days: int = Query(default=30, ge=1, le=365),
+    service: str | None = Query(default=None, description=_SERVICE_FILTER_DESC),
     current_user: dict = Depends(require_role("admin", "viewer")),
 ):
     client = get_bq_client()
@@ -371,16 +412,19 @@ def get_coverage(
     code_by_name = {name: code for code, name in MITRE_TACTICS.items()}
 
     observed: dict[str, set[str]] = {}
+    coverage_params = [bigquery.ScalarQueryParameter("cutoff", "TIMESTAMP", cutoff)]
+    coverage_where = _apply_service_filter(
+        "timestamp >= @cutoff AND mitre_tactic IS NOT NULL AND mitre_technique IS NOT NULL",
+        coverage_params, service,
+    )
     rows = client.query(
         f"""
         SELECT mitre_tactic, mitre_technique
         FROM `{table('detections')}`
-        WHERE timestamp >= @cutoff AND mitre_tactic IS NOT NULL AND mitre_technique IS NOT NULL
+        WHERE {coverage_where}
         GROUP BY mitre_tactic, mitre_technique
         """,
-        job_config=bigquery.QueryJobConfig(
-            query_parameters=[bigquery.ScalarQueryParameter("cutoff", "TIMESTAMP", cutoff)]
-        ),
+        job_config=bigquery.QueryJobConfig(query_parameters=coverage_params),
     ).result()
     for row in rows:
         tactic_name = MITRE_TACTICS.get(row.mitre_tactic, row.mitre_tactic)

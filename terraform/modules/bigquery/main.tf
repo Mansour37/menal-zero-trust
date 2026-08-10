@@ -174,8 +174,14 @@ resource "google_bigquery_table" "detections" {
     { name = "source", type = "STRING", mode = "NULLABLE", description = "Source de la detection" },
     { name = "raw_log", type = "STRING", mode = "NULLABLE", description = "Log brut associe" },
     { name = "mitre_tactic", type = "STRING", mode = "NULLABLE", description = "Tactique MITRE ATT&CK" },
-    { name = "mitre_technique", type = "STRING", mode = "NULLABLE", description = "Technique MITRE ATT&CK" }
+    { name = "mitre_technique", type = "STRING", mode = "NULLABLE", description = "Technique MITRE ATT&CK" },
+    { name = "service", type = "STRING", mode = "NULLABLE", description = "App concernee (menal/elson), derivee du service Cloud Run ou du backend LB source. NULL sur les lignes anterieures a ce champ." }
   ])
+
+  # Colonne additive : les 7 regles Sigma existantes (INSERT...SELECT, pas
+  # de bq load) restent valides sans la renseigner. Pas de risque de
+  # reordonnancement de colonnes (contrairement a cve_findings) puisqu aucun
+  # writer n adresse ce schema par position.
 }
 
 # ── Table : alert_enrichment (sortie ML F5 — enrichissement semantique) ───────
@@ -238,6 +244,20 @@ resource "google_bigquery_table" "cve_findings" {
     { name = "image_digest", type = "STRING", mode = "NULLABLE", description = "Digest de l image" },
     { name = "mitre_technique", type = "STRING", mode = "NULLABLE", description = "Technique MITRE associee (F6)" }
   ])
+
+  # Cette table a herite le CMEK par defaut du dataset (default_encryption_
+  # configuration ci-dessus) au moment de sa (re)creation par un `bq load`,
+  # sans que ce bloc soit jamais declare ici cote Terraform. Constate en plan
+  # le 10/08 : Terraform voulait donc RETIRER le chiffrement reel, ce qui
+  # force le remplacement complet de la table (perte des lignes courantes)
+  # pour un simple defaut d etat, sans rapport avec un vrai changement voulu.
+  # Aligner le code sur le reel plutot que de laisser cette derive trainer.
+  dynamic "encryption_configuration" {
+    for_each = var.kms_key_id != "" ? [1] : []
+    content {
+      kms_key_name = var.kms_key_id
+    }
+  }
 
   # La table est repeuplee par scripts/load_cve_findings.py (WRITE_TRUNCATE,
   # cf. CI "Charger les CVE dans BigQuery"). L API BigQuery ne garantit pas
