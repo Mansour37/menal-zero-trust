@@ -19,11 +19,12 @@ const SEV_COLOR: Record<string, string> = {
 export default async function IncidentDetailPage({ params }: { params: { entity: string } }) {
   const entity = decodeURIComponent(params.entity);
   const token = cookies().get("token")?.value ?? "";
+  const tenant = cookies().get("tenant-filter")?.value || undefined;
 
   let incident: IncidentDetail | null = null;
   let failed = false;
   try {
-    incident = await getIncident(token, entity, 24);
+    incident = await getIncident(token, entity, 24, tenant);
   } catch {
     failed = true;
   }

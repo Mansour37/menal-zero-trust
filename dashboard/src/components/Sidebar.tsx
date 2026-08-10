@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import ThemeToggle from "@/components/ThemeToggle";
+import TenantFilter from "@/components/TenantFilter";
 
 const navGroups = [
   {
@@ -54,6 +55,10 @@ export default function Sidebar() {
           MENAL SOC<br />
           <span className="text-[var(--ink-faint)] font-normal text-xs">Zero Trust</span>
         </span>
+      </div>
+
+      <div className="pt-4">
+        <TenantFilter />
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">

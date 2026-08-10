@@ -10,10 +10,11 @@ import EmptyState from "@/components/EmptyState";
 
 export default async function DetectionsPage() {
   const token = cookies().get("token")?.value ?? "";
+  const tenant = cookies().get("tenant-filter")?.value || undefined;
   let detections: Detection[] = [];
   let failed = false;
   try {
-    detections = await getDetections(token, 24, 200);
+    detections = await getDetections(token, 24, 200, tenant);
   } catch {
     failed = true;
   }
@@ -46,6 +47,7 @@ export default async function DetectionsPage() {
                     <th className="px-4 py-3">Règle</th>
                     <th className="px-4 py-3">Sévérité</th>
                     <th className="px-4 py-3">Entité</th>
+                    <th className="px-4 py-3">App</th>
                     <th className="px-4 py-3">MITRE ATT&amp;CK</th>
                     <th className="px-4 py-3">Message</th>
                   </tr>
@@ -75,6 +77,9 @@ export default async function DetectionsPage() {
                         ) : (
                           <span className="text-[var(--ink-muted)]">—</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-mono text-[var(--ink-faint)]">
+                        {d.service ?? "—"}
                       </td>
                       <td className="px-4 py-3 text-xs whitespace-nowrap">
                         {d.mitre_tactic && (

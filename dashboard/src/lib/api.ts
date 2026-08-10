@@ -46,24 +46,32 @@ export async function getHealth(): Promise<{ status: string; version: string }> 
 
 // ── SIEM (BigQuery : detections Sigma, incidents, couverture ATT&CK, CVE) ───
 
-export async function getOverview(token: string, hours = 24): Promise<Overview> {
-  return apiFetch<Overview>(`/siem/overview?hours=${hours}`, token);
+// Tenant valide cote API : "menal" | "elson" | undefined (vue globale). Pas de
+// type union stricte ici pour rester tolerant a un cookie perime (ancienne
+// valeur, valeur corrompue) - le serveur ignore silencieusement une valeur
+// qu'il ne reconnait pas (app.bigquery.tenant_services renvoie None).
+function tenantParam(tenant?: string): string {
+  return tenant ? `&tenant=${encodeURIComponent(tenant)}` : "";
 }
 
-export async function getDetections(token: string, hours = 24, limit = 100): Promise<Detection[]> {
-  return apiFetch<Detection[]>(`/siem/detections?hours=${hours}&limit=${limit}`, token);
+export async function getOverview(token: string, hours = 24, tenant?: string): Promise<Overview> {
+  return apiFetch<Overview>(`/siem/overview?hours=${hours}${tenantParam(tenant)}`, token);
 }
 
-export async function getIncidents(token: string, hours = 24): Promise<Incident[]> {
-  return apiFetch<Incident[]>(`/siem/incidents?hours=${hours}`, token);
+export async function getDetections(token: string, hours = 24, limit = 100, tenant?: string): Promise<Detection[]> {
+  return apiFetch<Detection[]>(`/siem/detections?hours=${hours}&limit=${limit}${tenantParam(tenant)}`, token);
 }
 
-export async function getIncident(token: string, entity: string, hours = 24): Promise<IncidentDetail> {
-  return apiFetch<IncidentDetail>(`/siem/incidents/${encodeURIComponent(entity)}?hours=${hours}`, token);
+export async function getIncidents(token: string, hours = 24, tenant?: string): Promise<Incident[]> {
+  return apiFetch<Incident[]>(`/siem/incidents?hours=${hours}${tenantParam(tenant)}`, token);
 }
 
-export async function getCoverage(token: string, days = 30): Promise<CoverageTactic[]> {
-  return apiFetch<CoverageTactic[]>(`/siem/coverage?days=${days}`, token);
+export async function getIncident(token: string, entity: string, hours = 24, tenant?: string): Promise<IncidentDetail> {
+  return apiFetch<IncidentDetail>(`/siem/incidents/${encodeURIComponent(entity)}?hours=${hours}${tenantParam(tenant)}`, token);
+}
+
+export async function getCoverage(token: string, days = 30, tenant?: string): Promise<CoverageTactic[]> {
+  return apiFetch<CoverageTactic[]>(`/siem/coverage?days=${days}${tenantParam(tenant)}`, token);
 }
 
 export async function getVulnerabilities(token: string, days = 30): Promise<Vulnerability[]> {

@@ -60,6 +60,34 @@ SIGMA_RULES = {
 }
 
 
+# Regroupement des noms de service bruts par tenant (app), pour /siem/*
+# ?tenant=menal|elson. Deux schemas de nommage coexistent et NE PARTAGENT PAS
+# de prefixe commun par tenant :
+#   - source Cloud Run (access_logs.service, depuis resource.labels.service_name) :
+#     "elson-api-<env>" / "elson-web-<env>" distinguent deja proprement.
+#   - source LB/Cloud Armor (raw_logs.resource_name, depuis backend_service_name,
+#     terraform/modules/load-balancer/main.tf) : TOUS les backends sont nommes
+#     "menal-<cle>-backend-<env>", y compris ceux d Elson (menal-elson-backend-
+#     <env>). Un filtre par simple prefixe "menal-" capturerait donc AUSSI le
+#     trafic WAF d Elson — d ou une liste explicite plutot qu un prefixe devine.
+def tenant_services(tenant: str) -> list[str] | None:
+    env = settings.ENVIRONMENT
+    mapping = {
+        "menal": [
+            f"menal-api-{env}",
+            f"menal-api-backend-{env}",
+            f"menal-dashboard-backend-{env}",
+        ],
+        "elson": [
+            f"elson-api-{env}",
+            f"elson-web-{env}",
+            f"menal-elson-backend-{env}",
+            f"menal-elson-api-backend-{env}",
+        ],
+    }
+    return mapping.get(tenant)
+
+
 def get_bq_client() -> bigquery.Client:
     global _client
     if _client is None:
