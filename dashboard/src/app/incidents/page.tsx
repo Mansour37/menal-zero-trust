@@ -26,10 +26,11 @@ const VERDICT_LABEL: Record<Verdict, string> = {
 
 export default async function IncidentsPage() {
   const token = cookies().get("token")?.value ?? "";
+  const tenant = cookies().get("tenant-filter")?.value || undefined;
   let incidents: Incident[] = [];
   let failed = false;
   try {
-    incidents = await getIncidents(token, 24);
+    incidents = await getIncidents(token, 24, tenant);
   } catch {
     failed = true;
   }
@@ -65,6 +66,7 @@ export default async function IncidentsPage() {
                 <thead className="bg-[var(--surface-2)] border-b border-[var(--border)]">
                   <tr className="text-left text-[var(--ink-muted)]">
                     <th className="px-4 py-3">Entité</th>
+                    <th className="px-4 py-3">App</th>
                     <th className="px-4 py-3">Score</th>
                     <th className="px-4 py-3">Sévérité</th>
                     <th className="px-4 py-3">Détections</th>
@@ -79,6 +81,7 @@ export default async function IncidentsPage() {
                   {incidents.map((inc) => (
                     <tr key={inc.entity} className="hover:bg-[var(--sev-critical-bg)]/40 transition">
                       <td className="px-4 py-3 font-mono text-xs">{inc.entity}</td>
+                      <td className="px-4 py-3 text-xs font-mono text-[var(--ink-faint)]">{inc.service ?? "—"}</td>
                       <td className="px-4 py-3">
                         <ScoreGauge score={inc.score} severity={inc.severity} />
                       </td>

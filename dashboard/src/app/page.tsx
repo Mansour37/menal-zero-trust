@@ -38,10 +38,11 @@ function buildChartData(logs: AuditLog[]) {
 
 export default async function OverviewPage() {
   const token = cookies().get("token")?.value ?? "";
+  const tenant = cookies().get("tenant-filter")?.value || undefined;
   const [logsRes, alertsRes, overviewRes] = await Promise.allSettled([
     getLogs(token, 0, 200),
     getAlerts(token, 0, 200),
-    getOverview(token, 24),
+    getOverview(token, 24, tenant),
   ]);
   const logs     = logsRes.status === "fulfilled" ? logsRes.value : ([] as AuditLog[]);
   const alerts   = alertsRes.status === "fulfilled" ? alertsRes.value : ([] as AuditLog[]);

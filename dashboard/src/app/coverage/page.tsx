@@ -23,10 +23,11 @@ function ringColor(pct: number): string {
 
 export default async function CoveragePage() {
   const token = cookies().get("token")?.value ?? "";
+  const tenant = cookies().get("tenant-filter")?.value || undefined;
   let tactics: CoverageTactic[] = [];
   let failed = false;
   try {
-    tactics = await getCoverage(token, 30);
+    tactics = await getCoverage(token, 30, tenant);
   } catch {
     failed = true;
   }

@@ -24,15 +24,19 @@ Limites connues (documentees plutot que masquees) :
   tant que ce script n'a jamais tourne dans un environnement donne : l'endpoint
   /vulnerabilities repond alors une liste vide (etat honnete, pas une erreur).
 
-Filtrage par app (`service`) : `detections` porte depuis peu le nom du service
+Filtrage par app (`tenant`) : `detections` porte depuis peu le nom du service
 Cloud Run/backend LB d'origine (menal-*/elson-* — plusieurs apps partagent ce
-meme dataset SIEM). Le parametre `service`, quand fourni, filtre /detections,
-/incidents, /incidents/{entity} et /coverage. Explicitement PAS applique a
-/overview au-dela des compteurs par severite (security_events, api_metrics et
-alert_enrichment n'ont pas cette colonne : rester agrege est le comportement
-honnete tant que ces tables ne l'ont pas aussi) ni a /vulnerabilities
-(cve_findings n'a pas non plus de colonne service - voir 06_ECARTS_IMPLEMENTATION.md
-E22). Sans le parametre, le comportement est inchange (vue globale).
+meme dataset SIEM). Le parametre `tenant` (`menal` ou `elson`), quand fourni,
+filtre /detections, /incidents, /incidents/{entity} et /coverage sur TOUS les
+noms de service reels de ce tenant (cf. app.bigquery.tenant_services — les
+deux schemas de nommage, Cloud Run et backend LB, ne partagent pas de prefixe
+commun, d'ou une liste explicite plutot qu'un prefixe devine). Explicitement
+PAS applique a /overview au-dela des compteurs par severite (security_events,
+api_metrics et alert_enrichment n'ont pas cette colonne : rester agrege est le
+comportement honnete tant que ces tables ne l'ont pas aussi) ni a
+/vulnerabilities (cve_findings n'a pas non plus de colonne service - voir
+06_ECARTS_IMPLEMENTATION.md E22). Sans le parametre, comportement inchange
+(vue globale, MENAL et Elson merges).
 """
 from datetime import date, datetime, timedelta, timezone
 
@@ -41,7 +45,7 @@ from google.cloud import bigquery
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import require_role
-from app.bigquery import MITRE_TACTICS, SIGMA_RULES, get_bq_client, table
+from app.bigquery import MITRE_TACTICS, SIGMA_RULES, get_bq_client, table, tenant_services
 
 router = APIRouter(prefix="/siem", tags=["siem"])
 
@@ -63,13 +67,14 @@ def _cutoff(hours: int) -> datetime:
     return datetime.now(timezone.utc) - timedelta(hours=hours)
 
 
-_SERVICE_FILTER_DESC = "Filtre par app d'origine (menal-*/elson-*)"
+_TENANT_FILTER_DESC = "Filtre par app (menal / elson)"
 
 
-def _apply_service_filter(where: str, params: list, service: str | None) -> str:
-    if service:
-        where += " AND service = @service"
-        params.append(bigquery.ScalarQueryParameter("service", "STRING", service))
+def _apply_tenant_filter(where: str, params: list, tenant: str | None) -> str:
+    services = tenant_services(tenant) if tenant else None
+    if services:
+        where += " AND service IN UNNEST(@tenant_services)"
+        params.append(bigquery.ArrayQueryParameter("tenant_services", "STRING", services))
     return where
 
 
@@ -197,14 +202,14 @@ class RuleHealthOut(BaseModel):
 @router.get("/overview", response_model=OverviewOut)
 def get_overview(
     hours: int = Query(default=24, ge=1, le=168),
-    service: str | None = Query(default=None, description="Filtre par app (menal/elson) sur les compteurs par severite uniquement — voir limites en tete de fichier"),
+    tenant: str | None = Query(default=None, description="Filtre par app (menal/elson) sur les compteurs par severite uniquement — voir limites en tete de fichier"),
     current_user: dict = Depends(require_role("admin", "viewer")),
 ):
     client = get_bq_client()
     cutoff = _cutoff(hours)
     cutoff_param = [bigquery.ScalarQueryParameter("cutoff", "TIMESTAMP", cutoff)]
     detections_params = list(cutoff_param)
-    detections_where = _apply_service_filter("timestamp >= @cutoff", detections_params, service)
+    detections_where = _apply_tenant_filter("timestamp >= @cutoff", detections_params, tenant)
 
     sev_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
     unique_entities = 0
@@ -335,7 +340,7 @@ def get_enrichment_quality(
 def list_detections(
     hours: int = Query(default=24, ge=1, le=168),
     severity: str | None = Query(default=None, pattern="^(CRITICAL|HIGH|MEDIUM|LOW)$"),
-    service: str | None = Query(default=None, description=_SERVICE_FILTER_DESC),
+    tenant: str | None = Query(default=None, description=_TENANT_FILTER_DESC),
     limit: int = Query(default=100, le=500),
     current_user: dict = Depends(require_role("admin", "viewer")),
 ):
@@ -348,7 +353,7 @@ def list_detections(
     if severity:
         where += " AND severity = @severity"
         params.append(bigquery.ScalarQueryParameter("severity", "STRING", severity))
-    where = _apply_service_filter(where, params, service)
+    where = _apply_tenant_filter(where, params, tenant)
 
     rows = client.query(
         f"""
@@ -399,7 +404,7 @@ def _latest_verdicts(client: bigquery.Client, entities: list[str]) -> dict[str, 
 @router.get("/incidents", response_model=list[IncidentOut])
 def list_incidents(
     hours: int = Query(default=24, ge=1, le=168),
-    service: str | None = Query(default=None, description=_SERVICE_FILTER_DESC),
+    tenant: str | None = Query(default=None, description=_TENANT_FILTER_DESC),
     limit: int = Query(default=50, le=200),
     current_user: dict = Depends(require_role("admin", "viewer")),
 ):
@@ -408,8 +413,8 @@ def list_incidents(
         bigquery.ScalarQueryParameter("cutoff", "TIMESTAMP", _cutoff(hours)),
         bigquery.ScalarQueryParameter("limit", "INT64", limit),
     ]
-    where = _apply_service_filter(
-        "timestamp >= @cutoff AND entity IS NOT NULL AND entity != ''", params, service
+    where = _apply_tenant_filter(
+        "timestamp >= @cutoff AND entity IS NOT NULL AND entity != ''", params, tenant
     )
 
     rows = client.query(
@@ -466,7 +471,7 @@ def list_incidents(
 def get_incident(
     entity: str,
     hours: int = Query(default=24, ge=1, le=168),
-    service: str | None = Query(default=None, description=_SERVICE_FILTER_DESC),
+    tenant: str | None = Query(default=None, description=_TENANT_FILTER_DESC),
     current_user: dict = Depends(require_role("admin", "viewer")),
 ):
     client = get_bq_client()
@@ -474,7 +479,7 @@ def get_incident(
         bigquery.ScalarQueryParameter("cutoff", "TIMESTAMP", _cutoff(hours)),
         bigquery.ScalarQueryParameter("entity", "STRING", entity),
     ]
-    where = _apply_service_filter("timestamp >= @cutoff AND entity = @entity", params, service)
+    where = _apply_tenant_filter("timestamp >= @cutoff AND entity = @entity", params, tenant)
 
     rows = list(client.query(
         f"""
@@ -536,7 +541,7 @@ def set_incident_verdict(
 @router.get("/coverage", response_model=list[CoverageTacticOut])
 def get_coverage(
     days: int = Query(default=30, ge=1, le=365),
-    service: str | None = Query(default=None, description=_SERVICE_FILTER_DESC),
+    tenant: str | None = Query(default=None, description=_TENANT_FILTER_DESC),
     current_user: dict = Depends(require_role("admin", "viewer")),
 ):
     client = get_bq_client()
@@ -564,9 +569,9 @@ def get_coverage(
     # commentaire au-dessus sur le catalogue - la note est cote UI aussi).
     observed: dict[str, dict[str, set[str]]] = {}
     coverage_params = [bigquery.ScalarQueryParameter("cutoff", "TIMESTAMP", cutoff)]
-    coverage_where = _apply_service_filter(
+    coverage_where = _apply_tenant_filter(
         "timestamp >= @cutoff AND mitre_tactic IS NOT NULL AND mitre_technique IS NOT NULL",
-        coverage_params, service,
+        coverage_params, tenant,
     )
     rows = client.query(
         f"""
