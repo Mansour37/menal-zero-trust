@@ -47,7 +47,7 @@ export function ChartTooltip({
       label={labelFormatter ? labelFormatter(String(label)) : String(label)}
       rows={payload.map((entry) => ({
         name: String(entry.name),
-        value: formatter ? formatter(Number(entry.value), String(entry.name)) : entry.value,
+        value: formatter ? formatter(Number(entry.value), String(entry.name)) : String(entry.value ?? "—"),
         color: String(entry.color ?? entry.stroke ?? "var(--accent)"),
       }))}
     />
