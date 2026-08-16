@@ -25,5 +25,12 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/).*)"],
+  // Exclut aussi les fichiers statiques de public/ (logo, icones...) par
+  // extension plutot que par nom : sans ca, toute requete non authentifiee
+  // vers un asset public (ex. le logo sur /login) etait redirigee vers
+  // /login avant meme d'atteindre le fichier (307 au lieu de l'image) —
+  // repere en verifiant le logo casse en direct sur staging apres deploiement.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico)$).*)",
+  ],
 };
