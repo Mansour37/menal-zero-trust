@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, ScrollText, AlertTriangle, LogOut,
@@ -55,7 +54,7 @@ export default function Sidebar() {
           <div className="relative">
             <div className="absolute -inset-1 rounded-xl bg-[var(--accent-grad)] opacity-30 blur-[6px]" />
             <div className="relative w-9 h-9 rounded-xl bg-[var(--accent-grad)] flex items-center justify-center shadow-[var(--shadow-accent)] p-1.5">
-              <Image src="/logo-shield.png" alt="MENAL" width={24} height={24} className="object-contain" />
+              <img src="/logo-shield.png" alt="MENAL" className="w-full h-full object-contain" />
             </div>
           </div>
           <div className="leading-tight">
