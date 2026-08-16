@@ -119,7 +119,7 @@ export default function SecuritySettingsPage() {
               <button
                 onClick={startEnrollment}
                 disabled={busy}
-                className="bg-[var(--accent)] hover:brightness-110 text-white text-sm font-semibold px-4 py-2 rounded-lg transition disabled:opacity-60"
+                className="btn btn-primary text-sm px-4 py-2"
               >
                 {busy ? "..." : "Activer le MFA"}
               </button>
@@ -169,7 +169,7 @@ export default function SecuritySettingsPage() {
                 <button
                   type="submit"
                   disabled={busy || code.length !== 6}
-                  className="bg-[var(--accent)] hover:brightness-110 text-white text-sm font-semibold px-4 py-2 rounded-lg transition disabled:opacity-60"
+                  className="btn btn-primary text-sm px-4 py-2"
                 >
                   {busy ? "..." : "Confirmer l activation"}
                 </button>
@@ -228,7 +228,7 @@ export default function SecuritySettingsPage() {
                 <button
                   type="submit"
                   disabled={busy || disableCode.length !== 6 || !password}
-                  className="bg-[var(--sev-critical)] hover:brightness-110 text-white text-sm font-semibold px-4 py-2 rounded-lg transition disabled:opacity-60"
+                  className="btn btn-danger text-sm px-4 py-2"
                 >
                   {busy ? "..." : "Désactiver le MFA"}
                 </button>

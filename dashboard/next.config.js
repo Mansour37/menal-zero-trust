@@ -3,6 +3,17 @@
 // En-tetes de securite alignes sur ceux deja appliques par l API FastAPI
 // (voir api/main.py) — Next.js ne les ajoute pas par defaut, contrairement
 // a un framework backend classique.
+//
+// 'unsafe-eval' en dev UNIQUEMENT : le webpack dev server de Next.js (source
+// maps eval, React Fast Refresh) appelle eval()/new Function() dans son
+// runtime de module — sans 'unsafe-eval' la CSP bloque silencieusement tout
+// le bundle client (aucune erreur console visible, juste une hydratation qui
+// n'aboutit jamais : effets qui ne se declenchent pas, gestionnaires d'evenement
+// inertes). La production ne l'a jamais utilise avant ce correctif et n'en a
+// pas besoin (build optimise, pas d'eval) — la CSP prod reste aussi stricte
+// qu'avant.
+const isDev = process.env.NODE_ENV === "development";
+
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -17,7 +28,7 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data:",
       "font-src 'self' data:",

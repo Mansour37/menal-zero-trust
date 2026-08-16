@@ -2,8 +2,11 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { Bug, Flame, ShieldAlert } from "lucide-react";
 import { getVulnerabilities } from "@/lib/api";
+import { demoModeAllowed, getMockVulnerabilities } from "@/lib/mockData";
 import { Vulnerability } from "@/lib/types";
 import Sidebar from "@/components/Sidebar";
+import PageHeader from "@/components/PageHeader";
+import StatsCard from "@/components/StatsCard";
 import Card from "@/components/Card";
 import SeverityBadge from "@/components/SeverityBadge";
 import EmptyState from "@/components/EmptyState";
@@ -18,10 +21,12 @@ export default async function VulnerabilitiesPage() {
   const token = cookies().get("token")?.value ?? "";
   let vulns: Vulnerability[] = [];
   let failed = false;
+  let usedMock = false;
   try {
     vulns = await getVulnerabilities(token, 30);
   } catch {
-    failed = true;
+    if (demoModeAllowed()) { vulns = getMockVulnerabilities(); usedMock = true; }
+    else { failed = true; }
   }
 
   const activelyTargeted = vulns.filter((v) => v.times_observed_30d > 0).length;
@@ -32,21 +37,44 @@ export default async function VulnerabilitiesPage() {
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 p-8">
-        <div className="flex items-center gap-2 mb-2">
-          <Bug className="text-[var(--sev-high)]" size={22} />
-          <h1 className="text-xl font-bold text-[var(--ink)]">Vulnérabilités priorisées</h1>
-          <span className="ml-auto text-sm text-[var(--ink-faint)]">{vulns.length} CVE (30j)</span>
-        </div>
-        <p className="text-sm text-[var(--ink-faint)] mb-6 max-w-2xl">
-          CVE détectées par le scan de dépendances (Trivy), triées par menace réelle : exploitation{" "}
-          <span className="font-semibold text-[var(--ink-muted)]">confirmée dans la nature</span> (CISA KEV)
-          d&apos;abord, puis technique observée sur cet environnement, puis probabilité d&apos;exploitation
-          sous 30 jours (EPSS, FIRST.org) — la sévérité brute ne départage qu&apos;en dernier recours. La
-          correspondance CVE→technique MITRE reste volontairement vide (aucune source officielle fiable) :
-          KEV/EPSS sont de vrais signaux publics, pas une donnée inventée pour la remplacer.
-        </p>
+        <PageHeader
+          overline="Gestion des failles"
+          title="Vulnérabilités priorisées"
+          subtitle="CVE détectées par le scan de dépendances (Trivy), triées par menace réelle : exploitation confirmée dans la nature (CISA KEV) d'abord, puis technique observée sur cet environnement, puis probabilité d'exploitation sous 30 jours (EPSS, FIRST.org) — la sévérité brute ne départage qu'en dernier recours. La correspondance CVE→technique MITRE reste volontairement vide (aucune source officielle fiable) : KEV/EPSS sont de vrais signaux publics, pas une donnée inventée pour la remplacer."
+          icon={Bug}
+          tone="critical"
+          trailing={<span className="pill mono text-[var(--ink-muted)]">{vulns.length} CVE · 30 j</span>}
+          failed={failed}
+          demo={usedMock}
+        />
 
-        <Card noPadding>
+        {vulns.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <StatsCard
+              title="Au catalogue KEV"
+              value={kevCount}
+              color="red"
+              icon={<ShieldAlert size={15} strokeWidth={2} />}
+              subtitle="Exploitation confirmée dans la nature"
+            />
+            <StatsCard
+              title="Attaquées sur l'environnement"
+              value={activelyTargeted}
+              color="orange"
+              icon={<Flame size={15} strokeWidth={2} />}
+              subtitle="Technique observée ces 30 derniers jours"
+            />
+            <StatsCard
+              title="Statut KEV inconnu"
+              value={kevUnknown ? vulns.length : 0}
+              color="blue"
+              icon={<Bug size={15} strokeWidth={2} />}
+              subtitle={kevUnknown ? "Catalogue CISA injoignable au dernier scan" : "Catalogue CISA joignable"}
+            />
+          </div>
+        )}
+
+        <Card noPadding elevated>
           {failed ? (
             <EmptyState message="Session expirée ou permissions insuffisantes pour charger les vulnérabilités." />
           ) : vulns.length === 0 ? (
@@ -56,28 +84,28 @@ export default async function VulnerabilitiesPage() {
             />
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-[var(--surface-2)] border-b border-[var(--border)]">
-                  <tr className="text-left text-[var(--ink-muted)]">
-                    <th className="px-4 py-3">CVE</th>
-                    <th className="px-4 py-3">Sévérité</th>
-                    <th className="px-4 py-3">KEV</th>
-                    <th className="px-4 py-3">EPSS</th>
-                    <th className="px-4 py-3">Paquet</th>
-                    <th className="px-4 py-3">Version installée</th>
-                    <th className="px-4 py-3">Version corrective</th>
-                    <th className="px-4 py-3">Technique associée</th>
-                    <th className="px-4 py-3">Observée (30j)</th>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>CVE</th>
+                    <th>Sévérité</th>
+                    <th>KEV</th>
+                    <th>EPSS</th>
+                    <th>Paquet</th>
+                    <th>Version installée</th>
+                    <th>Version corrective</th>
+                    <th>Technique associée</th>
+                    <th>Observée (30j)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--border)]">
+                <tbody>
                   {vulns.map((v) => (
-                    <tr key={v.cve_id} className="hover:bg-[var(--surface-2)]">
-                      <td className="px-4 py-3 font-mono text-xs font-semibold text-[var(--ink)]">{v.cve_id}</td>
-                      <td className="px-4 py-3">
+                    <tr key={v.cve_id}>
+                      <td className="font-mono text-xs font-semibold text-[var(--ink)]">{v.cve_id}</td>
+                      <td>
                         <SeverityBadge severity={v.severity} />
                       </td>
-                      <td className="px-4 py-3">
+                      <td>
                         {v.kev === true ? (
                           <span
                             title="Exploitation confirmee dans la nature (catalogue CISA KEV)"
@@ -93,7 +121,7 @@ export default async function VulnerabilitiesPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 tabular-nums">
+                      <td className="tabular-nums">
                         {v.epss_score !== null ? (
                           <span className={`text-xs font-semibold ${epssColor(v.epss_score)}`}>
                             {(v.epss_score * 100).toFixed(1)}%
@@ -102,10 +130,10 @@ export default async function VulnerabilitiesPage() {
                           <span className="text-xs text-[var(--ink-faint)]">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-xs text-[var(--ink-muted)]">{v.package ?? "—"}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-[var(--ink-muted)]">{v.installed_version ?? "—"}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-[var(--ok)]">{v.fixed_version ?? "—"}</td>
-                      <td className="px-4 py-3 font-mono text-xs">
+                      <td className="text-xs text-[var(--ink-muted)]">{v.package ?? "—"}</td>
+                      <td className="font-mono text-xs text-[var(--ink-muted)]">{v.installed_version ?? "—"}</td>
+                      <td className="font-mono text-xs text-[var(--ok)]">{v.fixed_version ?? "—"}</td>
+                      <td className="font-mono text-xs">
                         {/* Lien ajoute le 08/08 : relie une faille a l angle mort de detection correspondant */}
                         {v.mitre_technique ? (
                           <Link
@@ -119,7 +147,7 @@ export default async function VulnerabilitiesPage() {
                           <span className="text-[var(--ink-muted)]">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td>
                         {v.times_observed_30d > 0 ? (
                           <span className="inline-flex items-center gap-1 text-xs font-bold text-[var(--sev-critical)]">
                             <Flame size={13} /> {v.times_observed_30d}×

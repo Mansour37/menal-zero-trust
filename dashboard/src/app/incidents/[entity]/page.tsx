@@ -2,9 +2,11 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { ArrowLeft, Siren } from "lucide-react";
 import { getIncident } from "@/lib/api";
+import { demoModeAllowed, getMockIncidentDetail } from "@/lib/mockData";
 import { IncidentDetail } from "@/lib/types";
 import Sidebar from "@/components/Sidebar";
 import Card from "@/components/Card";
+import PageHeader from "@/components/PageHeader";
 import SeverityBadge from "@/components/SeverityBadge";
 import RadialGauge from "@/components/RadialGauge";
 import EmptyState from "@/components/EmptyState";
@@ -23,10 +25,16 @@ export default async function IncidentDetailPage({ params }: { params: { entity:
 
   let incident: IncidentDetail | null = null;
   let failed = false;
+  let usedMock = false;
   try {
     incident = await getIncident(token, entity, 24, tenant);
   } catch {
-    failed = true;
+    if (demoModeAllowed()) {
+      try { incident = getMockIncidentDetail(entity, 24, tenant); usedMock = true; }
+      catch { failed = true; }
+    } else {
+      failed = true;
+    }
   }
 
   return (
@@ -40,10 +48,13 @@ export default async function IncidentDetailPage({ params }: { params: { entity:
           <ArrowLeft size={16} /> Retour aux incidents
         </Link>
 
-        <div className="flex items-center gap-2 mb-6">
-          <Siren className="text-[var(--sev-critical)]" size={22} />
-          <h1 className="text-xl font-bold text-[var(--ink)] font-mono">{entity}</h1>
-        </div>
+        <PageHeader
+          title={entity}
+          icon={Siren}
+          tone="critical"
+          failed={failed}
+          demo={usedMock}
+        />
 
         {failed || !incident ? (
           <Card>
@@ -80,38 +91,38 @@ export default async function IncidentDetailPage({ params }: { params: { entity:
               </Card>
             </div>
 
-            <Card title="Chronologie des détections" noPadding>
+            <Card title="Chronologie des détections" noPadding elevated>
               {incident.detections.length === 0 ? (
                 <EmptyState message="Aucune détection pour cette entité sur la fenêtre choisie." />
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-[var(--surface-2)] border-b border-[var(--border)]">
-                      <tr className="text-left text-[var(--ink-muted)]">
-                        <th className="px-4 py-3">Timestamp</th>
-                        <th className="px-4 py-3">Règle</th>
-                        <th className="px-4 py-3">Sévérité</th>
-                        <th className="px-4 py-3">MITRE ATT&amp;CK</th>
-                        <th className="px-4 py-3">Message</th>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Timestamp</th>
+                        <th>Règle</th>
+                        <th>Sévérité</th>
+                        <th>MITRE ATT&amp;CK</th>
+                        <th>Message</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[var(--border)]">
+                    <tbody>
                       {incident.detections.map((d, i) => (
-                        <tr key={i} className="hover:bg-[var(--surface-2)]">
-                          <td className="px-4 py-3 text-[var(--ink-faint)] text-xs whitespace-nowrap">
+                        <tr key={i}>
+                          <td className="text-[var(--ink-faint)] text-xs whitespace-nowrap">
                             {new Date(d.timestamp).toLocaleString("fr-FR")}
                           </td>
-                          <td className="px-4 py-3 text-xs">
+                          <td className="text-xs">
                             <span className="font-mono font-semibold text-[var(--ink)]">{d.rule_id}</span>
                             <span className="text-[var(--ink-faint)]"> — {d.rule_name}</span>
                           </td>
-                          <td className="px-4 py-3">
+                          <td>
                             <SeverityBadge severity={d.severity} />
                           </td>
-                          <td className="px-4 py-3 text-xs font-mono whitespace-nowrap text-[var(--ink-muted)]">
+                          <td className="text-xs font-mono whitespace-nowrap text-[var(--ink-muted)]">
                             {d.mitre_tactic ?? "—"} {d.mitre_technique ?? ""}
                           </td>
-                          <td className="px-4 py-3 text-xs text-[var(--ink-faint)] max-w-md truncate" title={d.message ?? undefined}>
+                          <td className="text-xs text-[var(--ink-faint)] max-w-md truncate" title={d.message ?? undefined}>
                             {d.message ?? "—"}
                           </td>
                         </tr>

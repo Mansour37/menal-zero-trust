@@ -19,6 +19,8 @@ node_modules/
 .next/
 .env.local
 tsconfig.tsbuildinfo
+coverage/
+dashboard/dev-server.log
 
 # Secrets
 *.pem

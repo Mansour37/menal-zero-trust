@@ -1,9 +1,11 @@
 import { cookies } from "next/headers";
 import { Target } from "lucide-react";
 import { getCoverage } from "@/lib/api";
+import { demoModeAllowed, getMockCoverage } from "@/lib/mockData";
 import { CoverageTactic } from "@/lib/types";
 import Sidebar from "@/components/Sidebar";
 import Card from "@/components/Card";
+import PageHeader from "@/components/PageHeader";
 import EmptyState from "@/components/EmptyState";
 import RadialGauge from "@/components/RadialGauge";
 
@@ -26,10 +28,12 @@ export default async function CoveragePage() {
   const tenant = cookies().get("tenant-filter")?.value || undefined;
   let tactics: CoverageTactic[] = [];
   let failed = false;
+  let usedMock = false;
   try {
     tactics = await getCoverage(token, 30, tenant);
   } catch {
-    failed = true;
+    if (demoModeAllowed()) { tactics = getMockCoverage(30, tenant); usedMock = true; }
+    else { failed = true; }
   }
 
   const totalTechniques = tactics.reduce((s, t) => s + t.total_techniques, 0);
@@ -40,16 +44,17 @@ export default async function CoveragePage() {
     <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 p-8">
-        <div className="flex items-center gap-2 mb-2">
-          <Target className="text-[var(--accent)]" size={22} />
-          <h1 className="text-xl font-bold text-[var(--ink)]">Couverture MITRE ATT&amp;CK</h1>
-        </div>
-        <p className="text-sm text-[var(--ink-faint)] mb-6 max-w-2xl">
-          Techniques réellement déclenchées (règles Sigma R1-R7, 30 derniers jours) rapportées au
-          référentiel ATT&amp;CK complet (~600 techniques). Chaque technique cochée est tracable jusqu&apos;à
-          la règle statique qui la produit — pas un calcul d&apos;IA, une correspondance directe. Les
-          tactiques à 0% sont autant d&apos;angles morts de détection à combler en priorité.
-        </p>
+        <PageHeader
+          overline="Détection & analyse"
+          title="Couverture MITRE ATT&CK"
+          icon={Target}
+          failed={failed}
+          demo={usedMock}
+          subtitle="Techniques réellement déclenchées (règles Sigma R1-R7, 30 derniers jours) rapportées au
+          référentiel ATT&CK complet (~600 techniques). Chaque technique cochée est tracable jusqu'à
+          la règle statique qui la produit — pas un calcul d'IA, une correspondance directe. Les
+          tactiques à 0% sont autant d'angles morts de détection à combler en priorité."
+        />
 
         {!failed && tactics.length > 0 && (
           <Card className="mb-6">
