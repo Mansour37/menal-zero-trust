@@ -11,8 +11,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MENAL Zero Trust Dashboard",
-  description: "Centre de supervision securite - MENAL SARL",
+  title: "MENAL Sentinel",
+  description: "Centre de supervision Zero Trust — MENAL SARL",
 };
 
 // Applique le theme AVANT l hydratation React pour eviter un flash clair->sombre

@@ -31,11 +31,12 @@ export default function SeverityDonut({ critical, high, medium, low }: Props) {
         <svg width={size} height={size} className="-rotate-90">
           <circle cx={center} cy={center} r={r} fill="none" stroke="var(--surface-2)" strokeWidth={strokeWidth} />
           {total > 0 &&
-            segments
-              .filter((s) => s.value > 0)
-              .map((s) => {
+            (() => {
+              const visible = segments.filter((s) => s.value > 0);
+              const gap = visible.length > 1 ? c * 0.012 : 0;
+              return visible.map((s) => {
                 const frac = s.value / total;
-                const dash = frac * c;
+                const dash = Math.max(0, frac * c - gap);
                 const offset = c - cumulative * c;
                 cumulative += frac;
                 return (
@@ -44,9 +45,11 @@ export default function SeverityDonut({ critical, high, medium, low }: Props) {
                     cx={center} cy={center} r={r} fill="none" stroke={s.color} strokeWidth={strokeWidth}
                     strokeDasharray={`${dash} ${c - dash}`}
                     strokeDashoffset={offset}
+                    strokeLinecap="round"
                   />
                 );
-              })}
+              });
+            })()}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="font-mono font-bold text-xl tabular-nums text-[var(--ink)]">{total}</span>

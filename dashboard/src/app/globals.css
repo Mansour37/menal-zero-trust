@@ -3,55 +3,97 @@
 @tailwind utilities;
 
 /*
- * Jetons de la "Console d'operations sombre" — direction retenue le 08/08/2026
- * apres comparaison a 7 SOC/SIEM du marche + recherche UX (voir memoire
- * project_menal_dashboard_redesign). Sombre par defaut (.light bascule en clair) :
- * c'est l'ecart #1 releve face aux concurrents (Sentinel, Splunk, Elastic...),
- * qui l'offrent tous en option. Une seule source de verite ici, plutot que des
- * classes dark: eparpillees sur chaque page — cf. tailwind.config.js ou
- * primary/danger/warning/success existaient deja sans etre jamais utilises.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *  Design system "Menal Sentinel" — console SOC d'exploitation Zero Trust
+ *  Direction artistique : dark-first, densité maîtrisée, sévérité en couleur
+ *  réservée (les jaunes/rouges ont un sens, ils ne décorent pas), données en
+ *  chiffres tapuscrits (font-mono + tabular-nums), surface en escalier via 3
+ *  niveaux de profondeur (bg → surface → surface-2 + ombres douces).
+ *  Une seule source de vérité : toutes les pages consomment ces jetons.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
+
 :root {
   color-scheme: dark;
 
-  --bg: #0B0D10;
-  --surface: #15181C;
-  --surface-2: #1D2126;
-  --surface-hover: #20242A;
-  --border: #262B31;
+  /* Profondeur */
+  --bg: #07090C;
+  --bg-grad: radial-gradient(1200px 800px at 70% -10%, #101623 0%, #07090C 55%);
+  --surface: #101318;
+  --surface-2: #171B21;
+  --surface-3: #1E232B;
+  --surface-hover: #1C2129;
+  --border: #232933;
+  --border-strong: #303846;
+  --ring: rgba(93, 143, 255, 0.45);
 
-  --ink: #E7EAEE;
-  --ink-muted: #9AA3B0;
-  --ink-faint: #6B7280;
+  /* Encre */
+  --ink: #EDF1F7;
+  --ink-muted: #9AA5B4;
+  --ink-faint: #66707E;
 
-  --accent: #3B6FE8;
+  /* Accent */
+  --accent: #4F7EEB;
   --accent-ink: #DCE5FC;
-  --accent-soft: #1B2440;
+  --accent-soft: #16213D;
+  --accent-grad: linear-gradient(135deg, #4F7EEB 0%, #7C5CF0 100%);
 
-  --sev-critical: #F87171; --sev-critical-bg: rgba(127, 29, 29, 0.35);
-  --sev-high:     #FB923C; --sev-high-bg:     rgba(124, 58, 15, 0.35);
-  --sev-medium:   #FBBF24; --sev-medium-bg:   rgba(120, 83, 10, 0.35);
-  --sev-low:      #94A3B8; --sev-low-bg:      rgba(51, 65, 85, 0.35);
+  /* Sévérité — réservée au sens, jamais décorative */
+  --sev-critical: #FF6B6B; --sev-critical-bg: rgba(153, 27, 27, 0.28);
+  --sev-high:     #FFA14F; --sev-high-bg:     rgba(146, 64, 14, 0.28);
+  --sev-medium:   #FFC84F; --sev-medium-bg:   rgba(146, 100, 14, 0.28);
+  --sev-low:      #8FA0B5; --sev-low-bg:      rgba(51, 61, 75, 0.35);
 
-  --ok: #4ADE80; --ok-bg: rgba(20, 83, 45, 0.35);
+  --ok: #46DE80; --ok-bg: rgba(16, 101, 50, 0.30);
+  --info: #58A6FF; --info-bg: rgba(24, 66, 130, 0.30);
+
+  /* Sémantique multi-séries (graphiques) */
+  --chart-1: #4F7EEB;
+  --chart-2: #7C5CF0;
+  --chart-3: #22D3EE;
+  --chart-4: #F472B6;
+
+  /* Effets — ombres multicouches (offset/flou qui double par palier) plutôt
+     qu'une seule couche, + liseré interne clair en haut de carte pour
+     simuler un bord qui accroche la lumière : sur un fond aussi sombre que
+     --bg, une ombre seule ne crée presque aucun contraste. */
+  --shadow-sm: 0 1px 1px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.30), 0 4px 8px rgba(0, 0, 0, 0.24),
+    0 8px 20px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.35), 0 8px 16px rgba(0, 0, 0, 0.28),
+    0 16px 40px rgba(0, 0, 0, 0.22), 0 32px 64px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --shadow-accent: 0 4px 20px rgba(79, 126, 235, 0.25);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --font-feature: "cv02", "cv03", "cv04", "cv11";
 }
 
 :root.light {
   color-scheme: light;
 
-  --bg: #F5F7FB;
+  --bg: #F4F6FB;
+  --bg-grad: radial-gradient(1200px 800px at 70% -10%, #E3EAFC 0%, #F4F6FB 55%);
   --surface: #FFFFFF;
-  --surface-2: #EEF1F7;
-  --surface-hover: #E7ECF5;
-  --border: #DDE3EA;
+  --surface-2: #F0F3F9;
+  --surface-3: #E7ECF5;
+  --surface-hover: #E9EEF7;
+  --border: #DFE5F0;
+  --border-strong: #C6CFDD;
+  --ring: rgba(37, 81, 196, 0.35);
 
-  --ink: #101726;
+  --ink: #0F1626;
   --ink-muted: #4B5568;
-  --ink-faint: #8993A8;
+  --ink-faint: #8A94A7;
 
   --accent: #2451C4;
   --accent-ink: #17348C;
-  --accent-soft: #E8EEFC;
+  --accent-soft: #E9EFFC;
+  --accent-grad: linear-gradient(135deg, #2451C4 0%, #6D4BD8 100%);
 
   --sev-critical: #C6303E; --sev-critical-bg: #FBE7E9;
   --sev-high:     #B96A1F; --sev-high-bg:     #FBEEE1;
@@ -59,9 +101,244 @@
   --sev-low:      #64748B; --sev-low-bg:      #F1F5F9;
 
   --ok: #1F8A5F; --ok-bg: #E4F5EC;
+  --info: #1D6FE0; --info-bg: #E7F0FE;
+
+  --chart-1: #2451C4;
+  --chart-2: #7C5CF0;
+  --chart-3: #0E8FAD;
+  --chart-4: #D23E86;
+
+  --shadow-sm: 0 1px 1px rgba(15, 22, 38, 0.05), 0 2px 5px rgba(15, 22, 38, 0.05);
+  --shadow-md: 0 1px 2px rgba(15, 22, 38, 0.06), 0 6px 12px rgba(15, 22, 38, 0.07),
+    0 12px 28px rgba(15, 22, 38, 0.08);
+  --shadow-lg: 0 2px 4px rgba(15, 22, 38, 0.06), 0 10px 20px rgba(15, 22, 38, 0.08),
+    0 20px 48px rgba(15, 22, 38, 0.10), 0 36px 72px rgba(15, 22, 38, 0.07);
+  --shadow-accent: 0 4px 20px rgba(36, 81, 196, 0.18);
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+
+html {
+  font-feature-settings: var(--font-feature);
 }
 
 body {
-  background: var(--bg);
+  background: var(--bg-grad), var(--bg);
+  background-attachment: fixed;
   color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+* {
+  border-color: var(--border);
+}
+
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Barre de défilement discrète et constante quel que soit l'OS */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); background-clip: padding-box; }
+
+/* Focus accessible partout, jamais supprimé silencieusement */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Transitions de thème douces (dark ↔ light) */
+body, .card-surface, .nav-item, .btn, .pill, input, select, button, table th, table td, .label, h1, h2, h3, p, span, div {
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+/* Accessibilité : respecter le choix système de réduction des animations */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Composants de base ───────────────────────────────────────────────────── */
+
+@layer components {
+
+  .card-surface {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Signature discrete pour LA carte hero d'une vue (une seule par page,
+     jamais generalisee — sinon l'effet se banalise). Liseré degrade en haut,
+     dans le prolongement du .btn-primary/--accent-grad deja utilise ailleurs. */
+  .card-hero {
+    position: relative;
+    overflow: hidden;
+  }
+  .card-hero::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent-grad);
+    opacity: 0.85;
+  }
+
+  .card-surface-hover {
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  }
+  .card-surface-hover:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-md);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.5rem 0.9rem;
+    transition: filter 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
+    cursor: pointer;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--accent-grad);
+    color: #fff;
+    box-shadow: var(--shadow-accent);
+  }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.1); }
+
+  /* Rouge plus fonce que --sev-critical (calibre pour du texte sur fond
+     translucide, pas pour un aplat) : un bouton plein a besoin d'un contraste
+     AA correct avec du texte blanc. */
+  .btn-danger {
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.25);
+  }
+  .btn-danger:hover:not(:disabled) { filter: brightness(1.1); }
+
+  .btn-ghost {
+    background: var(--surface-2);
+    color: var(--ink-muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover:not(:disabled) { color: var(--ink); border-color: var(--border-strong); }
+
+  .input {
+    width: 100%;
+    background: var(--surface-2);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.55rem 0.85rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  }
+  .input::placeholder { color: var(--ink-faint); }
+  .input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.18rem 0.55rem;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+
+  .label-overline {
+    font-size: 0.67rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--ink-faint);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.48rem 0.7rem;
+    border-radius: var(--radius-md);
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--ink-muted);
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .nav-item:hover { background: var(--surface-2); color: var(--ink); }
+  .nav-item-active {
+    background: linear-gradient(135deg, rgba(79, 126, 235, 0.16), rgba(124, 92, 240, 0.10));
+    border-color: rgba(79, 126, 235, 0.30);
+    color: var(--accent-ink);
+    box-shadow: inset 2px 0 0 var(--accent);
+    font-weight: 600;
+  }
+  .nav-item-active svg { color: var(--accent); }
+
+  /* Table de données : densité cohérente, alignements professionnels */
+  .data-table { width: 100%; font-size: 0.82rem; border-collapse: collapse; }
+  .data-table thead th {
+    text-align: left;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+    padding: 0.65rem 1rem;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .data-table th.num, .data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .data-table tbody td {
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .data-table tbody tr { transition: background-color 0.12s ease; }
+  .data-table tbody tr:hover { background: var(--surface-hover); }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+
+  .mono { font-family: var(--font-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  /* Apparition douce des sections (une seule animation, jamais de lourdeur).
+     N'anime QUE la position, jamais l'opacité : un contenu qui passerait par
+     une valeur transparente au premier rendu se lirait comme un bug (texte
+     invisible) plutôt que comme une transition, en particulier sur un écran
+     critique comme le login. */
+  .fade-up { animation: fade-up 0.35s ease both; }
+  @keyframes fade-up {
+    from { transform: translateY(4px); }
+    to   { transform: translateY(0); }
+  }
 }

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2 } from "lucide-react";
+import { Building2, ChevronDown } from "lucide-react";
 
 const COOKIE_NAME = "tenant-filter";
 
@@ -45,15 +45,21 @@ export default function TenantFilter() {
       <label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-faint)] mb-1.5">
         <Building2 size={12} /> Application
       </label>
-      <select
-        value={tenant}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2.5 py-2 rounded-lg text-sm bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] cursor-pointer"
-      >
-        {OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+      <div className="relative">
+        <select
+          value={tenant}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full appearance-none px-2.5 py-2 pr-8 rounded-lg text-sm bg-[var(--surface-2)] text-[var(--ink)] border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] cursor-pointer"
+        >
+          {OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <ChevronDown
+          size={14}
+          className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-faint)]"
+        />
+      </div>
     </div>
   );
 }
