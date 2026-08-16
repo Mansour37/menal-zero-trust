@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { Lock, Fingerprint } from "lucide-react";
 
 export default function LoginPage() {
@@ -97,12 +96,13 @@ export default function LoginPage() {
           <div className="text-center mb-7">
             <div className="relative inline-flex items-center justify-center">
               <div className="absolute inset-0 rounded-full bg-[var(--accent-grad)] opacity-20 blur-xl" />
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element -- next/image
+                  echoue en runtime (optimiseur /_next/image indisponible en mode
+                  standalone sans `sharp`, non installe dans le Dockerfile) ;
+                  meme correctif deja applique a Sidebar.tsx. */}
+              <img
                 src="/logo-shield.png"
                 alt="MENAL Sentinel"
-                width={96}
-                height={96}
-                priority
                 className="relative w-24 h-24 object-contain drop-shadow-[0_4px_16px_rgba(79,126,235,0.35)]"
               />
             </div>
