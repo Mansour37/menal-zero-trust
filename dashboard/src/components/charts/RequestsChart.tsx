@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip,
 } from "recharts";
+import type { TooltipProps } from "recharts";
 import { ChartTooltip } from "@/components/charts/ChartTooltip";
 
 interface DataPoint {
@@ -74,7 +75,7 @@ export default function RequestsChart({ data }: { data: DataPoint[] }) {
             allowDecimals={false}
           />
           <Tooltip
-            content={({ active, payload, label }) => (
+            content={({ active, payload, label }: TooltipProps<number, string>) => (
               <ChartTooltip
                 active={active}
                 payload={payload}
