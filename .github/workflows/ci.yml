@@ -191,6 +191,66 @@ jobs:
             *)       echo "ECHEC: statut inattendu $HTTP_STATUS"; exit 1 ;;
           esac
 
+  enrich-job:
+    name: Build & Deploy enrich-job
+    needs: [security, test]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER_NAME }}
+          service_account: ${{ vars.CICD_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Build & Push Image
+        id: build
+        run: |
+          IMAGE_TAG="${{ env.ARTIFACT_REGISTRY }}/menal-enrich-job:${{ github.sha }}"
+          docker build -t $IMAGE_TAG ./api/enrich-job
+          docker push $IMAGE_TAG
+          echo "image=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      # Meme porte que les autres images : sans elle, ce job restait le seul
+      # composant construit hors de toute verification CVE (cf. incident du
+      # 10/08 - image de 08/03 encore servie une semaine apres correction du
+      # code source, decouvert seulement en tracant une jointure a vide).
+      - name: Trivy - CVE Scan (bloquant sur CRITICAL)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.build.outputs.image }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL
+          ignore-unfixed: true
+
+      # Cloud Run Job (pas Service) : l image se met a jour directement sur la
+      # ressource, il n y a pas de trafic a router. Le prochain declenchement
+      # du Cloud Scheduler (cf. modules/ml-pipeline, toutes les 15 min) execute
+      # deja la nouvelle image — inutile de lancer une execution ici.
+      - name: Deploy Cloud Run Job
+        run: |
+          gcloud run jobs update ${{ vars.ENRICH_JOB_NAME }} \
+            --image=${{ steps.build.outputs.image }} \
+            --region=${{ env.REGION }} \
+            --project=${{ env.PROJECT_ID }} \
+            --quiet
+
+      - name: Tag as latest
+        run: |
+          gcloud artifacts docker tags add \
+            ${{ steps.build.outputs.image }} \
+            ${{ env.ARTIFACT_REGISTRY }}/menal-enrich-job:latest || true
+
   dashboard-test:
     name: Dashboard Unit Tests
     runs-on: ubuntu-latest
@@ -326,7 +386,7 @@ jobs:
 
   e2e-gcp:
     name: E2E Tests (pipeline reel, marques gcp/slow)
-    needs: [build, dashboard]
+    needs: [build, dashboard, enrich-job]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     # continue-on-error : premiere execution automatisee de T13/T14, jamais
