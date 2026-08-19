@@ -192,6 +192,30 @@ def write_enrichment(rows: list[dict]):
     step(f"  [OK] {len(rows)} enrichissements écrits")
 
 
+def _validate_embed_items(items: list, expected_dim) -> None:
+    """Valide le TYPE et la forme de chaque embedding renvoye par ml-embed
+    avant qu il ne serve de parametre a la requete VECTOR_SEARCH (search_bigquery).
+    La requete est deja parametree (bigquery.ArrayQueryParameter, pas de
+    concatenation SQL) donc il n y a pas d injection possible ici — le risque
+    couvert est different : un embedding non numerique ou mal dimensionne
+    produirait soit une exception BigQuery peu lisible, soit (pire) une
+    similarite silencieusement fausse si BigQuery tolerait la forme.
+    """
+    for i, item in enumerate(items):
+        if not isinstance(item, dict):
+            raise RuntimeError(f"ml-embed: item {i} n'est pas un objet — abandon")
+        embedding = item.get("embedding")
+        if not isinstance(embedding, list) or not embedding:
+            raise RuntimeError(f"ml-embed: embedding manquant ou vide (item {i}) — abandon")
+        if not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in embedding):
+            raise RuntimeError(f"ml-embed: embedding non numerique (item {i}) — abandon")
+        if expected_dim and len(embedding) != expected_dim:
+            raise RuntimeError(
+                f"ml-embed: embedding de dimension {len(embedding)} != {expected_dim} "
+                f"annoncee (item {i}) — abandon"
+            )
+
+
 def main():
     step(f"[START] enrich-job | env={ENV} | threshold={SIMILARITY_THRESHOLD}")
     detections = fetch_pending_detections()
@@ -245,6 +269,15 @@ def main():
             f"ml-embed a renvoyé {len(embed_result['items'])} vecteurs "
             f"pour {len(texts)} textes — abandon (reprise au prochain cycle)"
         )
+
+    # ml-embed est interne et deja authentifie (IAM run.invoker + Bearer ID
+    # token, cf. _id_token ci-dessus), mais on ne fait pas confiance aveugle a
+    # la FORME de sa reponse avant de la faire transiter par une requete
+    # BigQuery parametree : un embedding absent/mal type/mal dimensionne (bug
+    # cote ml-embed, panne partielle, reponse tronquee) doit echouer ici avec
+    # un message clair plutot que remonter comme une exception BigQuery
+    # opaque, ou pire, silencieusement fausser un mapping MITRE.
+    _validate_embed_items(embed_result["items"], embed_result.get("dim"))
 
     enrichment_rows = []
     for item, meta in zip(embed_result["items"], metas):

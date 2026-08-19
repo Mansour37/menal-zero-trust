@@ -2,7 +2,8 @@ import hashlib
 import os
 
 import numpy as np
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 MODEL_DIR = os.getenv("MODEL_DIR", "/app/model")
@@ -10,16 +11,77 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "dev")
 MAX_TOKENS = 512
 MAX_BATCH = 64
 MAX_TEXT_LENGTH = 8000
+# ~6x la taille utile max (MAX_BATCH * MAX_TEXT_LENGTH caracteres, echappement
+# JSON \uXXXX pire cas compris) : marge large pour du trafic legitime, mais
+# borne un corps de requete avant meme le parsing JSON/Pydantic. Sans ca, un
+# payload de plusieurs centaines de Mo est integralement charge en memoire
+# (str Python illimitee) AVANT que la troncature `[:MAX_TEXT_LENGTH]` ligne
+# ~90 ne s applique — la troncature protege le cout d inference, pas la
+# memoire d ingestion de la requete.
+MAX_BODY_BYTES = 4_000_000
+MODEL_ONNX_FILENAME = "model.onnx"
 
 app = FastAPI(title="menal-ml-embed", version="1.0.0", docs_url=None, redoc_url=None)
+
+
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            if int(content_length) > MAX_BODY_BYTES:
+                return JSONResponse(status_code=413, content={"detail": "Payload too large"})
+        except ValueError:
+            pass
+    return await call_next(request)
+
+
+def _verify_model_integrity(model_dir: str) -> None:
+    """Revalide model.onnx contre MODEL.sha256 au demarrage du service.
+
+    build/export_and_precompute.py ecrit MODEL.sha256 au build, et le
+    Dockerfile fait deja `sha256sum -c` a la construction de l'image — mais
+    cela ne couvre que l'instant du build. Cette verification independante,
+    executee a CHAQUE demarrage du conteneur, couvre aussi une alteration
+    survenue apres coup (volume/monture alternative, image modifiee entre le
+    build et l'execution) : le modele est le seul artefact de ce service qui
+    determine directement les mappings MITRE ecrits en base.
+    """
+    sha_path = os.path.join(model_dir, "MODEL.sha256")
+    onnx_path = os.path.join(model_dir, MODEL_ONNX_FILENAME)
+    if not os.path.exists(sha_path):
+        raise RuntimeError(f"MODEL.sha256 introuvable dans {model_dir} — integrite non verifiable")
+
+    expected = None
+    with open(sha_path, encoding="utf-8") as f:
+        for line in f:
+            parts = line.split()
+            if len(parts) == 2 and parts[1] == MODEL_ONNX_FILENAME:
+                expected = parts[0]
+                break
+    if not expected:
+        raise RuntimeError(f"{MODEL_ONNX_FILENAME} absent de MODEL.sha256 — integrite non verifiable")
+
+    digest = hashlib.sha256()
+    with open(onnx_path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            digest.update(chunk)
+    actual = digest.hexdigest()
+    if actual != expected:
+        raise RuntimeError(
+            f"{MODEL_ONNX_FILENAME} : empreinte {actual[:12]}... != attendue {expected[:12]}... "
+            "(fichier modifie ou corrompu depuis le build)"
+        )
+
 
 try:
     import onnxruntime as ort
     from transformers import AutoTokenizer
 
     tok = AutoTokenizer.from_pretrained(MODEL_DIR)
+    _verify_model_integrity(MODEL_DIR)
     model = ort.InferenceSession(
-        os.path.join(MODEL_DIR, "model.onnx"), providers=["CPUExecutionProvider"]
+        os.path.join(MODEL_DIR, MODEL_ONNX_FILENAME), providers=["CPUExecutionProvider"]
     )
     _input_names = {i.name for i in model.get_inputs()}
     # VERSION est ecrit par build/export_and_precompute.py — la meme valeur que
