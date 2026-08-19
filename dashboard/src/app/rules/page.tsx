@@ -52,7 +52,7 @@ export default async function RuleHealthPage() {
           }
           icon={HeartPulse}
           tone="accent"
-          trailing={<span className="pill mono text-[var(--ink-muted)]">R1–R7 · Sigma</span>}
+          trailing={<span className="pill mono text-[var(--ink-muted)]">R1–R7 · SQL</span>}
           failed={failed}
           demo={usedMock}
         />
