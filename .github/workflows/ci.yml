@@ -63,10 +63,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Corrige un faux-vert silencieux (19/08/2026) : semgrep/semgrep-action@v1
+      # (Python interne fige, incompatible avec le registre de regles p/default
+      # actuel : "ValueError: invalid rule severity value: MEDIUM") crashait sur
+      # CHAQUE run depuis au moins le 02/08 sans jamais faire echouer le job —
+      # aucune regle SAST n etait donc reellement evaluee malgre la porte
+      # "bloquante" annoncee ci-dessus. Appel direct au CLI Semgrep : le code de
+      # sortie non nul (--error) fait echouer le job normalement, sans wrapper.
       - name: Semgrep - SAST
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: p/default
+        run: |
+          pip install --upgrade semgrep
+          semgrep --version
+          semgrep scan --config=p/default --error
 
   test:
     name: Unit Tests
