@@ -1138,3 +1138,47 @@ Sur tout le reste (IAM hors H10, MFA, RBAC, données, CI hors SAST, réseau hors
 multi-tenant) : **corrigé, déployé, et vérifié en conditions réelles** — pas seulement audité sur
 le papier. C'est la différence entre "j'ai relu le code" et "j'ai prouvé que ça marche", et c'est
 cette dernière preuve qui a été apportée aujourd'hui.
+
+---
+
+## 9. H12 confirmé en CI réelle — et 74 nouveaux findings révélés (19/08/2026, PR #17)
+
+Le correctif H12 a été poussé (PR #17, `Mansour37/menal-zero-trust`) et déclenché par une vraie
+CI. Résultat du job "Security Scans" (run `32264602112`) :
+
+```
+Ran 612 rules on 438 files: 74 findings.
+Process completed with exit code 1.
+```
+
+**Le correctif fonctionne exactement comme prévu** : `semgrep scan --config=p/default --error`
+échoue proprement (code 1) parce qu'il y a de vrais findings — pas parce que l'outil crashe.
+C'est la première fois en au moins deux semaines que cette gate produit un résultat honnête. La
+CI est donc actuellement rouge sur cette PR, **et c'est correct** : elle bloque pour de vraies
+raisons pour la première fois.
+
+### H15 — Nouveau : 74 findings SAST jamais vus jusqu'ici (technical debt révélée, pas introduite)
+
+Catégories principales identifiées (liste partielle, log CI complet fait foi) :
+
+| Catégorie | Occurrences | Nature |
+|---|---|---|
+| `bypass-tls-verification` (Node.js) | 6 | **Réel, à traiter** — `ssl: { rejectUnauthorized: false }` répété dans plusieurs fichiers de connexion DB Elson (`elson-main/backend/src/config.ts` et scripts `sql-isolation-harden.ts`/`sql-isolation-inspect.ts`) : la vérification du certificat TLS du serveur Postgres est désactivée, le chiffrement en transit reste actif mais sans authentification du serveur. Risque atténué par le réseau privé GCP, mais pas nul (MITM sur un attaquant déjà présent sur le VPC). |
+| `github-actions-mutable-action-tag` | 4 | Actions GitHub référencées par tag mutable (`@v4`) plutôt que par SHA figé — supply chain, déjà connu comme pratique répandue mais imparfaite. |
+| `path-join-resolve-traversal` (JS/Express) | 7 | À vérifier au cas par cas — plusieurs peuvent être des faux positifs si les segments de chemin ne sont jamais contrôlés par l'utilisateur. |
+| `dynamic-urllib-use-detected` (Python) | 3 | Faux positifs probables — URLs constantes en dur (`STIX_URL`, `KEV_URL`), pas de valeur contrôlée par un attaquant. |
+| `detect-non-literal-regexp` (ReDoS) | 2 | Risque faible, entrée utilisateur limitée (recherche Hassaniya). |
+| `gcp-sql-database-ssl-insecure-value-postgres-mysql` (Terraform) | 1 | **Faux positif confirmé** — la règle exige `TRUSTED_CLIENT_CERTIFICATE_REQUIRED`, mais `ssl_mode = ENCRYPTED_ONLY` (déjà en place) est une configuration légitime et documentée (Google), pas une valeur non sécurisée. |
+
+**Décision assumée** : ne pas corriger les 74 findings à l'aveugle dans cette session — certains
+sont de vrais problèmes (TLS bypass en premier), d'autres des faux positifs d'un ruleset "audit"
+large (`p/default`), et les distinguer correctement demande un vrai passage de triage, pas une
+correction précipitée. **PR #17 reste volontairement non mergée / CI rouge** tant que ce triage
+n'est pas fait — c'est la preuve la plus honnête possible que le contrôle fonctionne, cohérent
+avec le principe "prouver plutôt qu'affirmer" qui structure tout ce document.
+
+**Recommandation pour une session dédiée (à ajouter à la feuille de route, `05_METHODOLOGIE_PFE.md`
+Partie C)** : (1) corriger le bypass TLS Elson (provisionner le certificat CA Cloud SQL plutôt que
+désactiver la vérification), (2) trier les faux positifs avec des suppressions `nosemgrep`
+documentées ligne par ligne (pas un abaissement global du seuil de sévérité), (3) seulement
+ensuite merger PR #17.
