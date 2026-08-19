@@ -41,7 +41,11 @@ resource "google_cloud_run_v2_service" "ml_embed" {
   client   = "terraform"
 
   template {
-    service_account = var.pipeline_sa_email
+    # ADR-0002 : identite dediee, sans aucun role de donnees BigQuery — a ne
+    # pas confondre avec var.pipeline_sa_email, utilise plus bas dans ce
+    # module pour le declencheur du scheduler et l executeur du job
+    # enrich-job (des usages distincts de l execution de CE service).
+    service_account = var.ml_embed_sa_email
     timeout         = "60s"
 
     scaling {

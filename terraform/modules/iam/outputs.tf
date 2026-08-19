@@ -27,3 +27,8 @@ output "enrich_job_service_account_email" {
   value       = google_service_account.enrich_job.email
   description = "Email du SA dedie au Cloud Run Job d enrichissement ML (droits d ecriture limites a alert_enrichment)"
 }
+
+output "ml_embed_service_account_email" {
+  value       = google_service_account.ml_embed.email
+  description = "Email du SA dedie au microservice Cloud Run ml-embed (aucun role de donnees BigQuery, ADR-0002)"
+}

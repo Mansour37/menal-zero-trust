@@ -19,9 +19,12 @@ terraform {
     }
   }
 
+  # Env dev DESACTIVE (19/08/2026) : le state historique est archive dans le
+  # bucket du projet staging (archive/dev/), l ancien bucket menal-tf-state
+  # (projet dev) devient inaccessible avec la coupure de facturation dev.
   backend "gcs" {
-    bucket = "menal-tf-state"
-    prefix = "env/dev"
+    bucket = "menal-tf-state-staging"
+    prefix = "archive/dev"
   }
 }
 
@@ -130,6 +133,7 @@ module "kms" {
   region                    = var.region
   environment               = var.environment
   api_service_account_email = module.iam.api_service_account_email
+  project_number            = data.google_project.current.number
 
   depends_on = [google_project_service.apis, module.iam]
 }
@@ -146,6 +150,7 @@ module "cloud_run" {
   cloudsql_instance_name    = "menal-db-${var.environment}"
   db_secret_name            = module.cloud_sql.db_password_secret_id
   jwt_secret_name           = module.cloud_sql.jwt_secret_id
+  mfa_encryption_key_name   = module.cloud_sql.mfa_encryption_key_id
   bigquery_dataset_id       = module.bigquery.dataset_id
 
   depends_on = [google_project_service.apis, module.vpc, module.iam, module.cloud_sql, module.bigquery]
@@ -241,6 +246,7 @@ module "ml_pipeline" {
   bigquery_dataset_id = module.bigquery.dataset_id
   pipeline_sa_email   = module.iam.pipeline_service_account_email
   enrich_job_sa_email = module.iam.enrich_job_service_account_email
+  ml_embed_sa_email   = module.iam.ml_embed_service_account_email
   project_number      = data.google_project.current.number
   ml_embed_image      = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-ml-embed:latest"
   enrich_job_image    = "europe-west1-docker.pkg.dev/${var.project_id}/menal-docker-${var.environment}/menal-enrich-job:latest"

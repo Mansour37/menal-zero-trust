@@ -60,12 +60,19 @@ resource "google_service_account_iam_member" "dts_token_creator" {
   member             = "serviceAccount:${google_project_service_identity.bqdts.email}"
 }
 
-resource "google_project_iam_member" "pipeline_bigquery_editor" {
-  project = var.project_id
-  role    = "roles/bigquery.dataEditor"
-  member  = "serviceAccount:${google_service_account.pipeline.email}"
-}
-
+# Retire le 19/08/2026 (ADR-0002, action de remediation) : ce binding
+# PROJET donnait a sa-pipeline dataEditor sur TOUS les datasets BigQuery
+# presents et futurs, un droit largement plus large que le besoin reel des
+# requetes planifiees Sigma (R1-R7), qui n ecrivent que dans le dataset
+# `menal_security_<env>`. Le binding dataset-level equivalent existe deja
+# (google_bigquery_dataset_iam_member.pipeline_editor, modules/bigquery)
+# et couvre l integralite de ce dataset — dont la table `detections` — puisque
+# c est l UNIQUE dataset BigQuery du projet (verifie avant retrait : aucune
+# autre ressource google_bigquery_dataset ailleurs dans terraform/). Retirer
+# ce binding projet est donc sans effet sur R1-R7 et resserre la portee
+# exactement au dataset SIEM. bigquery.jobUser (necessaire pour executer les
+# requetes, distinct de l acces aux donnees) reste accorde par ailleurs
+# (modules/workflow, resource pipeline_bq_job_user).
 resource "google_project_iam_member" "pipeline_logging_writer" {
   project = var.project_id
   role    = "roles/logging.logWriter"
@@ -162,4 +169,28 @@ resource "google_project_iam_member" "enrich_job_logging_writer" {
   project = var.project_id
   role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.enrich_job.email}"
+}
+
+# ── sa-ml-embed : identite dediee au microservice d encodage vectoriel ────────
+# ADR-0002 : ml-embed s executait sous sa-pipeline (roles/bigquery.dataEditor
+# au niveau projet) alors qu il ne fait qu encoder du texte en vecteurs — un
+# service qui n a JAMAIS besoin de lire ni d ecrire dans BigQuery. Meme
+# principe et meme patron que sa-enrich-job ci-dessus : une identite separee
+# pour un composant qui n a structurellement aucun droit de donnees a exercer.
+# Volontairement AUCUN role BigQuery ici (ni dataset-level, ni table-level) —
+# c est la garantie recherchee par cet ADR, pas un oubli.
+resource "google_service_account" "ml_embed" {
+  account_id   = "sa-ml-embed"
+  display_name = "ML Embedding Service Account"
+  project      = var.project_id
+}
+
+# Seul besoin reel : ecrire ses propres logs applicatifs (meme portee que les
+# autres SA "compute only" du module, ex. enrich_job_logging_writer ci-dessus).
+# Pas de bigquery.jobUser : ml-embed ne lance aucun job BigQuery, il repond a
+# des requetes HTTP internes d encodage envoyees par enrich-job.
+resource "google_project_iam_member" "ml_embed_logging_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.ml_embed.email}"
 }

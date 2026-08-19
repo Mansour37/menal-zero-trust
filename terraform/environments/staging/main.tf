@@ -21,8 +21,11 @@ terraform {
 
   # Prefix d etat distinct de dev/prod : ne jamais pointer deux environnements
   # sur le meme prefix, ca ecraserait leur state respectif.
+  # Bucket detenu par le projet STAGING lui-meme (migration du 19/08/2026) :
+  # l ancien bucket menal-tf-state appartenait au projet dev, dont la fermeture
+  # de facturation bloquait tout acces au state staging (403 sur init/plan).
   backend "gcs" {
-    bucket = "menal-tf-state"
+    bucket = "menal-tf-state-staging"
     prefix = "env/staging"
   }
 }
@@ -133,6 +136,7 @@ module "kms" {
   region                    = var.region
   environment               = var.environment
   api_service_account_email = module.iam.api_service_account_email
+  project_number            = data.google_project.current.number
 
   depends_on = [google_project_service.apis, module.iam]
 }
@@ -195,6 +199,7 @@ module "cloud_run" {
   cloudsql_instance_name    = "menal-db-${var.environment}"
   db_secret_name            = module.cloud_sql.db_password_secret_id
   jwt_secret_name           = module.cloud_sql.jwt_secret_id
+  mfa_encryption_key_name   = module.cloud_sql.mfa_encryption_key_id
   bigquery_dataset_id       = module.bigquery.dataset_id
 
   depends_on = [google_project_service.apis, module.vpc, module.iam, module.cloud_sql, module.bigquery]
@@ -295,6 +300,7 @@ module "ml_pipeline" {
   bigquery_dataset_id = module.bigquery.dataset_id
   pipeline_sa_email   = module.iam.pipeline_service_account_email
   enrich_job_sa_email = module.iam.enrich_job_service_account_email
+  ml_embed_sa_email   = module.iam.ml_embed_service_account_email
   project_number      = data.google_project.current.number
   ml_embed_image      = trimprefix(data.google_artifact_registry_docker_image.menal_ml_embed.self_link, "https://")
   enrich_job_image    = trimprefix(data.google_artifact_registry_docker_image.menal_enrich_job.self_link, "https://")

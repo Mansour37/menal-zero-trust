@@ -401,7 +401,7 @@ resource "google_bigquery_data_transfer_config" "detection_rules" {
   for_each               = local.all_rules
   data_source_id         = "scheduled_query"
   destination_dataset_id = var.bigquery_dataset_id
-  display_name           = "Sigma ${each.key}: ${each.value.name}"
+  display_name           = "Regle detection ${each.key}: ${each.value.name}"
   location               = var.region
   project                = var.project_id
   schedule               = "every 5 minutes"
