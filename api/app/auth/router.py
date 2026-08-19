@@ -1,3 +1,4 @@
+import json
 import uuid
 from typing import Union
 
@@ -10,6 +11,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.auth.jwt import create_access_token, create_mfa_pending_token, decode_token
 from app.auth.mfa import generate_secret, provisioning_uri, verify_totp
+from app.auth.crypto import encrypt_mfa_secret, decrypt_mfa_secret, is_legacy_plaintext
 from app.auth.dependencies import get_current_user
 from app.database import get_engine
 from app.models.user import User
@@ -55,6 +57,51 @@ limiter = Limiter(key_func=_real_client_ip)
 # bloquer la connexion de TOUS les analystes. Le seuil est volontairement large :
 # il ne sert qu a arreter un emballement, jamais a identifier un attaquant.
 AUTH_BACKSTOP_LIMIT = "60/minute"
+
+
+def _mfa_verify_key(request: Request) -> str:
+    """
+    Cle de rate-limit dediee a /auth/mfa/verify : le mfa_token (JWT court,
+    "typ": "mfa_pending", 5 min de duree de vie — voir create_mfa_pending_token)
+    plutot que l IP renvoyee par _real_client_ip.
+
+    Pourquoi : _real_client_ip() se replie sur l IP de sortie PARTAGEE du
+    dashboard des que la requete est relayee (cf son docstring) — un seul
+    compteur applicatif etait donc commun a TOUS les challenges MFA en cours,
+    quel que soit l analyste. Cler sur le mfa_token isole chaque challenge :
+    aucune collision entre analystes, et un attaquant qui brute-force le code
+    sur UN challenge donne n epuise pas le budget des autres utilisateurs.
+
+    Ceci NE remplace PAS le controle anti-brute-force principal : Cloud Armor
+    (10/min par IP REELLE + ban 5 min, voir terraform/modules/load-balancer/
+    main.tf priorite 1450) desormais applique a ce chemin via auth_paths
+    (terraform/environments/staging/terraform.tfvars). Un attaquant qui
+    obtient un NOUVEAU mfa_token (en repassant par /auth/token, lui-meme
+    limite) reobtient un nouveau budget de tentatives ici — ce filet reste
+    un garde-fou applicatif plus precis, pas une protection anti-brute-force
+    autosuffisante.
+
+    Implementation : lit request._body, deja mis en cache par FastAPI au
+    moment ou ce key_func s execute — verifie empiriquement (fastapi==0.115.0) :
+    FastAPI resout entierement la dependance "body: MfaVerifyRequest" AVANT
+    d appeler la fonction decoree par slowapi, donc request._body contient
+    deja les octets JSON bruts. slowapi appelle key_func de facon SYNCHRONE
+    (jamais awaited), ce qui interdit un `await request.body()` ici — d ou le
+    recours a cet attribut prive Starlette plutot qu une lecture async
+    explicite. C est un detail d implementation interne a Starlette/FastAPI :
+    a revalider si la version de fastapi/starlette change. Repli sur
+    _real_client_ip si le corps n est pas encore present ou n est pas un JSON
+    exploitable — ce key_func ne doit JAMAIS lever d exception.
+    """
+    raw = getattr(request, "_body", None)
+    if raw:
+        try:
+            token = json.loads(raw).get("mfa_token")
+            if isinstance(token, str) and token:
+                return f"mfa_pending:{token}"
+        except (ValueError, AttributeError, TypeError):
+            pass
+    return _real_client_ip(request)
 
 
 def _verify_password(plain: str, hashed: str) -> bool:
@@ -133,7 +180,7 @@ def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
 
 
 @router.post("/mfa/verify", response_model=Token)
-@limiter.limit(AUTH_BACKSTOP_LIMIT)
+@limiter.limit(AUTH_BACKSTOP_LIMIT, key_func=_mfa_verify_key)
 def verify_mfa(request: Request, body: MfaVerifyRequest):
     try:
         payload = decode_token(body.mfa_token)
@@ -155,11 +202,18 @@ def verify_mfa(request: Request, body: MfaVerifyRequest):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="MFA not configured for this account",
             )
-        if not verify_totp(user.mfa_secret, body.code):
+        plain_secret = decrypt_mfa_secret(user.mfa_secret)
+        if not verify_totp(plain_secret, body.code):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid verification code",
             )
+        # Migration opportuniste : un TOTP valide prouve la possession du
+        # secret. On en profite pour re-chiffrer un secret legacy en clair
+        # (voir app/auth/crypto.py) sans attendre un flux de rotation dedie.
+        if is_legacy_plaintext(user.mfa_secret):
+            user.mfa_secret = encrypt_mfa_secret(plain_secret)
+            session.commit()
         role_name = user.role.name if user.role else "viewer"
         token = create_access_token(subject=str(user.id), role=role_name)
         return Token(access_token=token)
@@ -188,7 +242,10 @@ def setup_mfa(current_user: dict = Depends(get_current_user)):
                 detail="MFA is already enabled for this account",
             )
         secret = generate_secret()
-        user.mfa_secret = secret
+        # Le secret en clair part dans la reponse (necessaire pour l app
+        # authenticator / le QR code) mais seule la version chiffree est
+        # persistee en base — voir app/auth/crypto.py.
+        user.mfa_secret = encrypt_mfa_secret(secret)
         session.commit()
         return MfaSetupResponse(secret=secret, otpauth_uri=provisioning_uri(secret, user.email))
 
@@ -204,7 +261,7 @@ def enable_mfa(request: Request, body: MfaEnableRequest, current_user: dict = De
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Call /auth/mfa/setup first",
             )
-        if not verify_totp(user.mfa_secret, body.code):
+        if not verify_totp(decrypt_mfa_secret(user.mfa_secret), body.code):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid verification code",
@@ -225,7 +282,7 @@ def disable_mfa(request: Request, body: MfaDisableRequest, current_user: dict = 
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect password",
             )
-        if user.mfa_enabled and not verify_totp(user.mfa_secret, body.code):
+        if user.mfa_enabled and not verify_totp(decrypt_mfa_secret(user.mfa_secret), body.code):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid verification code",
