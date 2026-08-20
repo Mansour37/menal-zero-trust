@@ -46,17 +46,13 @@ module "elson_app" {
   app_name                   = "elson"
   cicd_service_account_email = module.iam.cicd_service_account_email
 
-  # ── Renommage SA -> nom "production" (sa-elson au lieu de sa-elson-staging) ──
-  # Prepare le 20/08/2026. INERTE tant que la ligne ci-dessous reste commentee.
-  # ⚠️ DESTRUCTIF : decommenter + apply DETRUIT sa-elson-staging et cree sa-elson
-  # (account_id immuable cote GCP), recree tous ses bindings IAM, et redeploie
-  # elson-api avec la nouvelle identite -> BREVE COUPURE d'elson-api pendant l'apply.
-  # NE PAS appliquer dans l'heure precedant un tournage. Apres apply, RE-VERIFIER :
-  #   gcloud projects get-iam-policy menal-zero-trust-staging --format=json | \
-  #     python3 -c "import json,sys;p=json.load(sys.stdin);print([b['role'] for b in p['bindings'] if any('sa-elson@' in m for m in b['members'])])"
-  #   (doit rendre exactement cloudsql.client + logging.logWriter sur sa-elson@)
-  # Puis mettre a jour les scripts video (references sa-elson deja preparees).
-  # service_account_id = "sa-elson"
+  # ── Renommage SA -> nom "production" : APPLIQUE le 20/08/2026 ────────────────
+  # sa-elson-staging renomme en sa-elson (account_id immuable => destroy+create,
+  # gere par create_before_destroy : nouveau SA cree et Cloud Run rebranche AVANT
+  # destruction de l'ancien -> AUCUNE coupure constatee, elson-api reste a 200).
+  # Verifie apres apply : sa-elson a exactement cloudsql.client + logging.logWriter,
+  # elson-api tourne sous sa-elson, `terraform plan` = No changes.
+  service_account_id = "sa-elson"
 
   sql_instance_name = "menal-db-${var.environment}"
   db_name           = "elson_db"

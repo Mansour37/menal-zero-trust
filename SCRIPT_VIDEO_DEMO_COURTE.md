@@ -82,16 +82,14 @@ le débit de narration dessus. But : aucune surprise à la caméra. (Détails de
   (référence saine d'abord, outil-vedette ensuite, nikto en dernier car il encaisse le ban).
 - Se connecter une fois au dashboard **avant** l'enregistrement (cold start du login).
 - Terminal plein écran, police ≥16 pt, thème sombre contrasté ; fermer tout secret/token à l'écran.
-- **Nom du compte de service Elson** : les commandes utilisent `sa-elson-staging` (nom actuel
-  réel). Un renommage « production » vers `sa-elson` est **préparé mais inerte** dans
-  `terraform/environments/staging/elson.tf` (destructif — voir le bloc commenté). **S'il est
-  appliqué**, remplacer partout `sa-elson-staging` par `sa-elson` dans les commandes de ce script.
+- **Nom du compte de service Elson** : `sa-elson` (nom « production », renommage appliqué le
+  20/08/2026 — l'ancien `sa-elson-staging` n'existe plus). Les commandes utilisent déjà `sa-elson`.
 - **Précondition URL "production"** : ce script vise `https://dashboard.menal-sarl.com` (URL sans
-  « staging », pour montrer un service en production). Cette bascule doit être **terminée et
-  vérifiée AVANT de tourner** — sinon utiliser l'ancienne `https://dash-staging.menal-sarl.com`.
-  Test go/no-go : `curl -sI https://dashboard.menal-sarl.com/login` doit renvoyer `200`. (Procédure
-  de bascule DNS+certificat : voir le bloc commenté dans `terraform/environments/staging/
-  terraform.tfvars`.)
+  « staging »). Bascule en cours (20/08/2026) : DNS + host rule LB faits ; **l'ancien
+  `dash-staging.menal-sarl.com` est retiré** (ne plus l'utiliser). Il reste à ce que le
+  **certificat managé passe ACTIVE** (~15-60 min après l'apply Terraform). **Go/no-go avant de
+  tourner** : `curl -sI https://dashboard.menal-sarl.com/login` doit renvoyer `200` (tant que le
+  cert n'est pas ACTIVE, la page est injoignable — attendre).
 
 ---
 
@@ -123,7 +121,7 @@ wafw00f $ELSON
 
 # 3) ZERO TRUST — moindre privilege : les droits EXACTS de l'identite d'Elson
 gcloud projects get-iam-policy menal-zero-trust-staging --format=json \
-  | python3 -c "import json,sys; p=json.load(sys.stdin); print('\n'.join(sorted(b['role'] for b in p['bindings'] if any('sa-elson-staging' in m for m in b['members']))))"
+  | python3 -c "import json,sys; p=json.load(sys.stdin); print('\n'.join(sorted(b['role'] for b in p['bindings'] if any('sa-elson' in m for m in b['members']))))"
 ```
 
 **Résultat attendu** :
@@ -144,7 +142,7 @@ gcloud projects get-iam-policy menal-zero-trust-staging --format=json \
 > **Beat Zero Trust avancé (optionnel, +10s — très fort pour un public technique)** : prouver le
 > *no lateral movement* en tentant d'**emprunter l'identité d'Elson** — refusé, même pour l'admin :
 > ```bash
-> CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT=sa-elson-staging@menal-zero-trust-staging.iam.gserviceaccount.com \
+> CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT=sa-elson@menal-zero-trust-staging.iam.gserviceaccount.com \
 >   bq query --use_legacy_sql=false 'SELECT COUNT(*) FROM `menal-zero-trust-staging.menal_security_staging.detections`'
 > ```
 > Sortie : `PERMISSION_DENIED ... getAccessToken denied`. Dire : « Personne — pas même moi,

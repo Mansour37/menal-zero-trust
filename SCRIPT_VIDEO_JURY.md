@@ -25,7 +25,7 @@ l'ordre de ce script :
 
 | Segment | Vérifié en direct | Résultat réel |
 |---|---|---|
-| IAM Elson | ✅ | `sa-elson-staging@...` → exactement `cloudsql.client` + `logging.logWriter`, rien d'autre au niveau projet |
+| IAM Elson | ✅ | `sa-elson@...` → exactement `cloudsql.client` + `logging.logWriter`, rien d'autre au niveau projet |
 | Isolation DB Elson/MENAL | ✅ (job relancé à l'instant) | 6/6 vérifications `ok`, `isolated: true` |
 | BigQuery — trafic Elson dans le SIEM | ✅ | 11 requêtes `service="elson-api-staging"` dans `access_logs`, dernière heure |
 | ML — ATT&CK-BERT (enrichissement sémantique) | ✅ | mapping réel `T1003.008` (Credential Access) à similarité 0.684, `attack-bert-onnx-fp32@v1.0`, 03:16:46 UTC |
@@ -54,7 +54,7 @@ une fois de plus, 10-15 min avant de filmer.
 gcloud config set project menal-zero-trust-staging
 export API=https://api-staging.menal-sarl.com
 export ELSON=https://elson.menal-sarl.com
-export DASH=https://dashboard.menal-sarl.com   # URL "production" ; si bascule non faite, utiliser https://dash-staging.menal-sarl.com
+export DASH=https://dashboard.menal-sarl.com   # URL "production" (dash-staging retire) ; joignable une fois le cert manage ACTIVE
 
 curl -s -o /dev/null -w 'menal  -> %{http_code}\n' $API/health
 curl -s -o /dev/null -w 'elson  -> %{http_code}\n' $ELSON/api/health
@@ -68,10 +68,9 @@ curl -s -o /dev/null -w 'dash   -> %{http_code}\n' $DASH/login
 - La détection R2 de la §4 est déjà armée (voir tableau ci-dessus). Si plus de ~40 min se
   sont écoulées depuis 00:41 UTC au moment de tourner, relancer la vague d'attaque de la §3
   une fois 10-15 min avant l'enregistrement pour rafraîchir l'horodatage affiché.
-- **Nom du compte de service Elson** : les commandes (§2.1, A5) utilisent `sa-elson-staging`,
-  le nom réel actuel. Un renommage « production » vers `sa-elson` est **préparé mais inerte**
-  dans `terraform/environments/staging/elson.tf` (opération destructive — voir le bloc commenté).
-  **S'il est appliqué**, remplacer partout `sa-elson-staging` par `sa-elson` dans les commandes.
+- **Nom du compte de service Elson** : `sa-elson` (nom « production », renommage appliqué le
+  20/08/2026 — l'ancien `sa-elson-staging` n'existe plus). Les commandes (§2.1, A5) utilisent
+  déjà `sa-elson`.
 
 ---
 
@@ -105,7 +104,7 @@ gcloud projects get-iam-policy menal-zero-trust-staging --format=json \
 
 **Résultat attendu (vérifié à l'instant)** :
 ```
-sa-elson-staging@menal-zero-trust-staging.iam.gserviceaccount.com
+sa-elson@menal-zero-trust-staging.iam.gserviceaccount.com
 roles/cloudsql.client
 roles/logging.logWriter
 ```
@@ -505,14 +504,14 @@ Tentative d'usurpation de l'identité d'Elson pour lire les données de sécurit
 avec le compte admin `mansour.cheikh2010`, celui qui gère le projet) :
 
 ```bash
-CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT=sa-elson-staging@menal-zero-trust-staging.iam.gserviceaccount.com \
+CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT=sa-elson@menal-zero-trust-staging.iam.gserviceaccount.com \
   bq query --use_legacy_sql=false \
   'SELECT COUNT(*) FROM `menal-zero-trust-staging.menal_security_staging.detections`'
 ```
 
 **Résultat réel (vérifié le 20/08/2026)** — refus **avant même** que la requête ne parte :
 ```
-ERROR: (bq) PERMISSION_DENIED: Failed to impersonate [sa-elson-staging@...].
+ERROR: (bq) PERMISSION_DENIED: Failed to impersonate [sa-elson@...].
 Permission 'iam.serviceAccounts.getAccessToken' denied ...
 ```
 
