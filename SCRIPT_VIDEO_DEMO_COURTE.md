@@ -104,32 +104,57 @@ le dashboard MENAL. Ou schéma d'architecture minimal.
 
 ---
 
-## 2. Contexte : la cible est saine et protégée (0:20–0:45)
+## 2. Contexte : Zero Trust — cible saine, protégée et cloisonnée (0:20–0:55)
 
-**Vous manipulez le terminal attaquant.**
+**Vous manipulez le terminal attaquant.** Cette section **prouve** les trois piliers Zero Trust
+avant même l'attaque : *vérifier explicitement* (WAF), *moindre privilège*, *supposer la
+compromission* (blast radius contenu).
 
 ```bash
-# 1) La cible répond normalement à un utilisateur légitime (contrôle scientifique)
+# 1) La cible répond normalement à un utilisateur légitime (controle scientifique)
 curl -s -o /dev/null -w 'requete legitime -> HTTP %{http_code}\n' $ELSON/api/health
 
 # 2) Reconnaissance : derriere quoi tourne cette app ?
 wafw00f $ELSON
+
+# 3) ZERO TRUST — moindre privilege : les droits EXACTS de l'identite d'Elson
+gcloud projects get-iam-policy menal-zero-trust-staging --format=json \
+  | python3 -c "import json,sys; p=json.load(sys.stdin); print('\n'.join(sorted(b['role'] for b in p['bindings'] if any('sa-elson-staging' in m for m in b['members']))))"
 ```
 
-**Résultat attendu** : `200` sur la requête légitime, puis `wafw00f` signale la présence d'un
-pare-feu applicatif. **Cas nominal** : détection générique (« the site seems to be behind a WAF »).
-S'il nomme précisément « Google Cloud Armor », c'est un bonus — ne pas le promettre dans la voix.
+**Résultat attendu** :
+- `200` sur la requête légitime ; `wafw00f` signale un pare-feu applicatif (**cas nominal** :
+  détection générique « behind a WAF » ; le nom « Google Cloud Armor » est un bonus, ne pas le
+  promettre dans la voix).
+- La commande 3 imprime **exactement deux lignes** : `roles/cloudsql.client` et
+  `roles/logging.logWriter`. **Rien d'autre.** (Vérifié live le 20/08/2026.)
 
 **À dire** :
-> « L'application répond normalement à un utilisateur légitime. Mais dès la reconnaissance,
-> l'attaquant se heurte à un mur : elle est protégée par un pare-feu applicatif. Et cette
-> application, Elson, n'est qu'un des deux locataires du socle. Aucune application ne fait
-> confiance à l'autre, aucune n'a plus de droits que nécessaire : la confiance ne se suppose pas,
-> elle se vérifie. »
+> « L'application répond normalement à un utilisateur légitime — mais dès la reconnaissance,
+> l'attaquant se heurte à un pare-feu applicatif. Et voici le cœur du Zero Trust : l'identité
+> cloud d'Elson a exactement deux permissions — se connecter à sa base, écrire ses journaux.
+> C'est tout. Même si un attaquant prenait le contrôle total d'Elson, il ne pourrait pas lire les
+> données de sécurité de MENAL, ni toucher l'autre client : l'identité elle-même n'en a pas le
+> droit. La confiance ne se suppose pas — elle se vérifie, permission par permission. »
+
+> **Beat Zero Trust avancé (optionnel, +10s — très fort pour un public technique)** : prouver le
+> *no lateral movement* en tentant d'**emprunter l'identité d'Elson** — refusé, même pour l'admin :
+> ```bash
+> CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT=sa-elson-staging@menal-zero-trust-staging.iam.gserviceaccount.com \
+>   bq query --use_legacy_sql=false 'SELECT COUNT(*) FROM `menal-zero-trust-staging.menal_security_staging.detections`'
+> ```
+> Sortie : `PERMISSION_DENIED ... getAccessToken denied`. Dire : « Personne — pas même moi,
+> l'administrateur — ne peut emprunter l'identité d'un service pour hériter de ses accès. »
+> Montrer **uniquement la ligne `PERMISSION_DENIED`** (la trace est verbeuse).
+
+> **Note régie (arbitrage temps)** : si le tournage serre, la commande 3 (IAM) peut être coupée —
+> l'attribution multi-tenant du §4 (`service=menal-elson-...`) prouve déjà l'isolation. Mais si
+> l'objectif est de **valider explicitement Zero Trust**, garder la commande 3 : c'est LA preuve
+> du moindre privilège, à l'écran, en direct.
 
 ---
 
-## 3. Le pentest en direct (0:45–2:15)
+## 3. Le pentest en direct (0:55–2:20)
 
 **À l'écran** : terminal attaquant plein écran. **Ordre imposé** (minimise la casse — voir §0.5) :
 sqlmap sur IP fraîche d'abord, nikto (qui encaisse un éventuel ban) ensuite.
@@ -174,7 +199,7 @@ nikto -h $ELSON -Tuning x6 -Display E -maxtime 45s
 
 ---
 
-## 4. Le SOC voit, classe et attribue l'attaque (2:15–3:00)
+## 4. Le SOC voit, classe et attribue l'attaque (2:20–3:05)
 
 **À l'écran** : bascule vers le dashboard MENAL, **déjà connecté**, page `/detections`.
 Présenter la console comme **la vue naturelle du SOC** — on l'ouvre, elle est là, elle affiche
@@ -226,7 +251,7 @@ mitre_tactic=TA0040 (Impact), mitre_technique=T1498 (Network DoS)
 
 ---
 
-## 5. Clôture (3:00–3:40)
+## 5. Clôture (3:05–3:45)
 
 **À l'écran** : split-screen figé — terminal « toutes attaques bloquées » | SOC « détection R2 ».
 
@@ -252,10 +277,10 @@ les deux dans la version tournée) :
 | Temps | Séquence | À ne jamais raccourcir |
 |---|---|---|
 | 0:00–0:20 | Accroche | |
-| 0:20–0:45 | Contexte : cible saine + WAF détecté | |
-| 0:45–2:15 | Pentest en direct (sqlmap → nikto) | ★ cœur de preuve |
-| 2:15–3:00 | SOC : détection + MITRE + attribution | ★ cœur de preuve |
-| 3:00–3:40 | Clôture + proposition de valeur | |
+| 0:20–0:55 | Zero Trust : cible saine + WAF + moindre privilège (identité Elson) | ★ preuve ZT |
+| 0:55–2:20 | Pentest en direct (sqlmap → nikto) | ★ cœur de preuve |
+| 2:20–3:05 | SOC : détection + MITRE + attribution (isolation multi-tenant) | ★ cœur de preuve |
+| 3:05–3:45 | Clôture + proposition de valeur | |
 
 **Marge** : si dépassement de 3:45, raccourcir la narration du §5, puis le §2. Ne jamais rogner
 §3 ni §4 — c'est la démonstration.
@@ -269,9 +294,13 @@ la **rigueur** et l'**honnêteté**. D'où :
 
 - **Ne pas montrer** : la mécanique interne des `curl` (peu remarquable), le code source à
   l'écran, des captures pré-enregistrées présentées comme du live, un dashboard vide « pour faire
-  joli », ni une commande IAM `grep` (texte gris qui ne prouve rien à l'œil — la vraie preuve
-  d'isolation, c'est la colonne `service=` du §4). Montrer uniquement ce qui **prouve** l'objectif :
-  attaque réelle → blocage → détection → attribution.
+  joli », ni un **dump IAM complet** (long, gris, illisible). Montrer uniquement ce qui **prouve**
+  l'objectif : Zero Trust (§2) → attaque réelle → blocage → détection → attribution.
+- **La commande IAM du §2 est une exception ASSUMÉE** : ce n'est pas un dump, c'est une sortie de
+  **deux lignes** (les 2 permissions d'Elson) avec un but narratif clair — le « blast radius ».
+  C'est la seule preuve visuelle du moindre privilège ; la garder si l'objectif est de valider
+  Zero Trust, la couper seulement si le minutage l'exige (l'attribution `service=` du §4 reste un
+  second témoin de l'isolation).
 - **Ne pas viser un endpoint authentifié** pour l'attaque (cf. §0.3) : son 403 vient de l'auth,
   pas du WAF, et affaiblit la démonstration.
 - **Dashboard : le présenter comme la vue naturelle du SOC**, rien de plus. Ne PAS montrer ni

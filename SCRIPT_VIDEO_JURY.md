@@ -489,3 +489,40 @@ fonctionne maintenant, c'est que la Pull Request est actuellement rouge : la gat
 74 vrais findings, dont un contournement de la vérification TLS jamais vu jusqu'ici. Je ne l'ai
 pas corrigé en vitesse pour arriver ici avec une CI verte — je préfère vous montrer une gate
 qui marche vraiment plutôt qu'une CI verte qui ne prouve rien. »
+
+### A5 — Zero Trust prouvé : impossible d'usurper une identité (no lateral movement)
+
+Le §2.1 montre que l'identité d'Elson n'a que deux permissions. A5 prouve le principe symétrique
+et plus fort : **personne ne peut *devenir* Elson pour hériter de ses accès — pas même
+l'administrateur du projet.** C'est le pilier « assume breach » du Zero Trust : on suppose qu'une
+brique est compromise, et on vérifie que le rayon d'impact reste nul.
+
+Tentative d'usurpation de l'identité d'Elson pour lire les données de sécurité de MENAL (à lancer
+avec le compte admin `mansour.cheikh2010`, celui qui gère le projet) :
+
+```bash
+CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT=sa-elson-staging@menal-zero-trust-staging.iam.gserviceaccount.com \
+  bq query --use_legacy_sql=false \
+  'SELECT COUNT(*) FROM `menal-zero-trust-staging.menal_security_staging.detections`'
+```
+
+**Résultat réel (vérifié le 20/08/2026)** — refus **avant même** que la requête ne parte :
+```
+ERROR: (bq) PERMISSION_DENIED: Failed to impersonate [sa-elson-staging@...].
+Permission 'iam.serviceAccounts.getAccessToken' denied ...
+```
+
+**À dire, si le jury demande « faites-vous *vraiment* du Zero Trust, ou juste des couches de
+sécurité ? »** :
+> « Voici la différence. En Zero Trust, il ne suffit pas qu'Elson ait peu de droits — il faut
+> aussi que personne ne puisse emprunter son identité pour contourner ça. Je lance la commande
+> avec MON compte d'administrateur du projet, et le système me refuse : je ne peux pas générer de
+> jeton pour le compte d'Elson. Aucun privilège permanent d'usurpation n'existe, même pour
+> l'admin. Donc même si un service est compromis, l'attaquant ne peut ni élargir ses droits, ni
+> se faire passer pour un autre : le rayon d'impact est verrouillé par l'identité, pas par le
+> réseau. C'est ça, Zero Trust — vérifiable, en une commande. »
+
+> **Réserve honnête à garder en tête** : cette isolation par identité (IAM) est solide et
+> vérifiée ; la **segmentation réseau** entre tenants, elle, reste une réserve ouverte
+> (`02_SECURITE_AUDITS_ECARTS.md`, H6). Ne pas prétendre que le réseau est micro-segmenté — dire
+> « l'isolation par identité est en place ; la segmentation réseau est le prochain chantier ».
