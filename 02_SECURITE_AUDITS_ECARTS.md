@@ -1182,3 +1182,63 @@ Partie C)** : (1) corriger le bypass TLS Elson (provisionner le certificat CA Cl
 désactiver la vérification), (2) trier les faux positifs avec des suppressions `nosemgrep`
 documentées ligne par ligne (pas un abaissement global du seuil de sévérité), (3) seulement
 ensuite merger PR #17.
+
+---
+
+## 10. Scénario de bout en bout (19/08/2026) — validation de l'objectif du socle
+
+Toutes les vérifications précédentes (§1-9) portent sur des composants pris isolément. Cette
+section valide la **chaîne complète** — attaque réelle → blocage → journalisation → agrégation
+SIEM → attribution MITRE — sur l'environnement live, en une seule séquence chronométrée.
+
+### Scénario rejoué
+
+1. **Attaque** : 13 requêtes malveillantes envoyées à `https://elson.menal-sarl.com` (SQLi ×3,
+   XSS ×3, LFI ×4, variante LFI ×4 pour dépasser le seuil de 10/15min de la règle R2) —
+   `16:41:xx` à `16:41:5x` UTC.
+2. **Blocage** : **13/13 bloquées en 403** par Cloud Armor, requête de référence légitime
+   (`/api/health`) passée en 200.
+3. **Journalisation** : `access_logs` confirme 13 lignes `service="elson-api-staging"` dans
+   l'heure suivant l'attaque — le volume exact envoyé, aucune perte.
+4. **Détection agrégée** : règle **R2** déclenchée à `16:56:08 UTC`, soit **~15 min** après le
+   début de l'attaque (cadence scheduler 5 min + latence normalisation, cohérent avec les
+   mesures antérieures du 11/08). Contenu exact :
+   ```
+   rule_id=R2, entity=41.188.105.40, service=menal-elson-api-backend-staging
+   message="13 requetes bloquees par Cloud Armor depuis 41.188.105.40 en 15 min"
+   mitre_tactic=TA0040 (Impact), mitre_technique=T1498 (Network DoS)
+   ```
+   Le nombre de requêtes détecté (13) correspond exactement à l'attaque envoyée — pas
+   d'écrasement ni de sous-comptage.
+5. **Isolation multi-tenant (relancée en direct)** : job `elson-sql-isolation-check-staging` —
+   6/6 vérifications `ok`, `isolated: true`, avec une **tentative réelle de connexion croisée**
+   `elson_user → menal_db` **effectivement rejetée** (pas une politique déclarée, une connexion
+   réellement essayée et refusée à l'instant du test).
+6. **IAM confirmé en direct** (`gcloud iam service-accounts` / `get-iam-policy`, pas seulement
+   `terraform state`) : `sa-elson-staging` = exactement `cloudsql.client` + `logging.logWriter`,
+   rien d'autre au niveau projet.
+7. **Enrichissement ML actif** : dernier mapping ATT&CK-BERT réel à `12:16:15 UTC` le même jour
+   (`attack-bert-onnx-fp32@v1.0`, similarité 0.698, T1556.003) — le pipeline tourne en continu,
+   pas seulement à la demande d'une démo.
+
+### Verdict — l'objectif du socle est-il atteint ?
+
+**L'objectif du socle** (héberger plusieurs applications — MENAL, Elson — sur une infrastructure
+Zero Trust mutualisée : détecter, bloquer, isoler, tracer, sans confiance implicite entre
+composants) **est démontré, pas seulement documenté**, sur les axes suivants :
+
+| Objectif | Preuve obtenue le 19/08 |
+|---|---|
+| Détecter une attaque réelle | 13/13 requêtes malveillantes journalisées, comptées exactement |
+| Bloquer au périmètre | 13/13 en 403, 0 requête malveillante atteignant l'application |
+| Agréger et attribuer à un tenant | R2 avec `service=menal-elson-api-backend-staging`, pas fusionné avec MENAL |
+| Cartographier MITRE | TA0040/T1498 correct et automatique |
+| Isoler les données entre tenants | Connexion croisée réellement tentée et rejetée en direct |
+| Moindre privilège par application | IAM Elson confirmé minimal en direct (2 rôles, rien de plus) |
+| Enrichir intelligemment, pas juste logguer | Pipeline ML actif et à jour |
+
+**Ce que ce scénario ne couvre pas** (déjà tracé §1) : l'isolation **réseau** (H6, VPC/Cloud SQL
+partagés — l'isolation démontrée ici est applicative/IAM/données, pas réseau), le gap WAF path
+traversal brut (H13), et les 74 findings SAST (H15). Le socle atteint son objectif de sécurité
+applicative et de détection de bout en bout ; il ne prétend pas encore à une segmentation réseau
+multi-tenant complète — c'est le seuil explicitement identifié avant l'onboarding d'un 3ᵉ client.
