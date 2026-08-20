@@ -17,6 +17,17 @@ variable "cicd_service_account_email" {
   type        = string
 }
 
+variable "service_account_id" {
+  description = "Override de l'account_id du SA de l'app (partie avant @). Vide/null = valeur par defaut 'sa-<app_name>-<environment>'. ATTENTION : changer cette valeur sur une app deployee DETRUIT l'ancien SA et en cree un nouveau (account_id immuable cote GCP) -> breve coupure du service pendant l'apply. Utilise pour donner un nom 'production' (ex: 'sa-elson')."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.service_account_id == null || can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$", var.service_account_id))
+    error_message = "service_account_id : minuscules/chiffres/tirets, 6-30 caracteres (contrainte account_id GCP)."
+  }
+}
+
 # ── Base de donnees (instance partagee, isolation logique) ───────────────────
 variable "sql_instance_name" {
   description = "Instance Cloud SQL existante qui recoit la base de l'app (decision 07/08 : partage de menal-db-<env>, pas d'instance dediee). L'isolation repose sur les REVOKE CONNECT croises documentes dans 08_RUNBOOK.md — les users Cloud SQL Postgres sont membres de cloudsqlsuperuser."

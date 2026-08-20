@@ -10,7 +10,10 @@
 # ── Compte de service dedie ──────────────────────────────────────────────────
 # Aucun role BigQuery : une application herbergee ne lit pas le SIEM (§3.1).
 resource "google_service_account" "app" {
-  account_id   = "sa-${var.app_name}-${var.environment}"
+  # Defaut historique : sa-<app>-<env>. Override possible via service_account_id
+  # (ex: "sa-elson" pour un nom "production"). NB : account_id immuable cote GCP
+  # -> un changement recree le SA (destroy+create) et coupe brievement le service.
+  account_id   = coalesce(var.service_account_id, "sa-${var.app_name}-${var.environment}")
   display_name = "MENAL app ${var.app_name} (${var.environment})"
   project      = var.project_id
 }

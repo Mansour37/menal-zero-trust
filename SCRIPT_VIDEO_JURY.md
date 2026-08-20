@@ -68,6 +68,10 @@ curl -s -o /dev/null -w 'dash   -> %{http_code}\n' $DASH/login
 - La détection R2 de la §4 est déjà armée (voir tableau ci-dessus). Si plus de ~40 min se
   sont écoulées depuis 00:41 UTC au moment de tourner, relancer la vague d'attaque de la §3
   une fois 10-15 min avant l'enregistrement pour rafraîchir l'horodatage affiché.
+- **Nom du compte de service Elson** : les commandes (§2.1, A5) utilisent `sa-elson-staging`,
+  le nom réel actuel. Un renommage « production » vers `sa-elson` est **préparé mais inerte**
+  dans `terraform/environments/staging/elson.tf` (opération destructive — voir le bloc commenté).
+  **S'il est appliqué**, remplacer partout `sa-elson-staging` par `sa-elson` dans les commandes.
 
 ---
 

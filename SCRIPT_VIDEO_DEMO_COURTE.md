@@ -82,6 +82,10 @@ le débit de narration dessus. But : aucune surprise à la caméra. (Détails de
   (référence saine d'abord, outil-vedette ensuite, nikto en dernier car il encaisse le ban).
 - Se connecter une fois au dashboard **avant** l'enregistrement (cold start du login).
 - Terminal plein écran, police ≥16 pt, thème sombre contrasté ; fermer tout secret/token à l'écran.
+- **Nom du compte de service Elson** : les commandes utilisent `sa-elson-staging` (nom actuel
+  réel). Un renommage « production » vers `sa-elson` est **préparé mais inerte** dans
+  `terraform/environments/staging/elson.tf` (destructif — voir le bloc commenté). **S'il est
+  appliqué**, remplacer partout `sa-elson-staging` par `sa-elson` dans les commandes de ce script.
 - **Précondition URL "production"** : ce script vise `https://dashboard.menal-sarl.com` (URL sans
   « staging », pour montrer un service en production). Cette bascule doit être **terminée et
   vérifiée AVANT de tourner** — sinon utiliser l'ancienne `https://dash-staging.menal-sarl.com`.
