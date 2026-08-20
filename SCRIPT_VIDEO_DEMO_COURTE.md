@@ -10,9 +10,12 @@
 > attaquante, comme le ferait un pentester réel, et on filme le résultat brut. C'est ce qui rend
 > la démo crédible : un jury reconnaît ces outils, il sait qu'on ne triche pas.
 >
-> **Version 3 (20/08/2026)** : révisée après audit croisé red-team + jury/commercial et **tests
-> live sur la cible**. Corrections majeures intégrées : cible sqlmap vérifiée (baseline 200 réelle),
-> retrait du path-traversal, ordre des outils, proposition de valeur explicite, accroche renforcée.
+> **Version 3.1 (20/08/2026)** : révisée après audit croisé red-team + jury/commercial et **tests
+> live sur la cible**. Corrections majeures : cible sqlmap vérifiée (baseline 200 réelle), retrait
+> du path-traversal, ordre des outils, proposition de valeur explicite, accroche renforcée.
+> **v3.1** : cadrage de la latence (blocage temps réel / détection corrélée en minutes = normal),
+> dashboard présenté comme vue naturelle du SOC sans exposer la question d'accès à l'écran, option
+> scheduler 2 min pour raccourcir l'attente.
 
 > **Rôle de ce document** : feuille de régie. Vous manipulez deux fenêtres — le **poste attaquant**
 > (terminal Kali/VM) et le **SOC** (dashboard MENAL). **Impératif : exécuter chaque commande une
@@ -167,12 +170,23 @@ nikto -h $ELSON -Tuning x6 -Display E -maxtime 45s
 
 ## 4. Le SOC voit, classe et attribue l'attaque (2:15–3:00)
 
-**À l'écran** : bascule vers le dashboard MENAL, déjà connecté, page `/detections`.
+**À l'écran** : bascule vers le dashboard MENAL, **déjà connecté**, page `/detections`.
+Présenter la console comme **la vue naturelle du SOC** — on l'ouvre, elle est là, elle affiche
+l'attaque. Ne rien expliquer sur *comment* on y accède, ni sur son hébergement (voir l'annexe
+« ce qu'il ne faut PAS montrer »). L'effet recherché : ça marche, logiquement, par défaut.
 
-**Narration :**
-> « Côté défense maintenant. Chaque requête bloquée a été collectée, corrélée, et rattachée à son
-> auteur — puis classée selon le référentiel mondial des techniques d'attaque, MITRE ATT&CK, et
-> attribuée automatiquement à la bonne application. »
+**Narration** (cadrer la latence comme une force, pas une excuse) :
+> « Côté défense maintenant. L'attaque, elle, a été bloquée à la milliseconde — vous l'avez vu.
+> Ce que vous voyez ici, c'est l'étape d'après : le SOC qui corrèle. Chaque requête bloquée a été
+> collectée, rattachée à son auteur, puis classée selon le référentiel mondial des techniques
+> d'attaque, MITRE ATT&CK, et attribuée automatiquement à la bonne application. »
+
+> **Point de framing à assumer si on vous interroge sur le délai** : le **blocage est instantané**
+> (Cloud Armor, <1 ms) ; seule la **corrélation** — « plusieurs requêtes depuis la même IP = une
+> attaque » — prend quelques minutes. C'est exactement le fonctionnement d'un vrai SOC (Sentinel,
+> Chronicle : détection en minutes). L'attaquant est arrêté tout de suite ; le motif est reconnu
+> juste après. Ne jamais présenter ce délai comme une limite : c'est la séparation normale entre
+> *prévention temps réel* et *détection corrélée*.
 
 **Preuve attendue** (vérifiée live le 19/08/2026 — détection R2 réelle observée en ~15 min) :
 ```
@@ -195,6 +209,12 @@ mitre_tactic=TA0040 (Impact), mitre_technique=T1498 (Network DoS)
 > **Rappel tournage** : R2 remonte 5-15 min après l'attaque. Soit prise longue (filmer §1→§3,
 > attendre, filmer §4), soit montage avec un plan de coupe entre attaque et SOC — parfaitement
 > admis, personne n'attend une latence nulle.
+>
+> **Astuce pour raccourcir l'attente** (optionnel, avant le jour du tournage) : passer la cadence
+> du scheduler de 5 à 2 min dans `terraform/modules/detection/main.tf` (`schedule = "every 2
+> minutes"`) puis `terraform apply` → détection en ~3-5 min au lieu de 5-15. Coût BigQuery
+> légèrement supérieur, aucune complexité ajoutée. À ne PAS pousser au temps réel (streaming) :
+> inutile pour la démo et contraire au principe « simple et défendable ».
 
 ---
 
@@ -246,6 +266,15 @@ la **rigueur** et l'**honnêteté**. D'où :
   attaque réelle → blocage → détection → attribution.
 - **Ne pas viser un endpoint authentifié** pour l'attaque (cf. §0.3) : son 403 vient de l'auth,
   pas du WAF, et affaiblit la démonstration.
+- **Dashboard : le présenter comme la vue naturelle du SOC**, rien de plus. Ne PAS montrer ni
+  mentionner à l'écran comment on y accède, son URL, son hébergement, ni la question du contrôle
+  d'accès (exposition publique, IAP, allowlist IP). La console s'ouvre et affiche l'attaque —
+  logique, par défaut. Le sujet « posture d'accès du dashboard » est un **briefing interne**
+  (le dashboard est protégé par WAF + auth + MFA + ingress verrouillé ; l'IAP a été écarté faute
+  d'organisation Google Workspace ; l'allowlist IP est le durcissement prod recommandé). À sortir
+  uniquement **si un juré pose la question**, jamais spontanément dans la vidéo.
+- **Ne pas présenter le délai de détection comme une limite** (cf. §4) : blocage temps réel,
+  corrélation en quelques minutes = fonctionnement normal d'un SOC.
 - **Ne pas dire couvrir tout** : ce format de 3-4 min ne montre ni MFA, ni chiffrement, ni
   rétention, ni segmentation réseau. Ce n'est pas un audit filmé, c'est une preuve ciblée.
 - **Si question après la vidéo** : renvoyer vers `SCRIPT_VIDEO_JURY.md` (version longue :
