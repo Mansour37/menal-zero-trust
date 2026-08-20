@@ -13,9 +13,9 @@
 > **Version 3.1 (20/08/2026)** : révisée après audit croisé red-team + jury/commercial et **tests
 > live sur la cible**. Corrections majeures : cible sqlmap vérifiée (baseline 200 réelle), retrait
 > du path-traversal, ordre des outils, proposition de valeur explicite, accroche renforcée.
-> **v3.1** : cadrage de la latence (blocage temps réel / détection corrélée en minutes = normal),
-> dashboard présenté comme vue naturelle du SOC sans exposer la question d'accès à l'écran, option
-> scheduler 2 min pour raccourcir l'attente.
+> **v3.1** : cadrage de la latence (blocage temps réel / détection corrélée en minutes = normal ;
+> 5 min est le plancher BigQuery, vérifié — pas de raccourci possible sans streaming), dashboard
+> présenté comme vue naturelle du SOC sans exposer la question d'accès à l'écran.
 
 > **Rôle de ce document** : feuille de régie. Vous manipulez deux fenêtres — le **poste attaquant**
 > (terminal Kali/VM) et le **SOC** (dashboard MENAL). **Impératif : exécuter chaque commande une
@@ -40,7 +40,7 @@ which wafw00f nikto sqlmap        # tous présents ?
 
 ```bash
 export ELSON=https://elson.menal-sarl.com          # l'app cible (2e tenant)
-export DASH=https://dash-staging.menal-sarl.com     # le SOC / dashboard MENAL
+export DASH=https://dashboard.menal-sarl.com        # le SOC / dashboard MENAL (URL "production")
 
 curl -s -o /dev/null -w 'elson /api/health      -> %{http_code}\n' $ELSON/api/health          # 200
 curl -s -o /dev/null -w 'elson /api/health?id=  -> %{http_code}\n' "$ELSON/api/health?id=test" # 200
@@ -82,6 +82,12 @@ le débit de narration dessus. But : aucune surprise à la caméra. (Détails de
   (référence saine d'abord, outil-vedette ensuite, nikto en dernier car il encaisse le ban).
 - Se connecter une fois au dashboard **avant** l'enregistrement (cold start du login).
 - Terminal plein écran, police ≥16 pt, thème sombre contrasté ; fermer tout secret/token à l'écran.
+- **Précondition URL "production"** : ce script vise `https://dashboard.menal-sarl.com` (URL sans
+  « staging », pour montrer un service en production). Cette bascule doit être **terminée et
+  vérifiée AVANT de tourner** — sinon utiliser l'ancienne `https://dash-staging.menal-sarl.com`.
+  Test go/no-go : `curl -sI https://dashboard.menal-sarl.com/login` doit renvoyer `200`. (Procédure
+  de bascule DNS+certificat : voir le bloc commenté dans `terraform/environments/staging/
+  terraform.tfvars`.)
 
 ---
 
@@ -210,11 +216,13 @@ mitre_tactic=TA0040 (Impact), mitre_technique=T1498 (Network DoS)
 > attendre, filmer §4), soit montage avec un plan de coupe entre attaque et SOC — parfaitement
 > admis, personne n'attend une latence nulle.
 >
-> **Astuce pour raccourcir l'attente** (optionnel, avant le jour du tournage) : passer la cadence
-> du scheduler de 5 à 2 min dans `terraform/modules/detection/main.tf` (`schedule = "every 2
-> minutes"`) puis `terraform apply` → détection en ~3-5 min au lieu de 5-15. Coût BigQuery
-> légèrement supérieur, aucune complexité ajoutée. À ne PAS pousser au temps réel (streaming) :
-> inutile pour la démo et contraire au principe « simple et défendable ».
+> **Peut-on raccourcir l'attente ?** Non, pas sans changer d'architecture : BigQuery impose un
+> **plancher de 5 min** sur les scheduled queries (`min_schedule_interval=5m`, vérifié via l'API le
+> 20/08 — un `every 2 minutes` est rejeté en HTTP 400). La chaîne a deux étages de 5 min
+> (normalisation puis règle de détection), d'où les 5-15 min. Descendre plus bas exigerait un
+> pipeline streaming (Pub/Sub → Dataflow), hors périmètre PFE et contraire au principe « simple et
+> défendable ». **Conclusion tournage : assumer le montage/plan de coupe** — c'est la bonne réponse,
+> pas un contournement.
 
 ---
 

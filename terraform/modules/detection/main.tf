@@ -7,7 +7,10 @@ locals {
   #
   # Fenetre de 15 min alors que la regle tourne toutes les 5 min : la fenetre
   # DOIT couvrir la latence d ingestion (LB -> sink -> BigQuery -> requete de
-  # normalisation toutes les 5 min). Avec une fenetre de 5 min, les evenements
+  # normalisation toutes les 5 min). NB (20/08/2026) : 5 min est le PLANCHER
+  # impose par BigQuery (min_schedule_interval=5m, verifie via l'API) — on ne
+  # peut pas descendre plus bas sans changer d'architecture (streaming). Avec une
+  # fenetre de 5 min, les evenements
   # arrivaient dans access_logs APRES etre sortis de la fenetre : la regle ne
   # s est donc jamais declenchee, meme sous attaque reelle averee.
   #

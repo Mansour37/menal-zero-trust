@@ -54,7 +54,7 @@ une fois de plus, 10-15 min avant de filmer.
 gcloud config set project menal-zero-trust-staging
 export API=https://api-staging.menal-sarl.com
 export ELSON=https://elson.menal-sarl.com
-export DASH=https://dash-staging.menal-sarl.com
+export DASH=https://dashboard.menal-sarl.com   # URL "production" ; si bascule non faite, utiliser https://dash-staging.menal-sarl.com
 
 curl -s -o /dev/null -w 'menal  -> %{http_code}\n' $API/health
 curl -s -o /dev/null -w 'elson  -> %{http_code}\n' $ELSON/api/health
@@ -277,8 +277,9 @@ l'isolation. »
 
 ## 4. Le SOC voit l'attaque — dashboard en direct (3:40–4:30)
 
-**À l'écran** : navigateur, `https://dash-staging.menal-sarl.com/detections` puis
-`/incidents`, déjà connecté.
+**À l'écran** : navigateur, `https://dashboard.menal-sarl.com/detections` puis
+`/incidents`, déjà connecté. *(URL « production » — si la bascule DNS+cert n'est pas faite,
+utiliser `https://dash-staging.menal-sarl.com`.)*
 
 **Narration :**
 > « Ces attaques ne sont pas juste bloquées, elles sont détectées et documentées. La règle
