@@ -1,8 +1,3 @@
-# Numero du projet (necessaire pour les service accounts GCP)
-data "google_project" "current" {
-  project_id = var.project_id
-}
-
 # ── Key Ring (conteneur de cles, lie a une region) ────────────────────────────
 resource "google_kms_key_ring" "menal" {
   name     = "menal-keyring-${var.environment}"
@@ -43,13 +38,13 @@ resource "google_kms_crypto_key_iam_member" "api_encrypter_decrypter" {
 resource "google_kms_crypto_key_iam_member" "gcs_encrypter_decrypter" {
   crypto_key_id = google_kms_crypto_key.api_data.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:service-${data.google_project.current.number}@gs-project-accounts.iam.gserviceaccount.com"
+  member        = "serviceAccount:service-${var.project_number}@gs-project-accounts.iam.gserviceaccount.com"
 }
 
 resource "google_kms_crypto_key_iam_member" "bigquery_encrypter_decrypter" {
   crypto_key_id = google_kms_crypto_key.api_data.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:bq-${data.google_project.current.number}@bigquery-encryption.iam.gserviceaccount.com"
+  member        = "serviceAccount:bq-${var.project_number}@bigquery-encryption.iam.gserviceaccount.com"
 }
 
 # ── Cle GLOBALE dediee a Secret Manager ───────────────────────────────────────
@@ -87,7 +82,7 @@ resource "google_kms_crypto_key" "secrets" {
 resource "google_kms_crypto_key_iam_member" "secretmanager_encrypter_decrypter" {
   crypto_key_id = google_kms_crypto_key.secrets.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-secretmanager.iam.gserviceaccount.com"
+  member        = "serviceAccount:service-${var.project_number}@gcp-sa-secretmanager.iam.gserviceaccount.com"
 }
 
 # Note IMPORTANTE (verifiee par test terraform plan le 07/08/2026, pas

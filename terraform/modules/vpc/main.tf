@@ -52,6 +52,14 @@ resource "google_compute_router_nat" "nat" {
     name                    = google_compute_subnetwork.private.id
     source_ip_ranges_to_nat = ["ALL_IP_RANGES"]
   }
+
+  # ADR-0007 (resolu 19/08/2026) : ERRORS_ONLY plutot que ALL pour limiter le
+  # volume/cout d ingestion tout en gardant la visibilite sur les echecs NAT
+  # (ex. epuisement de ports) utiles a la detection.
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
+  }
 }
 
 resource "google_compute_firewall" "deny_all_ingress" {
@@ -66,6 +74,15 @@ resource "google_compute_firewall" "deny_all_ingress" {
 
   direction     = "INGRESS"
   source_ranges = ["0.0.0.0/0"]
+
+  # ADR-0007 (resolu 19/08/2026) : seule regle DENY du module, log_config
+  # alimente le sink BigQuery vpc_to_bq (disposition="DENIED") pour la
+  # detection de mouvement lateral. Volontairement absent des regles ALLOW a
+  # fort volume (allow_https, allow_internal, allow_health_checks) pour ne
+  # pas generer un cout d ingestion inutile.
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
+  }
 }
 
 resource "google_compute_firewall" "allow_https" {

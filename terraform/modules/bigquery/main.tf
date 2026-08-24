@@ -100,6 +100,16 @@ resource "google_bigquery_table" "access_logs" {
   time_partitioning {
     type  = "DAY"
     field = "timestamp"
+    # Retention 90 jours (ecart Session N+1, 19/08/2026) : cette table journalise
+    # ip_address en clair pour CHAQUE requete API, sans limite jusqu ici - donnee
+    # a caractere personnel (RGPD art. 5.1.e, "conservation limitee") conservee
+    # indefiniment sans justification. access_logs est un log operationnel brut
+    # (debit/latence/qui-a-appele-quoi), pas une preuve d incident : contrairement
+    # a detections/analyst_verdicts (jugement humain, jamais purge), rien n empeche
+    # ici une purge automatique. 90 jours = fenetre d investigation raisonnable
+    # pour un incident (coherente avec transaction_log_retention_days=7 sur Cloud
+    # SQL et la retention 90j deja visee sur raw_logs, cf. LLD §5).
+    expiration_ms = 7776000000
   }
 
   schema = jsonencode([
@@ -150,11 +160,17 @@ resource "google_bigquery_table" "raw_logs" {
   time_partitioning {
     type  = "DAY"
     field = "timestamp"
-    # Retention 90 jours (LLD §5) : expiration_ms = 7776000000 ne peut pas etre
-    # encode par un binaire Terraform 32 bits (windows_386). Activer la ligne
-    # ci-dessous une fois passe sur Terraform amd64, ou appliquer :
+    # Retention 90 jours (LLD §5). json_payload peut contenir des IP/emails selon
+    # la source (armor/vpc/sql) - meme rationale RGPD que access_logs ci-dessus.
+    # Rappel environnement (Session N+1, 19/08/2026) : ce litteral echoue sur un
+    # binaire Terraform 32 bits (windows_386 - poste de dev courant, confirme par
+    # test), cty ne pouvant pas representer un entier > 2^31-1 comme "whole number"
+    # sur cette architecture. Sans impact reel : le pipeline F7 (terraform.yml)
+    # tourne sur ubuntu-latest (amd64), ou ce literal s applique normalement -
+    # verifie ici avec un binaire terraform windows_amd64 (meme version 1.14.9).
+    # Poste de dev 32 bits uniquement -> repli manuel si besoin :
     #   bq update --time_partitioning_expiration 7776000 menal_security_dev.raw_logs
-    # expiration_ms = 7776000000
+    expiration_ms = 7776000000
   }
 
   schema = jsonencode([

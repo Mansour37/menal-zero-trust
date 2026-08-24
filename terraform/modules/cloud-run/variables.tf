@@ -53,6 +53,12 @@ variable "jwt_secret_name" {
   default     = ""
 }
 
+variable "mfa_encryption_key_name" {
+  description = "Secret Manager secret ID contenant la cle Fernet de chiffrement du secret TOTP (vide = app sans MFA/pas de chiffrement TOTP)"
+  type        = string
+  default     = ""
+}
+
 variable "bigquery_dataset_id" {
   description = "Dataset BigQuery SIEM (lecture seule par l API pour les endpoints /siem). Vide = app sans acces SIEM."
   type        = string
@@ -108,4 +114,10 @@ variable "memory" {
 variable "max_instances" {
   type    = number
   default = 3
+}
+
+variable "timeout" {
+  description = "Timeout de requete du service (duree Cloud Run, ex: \"300s\"). Defaut aligne sur le defaut implicite actuel de l API (300s) — explicite pour eviter de dependre d un comportement non documente en Terraform et surchargeable par appelant."
+  type        = string
+  default     = "300s"
 }

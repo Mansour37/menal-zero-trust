@@ -16,7 +16,11 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    mfa_secret: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # 255 (et non 32) : le secret TOTP est desormais chiffre au repos (Fernet,
+    # voir app/auth/crypto.py) avant ecriture. Un token Fernet fait ~140
+    # caracteres pour un secret base32 de 32 caracteres — 32 suffisait pour le
+    # secret en clair, plus pour sa forme chiffree. Cf. migration 003.
+    mfa_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     role_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("roles.id"), nullable=False

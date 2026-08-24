@@ -34,9 +34,12 @@ secondary_alert_email = "backup-oncall@menal-sarl.com"
 # ]
 #
 # auth_paths = [
-#   "/auth/token",  # REINCLURE — menal-api (fallback ecrase)
-#   "/api/login",   # REINCLURE — menal-api
-#   "/api/auth",    # Elson : couvre /api/auth/login, /register, /refresh... (startsWith)
+#   "/auth/token",        # REINCLURE — menal-api (fallback ecrase)
+#   "/api/login",         # REINCLURE — menal-api
+#   "/api/auth",          # Elson : couvre /api/auth/login, /register, /refresh... (startsWith)
+#   "/auth/mfa/verify",   # REINCLURE — menal-api : verification du code TOTP (cible brute-force)
+#   "/auth/mfa/enable",   # REINCLURE — menal-api : confirmation d'activation MFA (code TOTP)
+#   "/auth/mfa/disable",  # REINCLURE — menal-api : desactivation MFA (mot de passe + code TOTP)
 # ]
 #
 # extra_services = {

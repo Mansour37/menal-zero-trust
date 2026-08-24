@@ -10,6 +10,9 @@ const pool = new Pool({
   database: config.db.name,
   user: config.db.user,
   password: config.db.password,
+  // Ecart H14 (registre 02_SECURITE_AUDITS_ECARTS.md) : certificat serveur non
+  // verifie — meme ecart que backend/src/db.ts, ici hors chemin runtime.
+  // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
   ...(config.db.ssl ? { ssl: { rejectUnauthorized: false } } : {}),
   connectionTimeoutMillis: 15000,
 });
@@ -49,6 +52,9 @@ async function main() {
     database: "menal_db",
     user: config.db.user,
     password: config.db.password,
+    // Ecart H14 (registre 02_SECURITE_AUDITS_ECARTS.md) : certificat serveur non
+    // verifie — meme ecart que backend/src/db.ts, ici hors chemin runtime.
+    // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
     ...(config.db.ssl ? { ssl: { rejectUnauthorized: false } } : {}),
     connectionTimeoutMillis: 15000,
   });

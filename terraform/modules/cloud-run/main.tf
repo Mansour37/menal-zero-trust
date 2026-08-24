@@ -19,6 +19,24 @@ resource "google_cloud_run_v2_service" "api" {
   template {
     service_account = var.api_service_account_email
 
+    # Timeout de requete explicite (Session N+1, audit Cloud Run/CMEK) :
+    # sans ce champ, Terraform ne fixe rien et l API applique son defaut
+    # implicite (300s) — meme valeur ici, mais desormais lisible dans le
+    # code et surchargeable par appelant (ex: elson-api) sans devoir la
+    # redecouvrir en `plan`.
+    timeout = var.timeout
+
+    # execution_environment explicite (Session N+1) : sans ce champ, Cloud
+    # Run choisit lui-meme gen1 ou gen2 selon les fonctionnalites detectees
+    # (comportement automatique documente, pas un defaut fixe) — donc non
+    # deterministe et non reproductible a l identique d un apply a l autre,
+    # contraire au principe "Tout est Terraform" (05_METHODOLOGIE_PFE.md
+    # §A.1). GEN2 (microVM, compatibilite Linux complete) est recommande par
+    # Google pour les charges standard (FastAPI/Node) utilisees ici — pas
+    # expose en variable : aucun service herberge par ce module n a besoin
+    # du sandbox gVisor de gen1.
+    execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
+
     scaling {
       min_instance_count = var.min_instances
       max_instance_count = var.max_instances
@@ -80,6 +98,18 @@ resource "google_cloud_run_v2_service" "api" {
           value_source {
             secret_key_ref {
               secret  = var.jwt_secret_name
+              version = "latest"
+            }
+          }
+        }
+      }
+      dynamic "env" {
+        for_each = var.mfa_encryption_key_name != "" ? [1] : []
+        content {
+          name = "MFA_ENCRYPTION_KEY"
+          value_source {
+            secret_key_ref {
+              secret  = var.mfa_encryption_key_name
               version = "latest"
             }
           }

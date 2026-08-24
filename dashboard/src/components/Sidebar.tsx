@@ -21,7 +21,7 @@ const navGroups = [
   {
     label: "Détection & analyse",
     items: [
-      { href: "/detections",      label: "Détections Sigma",  icon: Radar },
+      { href: "/detections",      label: "Détections",        icon: Radar },
       { href: "/incidents",       label: "Incidents",         icon: Siren },
       { href: "/coverage",        label: "Couverture ATT&CK", icon: Target },
       { href: "/vulnerabilities", label: "Vulnérabilités",    icon: Bug },

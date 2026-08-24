@@ -29,3 +29,8 @@ output "jwt_secret_id" {
   description = "Secret Manager secret ID for JWT signing key"
   value       = google_secret_manager_secret.jwt_secret.secret_id
 }
+
+output "mfa_encryption_key_id" {
+  description = "Secret Manager secret ID for the TOTP secret Fernet encryption key"
+  value       = google_secret_manager_secret.mfa_encryption_key.secret_id
+}

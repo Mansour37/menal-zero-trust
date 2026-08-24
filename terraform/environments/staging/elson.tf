@@ -46,6 +46,14 @@ module "elson_app" {
   app_name                   = "elson"
   cicd_service_account_email = module.iam.cicd_service_account_email
 
+  # ── Renommage SA -> nom "production" : APPLIQUE le 20/08/2026 ────────────────
+  # sa-elson-staging renomme en sa-elson (account_id immuable => destroy+create,
+  # gere par create_before_destroy : nouveau SA cree et Cloud Run rebranche AVANT
+  # destruction de l'ancien -> AUCUNE coupure constatee, elson-api reste a 200).
+  # Verifie apres apply : sa-elson a exactement cloudsql.client + logging.logWriter,
+  # elson-api tourne sous sa-elson, `terraform plan` = No changes.
+  service_account_id = "sa-elson"
+
   sql_instance_name = "menal-db-${var.environment}"
   db_name           = "elson_db"
   db_user           = "elson_user"

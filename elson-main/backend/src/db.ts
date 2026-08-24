@@ -15,6 +15,13 @@ export const pool = new Pool({
   connectionTimeoutMillis: 10000, // more tolerance under high concurrency
   maxUses: 7500,                  // recycle connections to prevent leaks
   allowExitOnIdle: false,         // keep pool alive
+  // Ecart H14 (registre 02_SECURITE_AUDITS_ECARTS.md) : la connexion Cloud SQL est
+  // chiffree (DB_SSL=true, instance ENCRYPTED_ONLY) mais le certificat SERVEUR
+  // n est pas verifie. Ecart REEL, assume et trace — correction prevue en montant
+  // la CA de l instance (serverCaMode: GOOGLE_MANAGED_INTERNAL_CA).
+  // Suppression NOMINATIVE et non exclusion globale : toute nouvelle occurrence
+  // ailleurs dans le depot fera echouer la CI.
+  // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
   ...(config.db.ssl ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 

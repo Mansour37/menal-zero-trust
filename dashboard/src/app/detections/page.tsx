@@ -30,7 +30,7 @@ export default async function DetectionsPage() {
         <PageHeader
           overline="Moteur de détection"
           title="Détections SIEM"
-          subtitle="Résultat des règles Sigma (BigQuery, réévaluées toutes les 5 min) mappées MITRE ATT&CK. Distinct des « Alertes API » qui remontent les erreurs HTTP applicatives brutes."
+          subtitle="Résultat des règles SQL (inspirées Sigma, BigQuery, réévaluées toutes les 5 min) mappées MITRE ATT&CK. Distinct des « Alertes API » qui remontent les erreurs HTTP applicatives brutes."
           icon={Radar}
           tone="accent"
           trailing={<span className="pill mono text-[var(--ink-muted)]">{detections.length} · 24 h</span>}

@@ -121,6 +121,18 @@ class TestIAMIsolation:
                             exceptions.NotFound)):
             client.access_secret_version(request={"name": secret_name})
 
+    @pytest.mark.skip(
+        reason=(
+            "T6 verifie que la creation de cles SA statiques est bloquee par une "
+            "politique d organisation (org policy constraints/iam.disableServiceAccount"
+            "KeyCreation). Ce projet est un projet GCP personnel SANS organisation "
+            "(indexe-dev.md:104) : cette contrainte ne peut techniquement pas exister "
+            "ici, et un test qui pretendrait verifier un blocage par politique d org "
+            "serait un faux vert. Ecart assume, a formaliser dans un ADR dedie "
+            "(cf. docs/adr/, meme registre que 0002) avant toute promotion vers un "
+            "environnement avec organisation GCP."
+        )
+    )
     def test_t6_sa_key_creation_blocked_check(self):
         pass
 

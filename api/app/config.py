@@ -22,6 +22,15 @@ class Settings:
     JWT_SECRET: str = os.getenv("JWT_SECRET", _JWT_SECRET_DEFAULT)
     BQ_DATASET_ID: str = os.getenv("BQ_DATASET_ID", "menal_security_dev")
 
+    # Cle de chiffrement symetrique (Fernet) du secret TOTP au repos, voir
+    # app/auth/crypto.py. Meme pattern de chargement que JWT_SECRET ci-dessus :
+    # variable d'environnement, injectee en prod via Secret Manager cote
+    # Cloud Run (pas de nouvelle infra KMS pour ce correctif, cf. mission).
+    # Valeur par defaut = cle Fernet FIXE reservee au dev local (jamais valide
+    # hors dev grace au garde-fou fail-closed plus bas).
+    _MFA_ENCRYPTION_KEY_DEFAULT = "TUVOQUwtZGV2LW9ubHktZmFrZS1tZmEta2V5LTMyYiE="
+    MFA_ENCRYPTION_KEY: str = os.getenv("MFA_ENCRYPTION_KEY", _MFA_ENCRYPTION_KEY_DEFAULT)
+
     @property
     def DB_PASSWORD(self) -> str:
         env_pw = os.getenv("DB_PASSWORD")
@@ -39,4 +48,12 @@ if settings.ENVIRONMENT != "dev" and settings.JWT_SECRET == Settings._JWT_SECRET
     raise RuntimeError(
         "JWT_SECRET utilise la valeur par defaut hors environnement dev. "
         "Injecter un secret reel (Secret Manager) avant de demarrer."
+    )
+
+# Meme garde-fou pour la cle de chiffrement du secret TOTP : la valeur par
+# defaut est publiee dans ce depot, donc valide UNIQUEMENT en dev.
+if settings.ENVIRONMENT != "dev" and settings.MFA_ENCRYPTION_KEY == Settings._MFA_ENCRYPTION_KEY_DEFAULT:
+    raise RuntimeError(
+        "MFA_ENCRYPTION_KEY utilise la valeur par defaut hors environnement dev. "
+        "Injecter une cle reelle (Secret Manager) avant de demarrer."
     )

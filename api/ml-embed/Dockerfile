@@ -1,4 +1,6 @@
-FROM python:3.12-slim AS base
+# python:3.12-slim épinglé par digest (L7, 2026-08-19) — mise à jour
+# uniquement par PR explicite.
+FROM python:3.12-slim@sha256:2c941e860699f878900b0edc2403613c234d4b32eda3cc9fa7036991a2a63c4a AS base
 RUN useradd -u 10001 -m appuser
 WORKDIR /app
 

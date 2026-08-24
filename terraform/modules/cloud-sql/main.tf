@@ -142,3 +142,53 @@ resource "google_secret_manager_secret_iam_member" "api_jwt_secret" {
   member    = "serviceAccount:${var.api_service_account_email}"
   project   = var.project_id
 }
+
+# Secret Manager : cle de chiffrement (Fernet) du secret TOTP au repos
+# (Session N+2, api/app/auth/crypto.py + api/app/config.py). Meme pattern que
+# jwt_secret ci-dessus : cle aleatoire generee au premier apply, secret
+# Secret Manager avec meme politique de replication/CMEK, meme SA lecteur.
+#
+# Format Fernet (cryptography.fernet.Fernet) : 32 octets bruts, encodes en
+# base64 URL-safe, PADDES = 44 caracteres se terminant par "=". random_password
+# (utilise pour db_password/jwt_secret ci-dessus) ne convient PAS ici : sa
+# sortie est une chaine de caracteres aleatoires dans un alphabet donne, pas 32
+# octets bruts encodes en base64 -> Fernet() leverait une erreur au demarrage.
+# random_id.b64_url a ete verifie manuellement (sandbox locale, provider
+# hashicorp/random 3.9.0) : avec byte_length = 32, il encode bien 32 octets
+# bruts en base64 URL-safe, MAIS SANS le caractere de padding final "=" (43
+# caracteres, pas 44) — Fernet() rejette ce format (erreur de padding a la
+# decodification). D'ou le "=" concatene explicitement ci-dessous dans
+# secret_data, verifie via `cryptography.fernet.Fernet` (chiffrement +
+# dechiffrement reussis sur la valeur produite).
+resource "random_id" "mfa_encryption_key" {
+  byte_length = 32
+}
+
+resource "google_secret_manager_secret" "mfa_encryption_key" {
+  secret_id = "mfa-encryption-key-${var.environment}"
+  project   = var.project_id
+
+  replication {
+    auto {
+      dynamic "customer_managed_encryption" {
+        for_each = var.kms_key_id != "" ? [1] : []
+        content {
+          kms_key_name = var.kms_key_id
+        }
+      }
+    }
+  }
+}
+
+resource "google_secret_manager_secret_version" "mfa_encryption_key" {
+  secret      = google_secret_manager_secret.mfa_encryption_key.id
+  secret_data = "${random_id.mfa_encryption_key.b64_url}="
+}
+
+# Acces au mfa-encryption-key pour sa-api
+resource "google_secret_manager_secret_iam_member" "api_mfa_encryption_key" {
+  secret_id = google_secret_manager_secret.mfa_encryption_key.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.api_service_account_email}"
+  project   = var.project_id
+}
