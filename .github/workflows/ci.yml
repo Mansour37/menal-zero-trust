@@ -76,6 +76,14 @@ jobs:
       # jour ou elle tournait : une regle ajoutee en amont faisait echouer un
       # commit deja valide, sans qu une seule ligne du depot ait change.
       #
+      # ATTENTION : epingler le CLI est necessaire mais PAS suffisant. Le
+      # ruleset p/default est lui-meme distant et mutable — constate en direct :
+      # 612 regles le 20/08, 606 le 24/08 a version de CLI identique, et la
+      # regle unsafe-formatstring s est mise a tirer entre les deux. De
+      # nouveaux findings peuvent donc apparaitre sans changement de code : les
+      # TRIER (verifier, puis ecarter avec justification ou corriger), jamais
+      # relacher la porte en bloc pour faire passer le build.
+      #
       # Triage du 24/08/2026 : 74 findings, 0 de severite ERROR. Les regles
       # ci-dessous sont ECARTEES NOMINATIVEMENT, avec justification verifiee.
       # Tout le reste reste bloquant. Une exclusion sans justification ecrite
@@ -88,6 +96,7 @@ jobs:
             --exclude-rule=javascript.express.security.audit.express-path-join-resolve-traversal.express-path-join-resolve-traversal \
             --exclude-rule=javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal \
             --exclude-rule=javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp \
+            --exclude-rule=javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring \
             --exclude-rule=python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected \
             --exclude-rule=terraform.gcp.security.gcp-sql-database-ssl-insecure-value-postgres-mysql.gcp-sql-database-ssl-insecure-value-postgres-mysql \
             --exclude-rule=yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
@@ -99,6 +108,11 @@ jobs:
           #   (mimetype.includes("wav") ? "wav" : "webm").
           # detect-non-literal-regexp : construit a partir d un nom de cookie
           #   litteral, pas d une entree utilisateur.
+          # unsafe-formatstring : les 3 occurrences interpolent des valeurs
+          #   INTERNES dans un appel console.error — un ternaire sur trois
+          #   litteraux (whatsapp.ts:85 sendImage|sendVideo|sendVoice), un id de
+          #   job issu de la base (media-ingest.ts:235) et un compteur de boucle
+          #   numerique (seed-flores.ts:96). Aucune entree externe.
           # dynamic-urllib-use-detected : scripts de chargement hors runtime
           #   (scripts/load_*.py), URL issues de la configuration du depot.
           # gcp-sql-database-ssl-insecure-value : regle obsolete, elle cherche
