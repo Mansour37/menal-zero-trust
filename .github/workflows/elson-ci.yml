@@ -57,10 +57,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Faux-vert corrige le 24/08/2026. Ce job utilisait semgrep/semgrep-action@v1,
+      # qui tire l image returntocorp/semgrep-agent:v1 (semgrep 1.36.0, 2022) :
+      # elle crashe sur le registre de regles actuel ("ValueError: invalid rule
+      # severity value: MEDIUM") et l action AVALE le code de sortie. L etape
+      # etait donc "success" sur chaque run alors qu AUCUNE regle SAST n etait
+      # evaluee. Meme bug que ci.yml, corrige la le 19/08 mais jamais reporte ici.
+      #
+      # Appel CLI direct, version epinglee, meme triage justifie que ci.yml :
+      # les deux workflows doivent rendre le meme verdict sur le meme depot.
       - name: Semgrep - SAST
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: p/default
+        run: |
+          pip install semgrep==1.173.0
+          semgrep --version
+          semgrep scan --config=p/default --error \
+            --exclude-rule=javascript.express.security.audit.express-path-join-resolve-traversal.express-path-join-resolve-traversal \
+            --exclude-rule=javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal \
+            --exclude-rule=javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp \
+            --exclude-rule=python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected \
+            --exclude-rule=terraform.gcp.security.gcp-sql-database-ssl-insecure-value-postgres-mysql.gcp-sql-database-ssl-insecure-value-postgres-mysql \
+            --exclude-rule=yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
 
   backend:
     name: Backend (lint, build, tests, db:migrate)
