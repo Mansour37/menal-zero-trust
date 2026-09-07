@@ -27,12 +27,22 @@ export default function SecuritySettingsPage() {
     setBusy(true);
     setError("");
     try {
-      const res = await fetch("/api/mfa/setup", { method: "POST" });
-      const data = await res.json();
+      // Corps explicite "{}" OBLIGATOIRE : un POST sans corps n emet pas de
+      // Content-Length (surtout en HTTP/2, le protocole navigateur<->Cloud Run),
+      // et le Google Front End le rejette alors en 411 Length Required AVANT
+      // d atteindre le route handler Next.js. Le corps garantit le Content-Length.
+      const res = await fetch("/api/mfa/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
       if (!res.ok) {
+        // Le 411 du GFE renvoie une page HTML, pas du JSON : lecture defensive.
+        const data = await res.json().catch(() => ({}));
         setError(data.error || "Impossible de démarrer l activation du MFA.");
         return;
       }
+      const data = await res.json();
       setSecret(data.secret);
       setOtpauthUri(data.otpauth_uri);
       setStatus("enrolling");
