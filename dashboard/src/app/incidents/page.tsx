@@ -7,6 +7,7 @@ import { Incident } from "@/lib/types";
 import Sidebar from "@/components/Sidebar";
 import Card from "@/components/Card";
 import PageHeader from "@/components/PageHeader";
+import AutoRefresh from "@/components/AutoRefresh";
 import SeverityBadge from "@/components/SeverityBadge";
 import ScoreGauge from "@/components/ScoreGauge";
 import EmptyState from "@/components/EmptyState";
@@ -52,7 +53,12 @@ export default async function IncidentsPage() {
           icon={Siren}
           failed={failed}
           demo={usedMock}
-          trailing={<span className="pill mono text-[var(--ink-muted)]">{incidents.length} entités actives (24h)</span>}
+          trailing={
+            <span className="inline-flex items-center gap-2">
+              <AutoRefresh />
+              <span className="pill mono text-[var(--ink-muted)]">{incidents.length} entités actives (24h)</span>
+            </span>
+          }
           subtitle={
             <>
               Détections regroupées par entité (IP / acteur). Score = somme pondérée par sévérité,

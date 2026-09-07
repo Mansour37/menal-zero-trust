@@ -7,9 +7,12 @@ import { IncidentDetail } from "@/lib/types";
 import Sidebar from "@/components/Sidebar";
 import Card from "@/components/Card";
 import PageHeader from "@/components/PageHeader";
+import AutoRefresh from "@/components/AutoRefresh";
 import SeverityBadge from "@/components/SeverityBadge";
 import RadialGauge from "@/components/RadialGauge";
 import EmptyState from "@/components/EmptyState";
+import VerdictPanel from "@/components/VerdictPanel";
+import AssistedTechniques from "@/components/AssistedTechniques";
 
 const SEV_COLOR: Record<string, string> = {
   CRITICAL: "var(--sev-critical)",
@@ -54,6 +57,7 @@ export default async function IncidentDetailPage({ params }: { params: { entity:
           tone="critical"
           failed={failed}
           demo={usedMock}
+          trailing={<AutoRefresh />}
         />
 
         {failed || !incident ? (
@@ -90,6 +94,18 @@ export default async function IncidentDetailPage({ params }: { params: { entity:
                 <p className="text-2xl font-bold text-[var(--ink)] font-mono tabular-nums">{incident.detections.length}</p>
               </Card>
             </div>
+
+            <Card title="Qualification assistée" overline="Le socle propose — techniques ATT&amp;CK" className="mb-6">
+              <AssistedTechniques items={incident.assisted_techniques ?? []} />
+            </Card>
+
+            <Card title="Qualification analyste" overline="UC5 — décision humaine" className="mb-6">
+              <VerdictPanel
+                entity={incident.entity}
+                current={incident.verdict}
+                currentComment={incident.verdict_comment}
+              />
+            </Card>
 
             <Card title="Chronologie des détections" noPadding elevated>
               {incident.detections.length === 0 ? (

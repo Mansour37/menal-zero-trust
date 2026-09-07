@@ -38,6 +38,7 @@ comportement honnete tant que ces tables ne l'ont pas aussi) ni a
 06_ECARTS_IMPLEMENTATION.md E22). Sans le parametre, comportement inchange
 (vue globale, MENAL et Elson merges).
 """
+import logging
 from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
@@ -47,6 +48,7 @@ from pydantic import BaseModel, Field
 from app.auth.dependencies import require_role
 from app.bigquery import MITRE_TACTICS, SIGMA_RULES, get_bq_client, table, tenant_services
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/siem", tags=["siem"])
 
 _SEVERITY_WEIGHT = {"CRITICAL": 40, "HIGH": 25, "MEDIUM": 10, "LOW": 5}
@@ -130,6 +132,18 @@ class IncidentOut(BaseModel):
     verdict_comment: str | None
 
 
+class AssistedTechniqueOut(BaseModel):
+    """Technique ATT&CK proposee par la qualification assistee (encodeur
+    ATT&CK-BERT), pour l'incident courant. Le socle PROPOSE ; l'analyste DECIDE
+    (le verdict reste humain, table analyst_verdicts). Ces candidats sont ceux
+    de `alert_enrichment`, dedupliques par technique et tries par similarite."""
+    technique_id: str
+    tactic: str | None
+    similarity: float
+    model_version: str | None
+    status: str | None
+
+
 class IncidentDetailOut(BaseModel):
     entity: str
     score: int
@@ -137,6 +151,10 @@ class IncidentDetailOut(BaseModel):
     tactic_count: int
     chained: bool
     detections: list[DetectionOut]
+    # Qualification assistee : ce que le modele propose a l'analyste avant qu'il
+    # tranche. Vide tant que l'enrichissement (cycle 15 min) n'a pas tourne sur
+    # les detections de l'entite — c'est un etat normal, pas une erreur.
+    assisted_techniques: list[AssistedTechniqueOut]
     verdict: str | None
     verdict_comment: str | None
 
@@ -499,6 +517,39 @@ def get_incident(
     score, chained = _score_incident(len(detections), tactic_count, sev_sum)
     verdict, verdict_comment = _latest_verdicts(client, [entity]).get(entity, (None, None))
 
+    # Qualification assistee : candidats ATT&CK que le modele propose pour cette
+    # entite. On relie les detections de l'entite (meme WHERE, tenant compris) a
+    # `alert_enrichment` via detection_id -> detections.id, on deduplique par
+    # technique et on garde la meilleure similarite. La CTE reutilise `where`
+    # (sans alias : "service" y resout vers detections), donc aucune ambiguite.
+    # Degradation gracieuse : la qualification assistee est un ENRICHISSEMENT.
+    # Si sa requete echoue (schema, quota, table absente), la fiche incident
+    # doit rester lisible — on renvoie une liste vide, pas une 500. Le front
+    # affiche alors "qualification en cours" au lieu de casser.
+    try:
+        assisted_rows = list(client.query(
+            f"""
+            WITH ent_det AS (
+                SELECT id FROM `{table('detections')}` WHERE {where}
+            )
+            SELECT technique_id,
+                   ANY_VALUE(tactic) AS tactic,
+                   MAX(similarity) AS similarity,
+                   ANY_VALUE(model_version) AS model_version,
+                   ANY_VALUE(status) AS status
+            FROM `{table('alert_enrichment')}`
+            WHERE detection_id IN (SELECT id FROM ent_det) AND status = 'mapped'
+            GROUP BY technique_id
+            ORDER BY similarity DESC
+            LIMIT 5
+            """,
+            job_config=bigquery.QueryJobConfig(query_parameters=params),
+        ).result())
+        assisted = [AssistedTechniqueOut(**dict(r)) for r in assisted_rows]
+    except Exception:
+        logger.exception("Qualification assistee indisponible pour l'entite %s", entity)
+        assisted = []
+
     return IncidentDetailOut(
         entity=entity,
         score=score,
@@ -506,6 +557,7 @@ def get_incident(
         tactic_count=tactic_count,
         chained=chained,
         detections=detections,
+        assisted_techniques=assisted,
         verdict=verdict,
         verdict_comment=verdict_comment,
     )

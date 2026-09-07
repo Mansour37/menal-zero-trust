@@ -87,6 +87,17 @@ export interface Incident {
   verdict_comment: string | null;
 }
 
+// Technique ATT&CK proposee par la qualification assistee (encodeur
+// ATT&CK-BERT). Le socle propose, l'analyste decide : ces candidats sont
+// affiches a cote du panneau de verdict, jamais appliques automatiquement.
+export interface AssistedTechnique {
+  technique_id: string;
+  tactic: string | null;
+  similarity: number;
+  model_version: string | null;
+  status: string | null;
+}
+
 export interface IncidentDetail {
   entity: string;
   score: number;
@@ -94,6 +105,9 @@ export interface IncidentDetail {
   tactic_count: number;
   chained: boolean;
   detections: Detection[];
+  // Optionnel : absent des reponses d'une API non encore redeployee, et vide
+  // tant que l'enrichissement n'a pas tourne. Le front gere les deux cas.
+  assisted_techniques?: AssistedTechnique[];
   verdict: Verdict | null;
   verdict_comment: string | null;
 }

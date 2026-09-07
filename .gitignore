@@ -40,3 +40,7 @@ api/Running
 # Poids du modele ML (produits par api/ml-embed/build/, jamais commites)
 api/ml-embed/models/
 api/ml-embed/out/
+
+# Secret admin en clair - ne jamais committer (ajoute le 06/09/2026)
+credentials*.txt
+credentials.txt

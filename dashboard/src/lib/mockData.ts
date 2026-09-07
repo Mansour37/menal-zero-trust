@@ -213,6 +213,11 @@ export function getMockIncidentDetail(entity: string, hours = 24, tenant?: strin
     tactic_count: incident.tactic_count,
     chained: incident.chained,
     detections: getMockDetections(hours, 1000, tenant).filter((d) => d.entity === entity),
+    assisted_techniques: [
+      { technique_id: "T1003.008", tactic: "Credential Access", similarity: 0.71, model_version: "attack-bert-onnx-fp32@v1.0", status: "mapped" },
+      { technique_id: "T1190", tactic: "Initial Access", similarity: 0.66, model_version: "attack-bert-onnx-fp32@v1.0", status: "mapped" },
+      { technique_id: "T1110", tactic: "Credential Access", similarity: 0.62, model_version: "attack-bert-onnx-fp32@v1.0", status: "mapped" },
+    ],
     verdict: incident.verdict,
     verdict_comment: incident.verdict_comment,
   };

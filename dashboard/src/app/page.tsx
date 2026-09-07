@@ -8,6 +8,7 @@ import Sidebar from "@/components/Sidebar";
 import StatsCard from "@/components/StatsCard";
 import Card from "@/components/Card";
 import PageHeader from "@/components/PageHeader";
+import AutoRefresh from "@/components/AutoRefresh";
 import EmptyState from "@/components/EmptyState";
 import RequestsChart from "@/components/charts/RequestsChart";
 import SeverityDonut from "@/components/SeverityDonut";
@@ -81,6 +82,7 @@ export default async function OverviewPage() {
           icon={LayoutDashboard}
           failed={apiFailed}
           demo={usedMock}
+          trailing={<AutoRefresh />}
         />
 
         {apiFailed && (

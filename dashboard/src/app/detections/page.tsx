@@ -6,6 +6,7 @@ import { demoModeAllowed, getMockDetections } from "@/lib/mockData";
 import { Detection } from "@/lib/types";
 import Sidebar from "@/components/Sidebar";
 import PageHeader from "@/components/PageHeader";
+import AutoRefresh from "@/components/AutoRefresh";
 import Card from "@/components/Card";
 import SeverityBadge from "@/components/SeverityBadge";
 import EmptyState from "@/components/EmptyState";
@@ -33,7 +34,12 @@ export default async function DetectionsPage() {
           subtitle="Résultat des règles Sigma (BigQuery, réévaluées toutes les 5 min) mappées MITRE ATT&CK. Distinct des « Alertes API » qui remontent les erreurs HTTP applicatives brutes."
           icon={Radar}
           tone="accent"
-          trailing={<span className="pill mono text-[var(--ink-muted)]">{detections.length} · 24 h</span>}
+          trailing={
+            <span className="inline-flex items-center gap-2">
+              <AutoRefresh />
+              <span className="pill mono text-[var(--ink-muted)]">{detections.length} · 24 h</span>
+            </span>
+          }
           failed={failed}
           demo={usedMock}
         />
