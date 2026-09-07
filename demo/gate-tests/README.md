@@ -34,16 +34,16 @@ bash demo/gate-tests/run-gate-test.sh secret      # (ou sast | pytest | jest | t
 bash demo/gate-tests/run-gate-test.sh clean gate-test/secret-XXduring   # (l'URL/branche est affichée)
 ```
 
-## Runs de blocage capturés (référence démo, 07/09)
+## Runs de blocage capturés (référence démo, 07/09 — pipeline réorganisé)
 
-| Porte | Run rouge |
-|---|---|
-| Secrets (Gitleaks) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34156975237 |
-| SAST (Semgrep) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34157964162 |
-| Tests API (pytest) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34156988890 |
-| Tests dashboard (jest) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34157004008 |
-| CVE image (Trivy) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34157018479 |
+| Porte | Job rouge | Run rouge |
+|---|---|---|
+| Secrets (Gitleaks) | Portes d'analyse — Gitleaks & Semgrep | https://github.com/Mansour37/menal-zero-trust/actions/runs/34162328049 |
+| SAST (Semgrep) | Portes d'analyse — Gitleaks & Semgrep | https://github.com/Mansour37/menal-zero-trust/actions/runs/34162352660 |
+| Tests API (pytest) | Tests API (pytest) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34162365703 |
+| Tests dashboard (jest) | Tests dashboard (jest) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34162380747 |
+| CVE image (Trivy) | Build & scan image API (Trivy) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34162396705 |
 
-> Note : le test **SAST a révélé que la porte Semgrep était cassée** (action dépréciée qui plantait
-> en vert). Réparée dans `app-delivery.yml` (Semgrep diff-aware). Le run ci-dessus est celui d'APRÈS
-> réparation : Semgrep bloque bien le poison.
+> Ces tests ont révélé **2 vrais défauts, corrigés** : (1) la porte **Semgrep** était cassée (action
+> dépréciée qui plantait en vert) → réparée en diff-aware ; (2) **tags d'action mutables** sur les
+> jobs de déploiement → épinglés au SHA. Les runs ci-dessus sont d'APRÈS correction.
