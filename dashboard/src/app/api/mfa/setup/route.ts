@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   const res = await fetch(`${apiUrl()}/auth/mfa/setup`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: "{}",
+    body: new TextEncoder().encode("{}"),
   });
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
