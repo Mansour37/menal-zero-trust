@@ -11,7 +11,8 @@ export async function POST(request: NextRequest) {
   // l'enrôlement MFA échoue avant même d'atteindre l'API (le QR ne s'affiche pas).
   const res = await fetch(`${apiUrl()}/auth/mfa/setup`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Length": "0" },
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: "{}",
   });
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
