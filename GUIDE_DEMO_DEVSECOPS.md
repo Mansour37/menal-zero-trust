@@ -143,3 +143,46 @@ done
 
 Si tout passe : **DevSecOps prêt à filmer** — une chaîne `app-delivery.yml`, Phase 1 (contrôle+scan
 sans déployer) / Phase 2 (déploiement sans clé, par digest), et **chaque porte prouvée bloquante**.
+
+---
+
+## 6. Plan de prise GitHub Actions — écran par écran (ce que tu cliques et filmes)
+
+> Ouvre `github.com/Mansour37/menal-zero-trust` → onglet **Actions** → workflow **App Delivery**
+> (colonne de gauche). Débit calme, curseur visible. ~5 prises courtes.
+
+**PRISE 1 — la chaîne existe (≈8 s)**
+`Actions → App Delivery` : on voit la **liste des runs** (verts sur `main`, l'historique). Dis :
+« voici ma chaîne de livraison, elle tourne à chaque commit ».
+
+**PRISE 2 — Phase 1 : une PR contrôle + scanne, mais ne déploie pas (≈20 s)**
+Ouvre le run **[34156599935](https://github.com/Mansour37/menal-zero-trust/actions/runs/34156599935)**.
+1. Montre le **graphe des jobs** : Security Scans ✅, Unit Tests ✅, Dashboard Unit Tests ✅, Build & Deploy API ✅.
+2. Clique **Build & Deploy API** (colonne gauche) → déroule les étapes :
+   - **Build image (local)** ✅ et **Trivy - CVE Scan** ✅ (vertes) ;
+   - puis **Authenticate to GCP / Push + resolve digest / Deploy to Cloud Run / Smoke Test** →
+     **toutes en gris « skipped »**.
+   Dis : « sur une PR, on construit et on scanne, mais **rien n'est publié ni déployé, et on ne
+   s'authentifie même pas au cloud** ».
+
+**PRISE 3 — une porte bloque (≈15 s)**
+Ouvre un run rouge, p.ex. **Semgrep [34157964162](https://github.com/Mansour37/menal-zero-trust/actions/runs/34157964162)**.
+- Graphe : **Security Scans ❌** ; Build & Deploy = **skipped**.
+- Clique **Security Scans** → l'étape **Semgrep - SAST** est **rouge**.
+Dis : « une vraie faille SAST → la porte échoue → **aucun déploiement** ». (Tu peux enchaîner en
+2 s sur les autres runs rouges du §3 : Gitleaks, pytest, jest, Trivy.)
+
+**PRISE 4 — Phase 2 : fusion `main` → déploiement sans clé, par digest (≈20 s)**
+Ouvre le run **[34156759064](https://github.com/Mansour37/menal-zero-trust/actions/runs/34156759064)**
+→ clique **Build & Deploy API** → déroule :
+- **Authenticate to GCP** ✅ (WIF, aucune clé) ;
+- **Push + resolve digest (sha256)** ✅ → déroule la ligne pour montrer
+  `Deploiement par digest : …menal-api@sha256:33a6b5fd…` ;
+- **Deploy to Cloud Run (par digest)** ✅ ; **Smoke Test (API via LB)** ✅ (200 via le WAF).
+
+**PRISE 5 — preuve terminal 0 clé (≈12 s)**
+Bascule sur le terminal, lance la commande du §2 → **8 lignes à 0 clé**.
+
+> Montage : PRISE 1→2→3 = « la chaîne contrôle et bloque » ; PRISE 4→5 = « et quand ça passe, ça
+> déploie sans clé, par empreinte ». Aucune de ces images n'est mise en scène : tout est cliquable
+> et re-vérifiable par le jury.
