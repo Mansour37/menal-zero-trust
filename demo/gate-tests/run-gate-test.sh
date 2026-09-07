@@ -51,22 +51,22 @@ case "$GATE" in
 secret_key = "${S}"
 api_token  = "${S}"
 EOF
-    TARGET="Gitleaks - Secret Scanning" ; JOB="Portes d'analyse — Gitleaks & Semgrep" ;;
+    TARGET="gitleaks detect — historique complet" ; JOB="2 · Recherche de secrets (Gitleaks)" ;;
   sast)
     cp "$HERE/poison/sast.py.tmpl" api/app/_gate_sast.py
-    TARGET="Semgrep - SAST" ; JOB="Portes d'analyse — Gitleaks & Semgrep" ;;
+    TARGET="semgrep scan — 612 règles, diff-aware" ; JOB="3 · Analyse du code (Semgrep)" ;;
   pytest)
     cp "$HERE/poison/test_gate.py.tmpl" api/tests/test_gate_block.py
-    TARGET="Run API unit tests" ; JOB="Tests API (pytest)" ;;
+    TARGET="pytest — unitaires + contrat d'API" ; JOB="4 · Tests automatisés — API (pytest)" ;;
   jest)
     mkdir -p dashboard/src/__tests__
     cp "$HERE/poison/gate.test.ts.tmpl" dashboard/src/__tests__/gateBlock.test.ts
-    TARGET="Run dashboard unit tests" ; JOB="Tests dashboard (jest)" ;;
+    TARGET="jest — tests unitaires" ; JOB="4 · Tests automatisés — dashboard (jest)" ;;
   trivy)
     # PyYAML 5.3.1 = CVE-2020-14343 (CRITICAL, corrigée en 5.4) : Trivy la voit
     # dans l'image et bloque (fixable, donc non ignorée par --ignore-unfixed).
     echo 'PyYAML==5.3.1  # FAILLE VOLONTAIRE - test porte Trivy (CVE-2020-14343 CRITICAL)' >> api/requirements.txt
-    TARGET="Trivy - CVE Scan (bloquant sur CRITICAL)" ; JOB="Build & scan image API (Trivy)" ;;
+    TARGET="trivy image — CRITICAL corrigeable (BLOQUANT)" ; JOB="6 · Analyse de l'image (Trivy) (api)" ;;
 esac
 
 git add -A
