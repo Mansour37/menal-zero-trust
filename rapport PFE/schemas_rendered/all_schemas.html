@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schema Mermaid - Rapport PFE MENAL Zero Trust</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        h1 { text-align: center; color: #1565C0; }
+        h2 { color: #0D47A1; border-bottom: 2px solid #1565C0; padding-bottom: 5px; margin-top: 40px; }
+        .schema-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 20px; margin: 20px 0; }
+        .schema-title { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 10px; }
+        .schema-desc { color: #666; font-size: 14px; margin-bottom: 15px; }
+        .mermaid { text-align: center; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Schemas Mermaid - Rapport PFE</h1>
+    <p style="text-align:center; color:#666;">Architecture Zero Trust MENAL - Tous les schemas du rapport</p>
+
+    <!-- SCHEMA 1: Architecture globale -->
+    <h2>1. Figure 5 - Architecture globale du socle Zero Trust MENAL</h2>
+    <div class="schema-container">
+        <div class="schema-desc">Architecture en 7 couches (L1-L7) avec plans transversaux (L2, Pipelines)</div>
+        <div class="mermaid">
+graph TB
+    USERS["Utilisateurs / Administrateur / Analyste"]
+    subgraph L1["L1 - EDGE"]
+        L1C["Cloud DNS · Global ALB · Cloud Armor WAF"]
+    end
+    subgraph L3["L3 - Charges de travail - Cloud Run"]
+        APP["Application ELSON"]
+        API_DASH["API FastAPI + Dashboard Next.js"]
+    end
+    subgraph L4["L4 - Reseau prive - VPC"]
+        L4C["Sous-reseaux prives · PSA · Cloud NAT"]
+    end
+    subgraph L6["L6 - ML / Enrichissement Semantique"]
+        ML_EMBED["ml-embed · Cloud Run · ATTACK-BERT · egress AUCUN"]
+        ENRICH["enrich-job · Cloud Run Job"]
+    end
+    subgraph L5["L5 - Donnees"]
+        SQL["Cloud SQL PostgreSQL prive HA PITR"]
+        BQ["BigQuery evenements et detections"]
+    end
+    subgraph L7["L7 - Observabilite"]
+        L7C["Cloud Logging · Monitoring · alertes SLOs"]
+    end
+    subgraph L2["L2 - Identite et securite - transversal"]
+        L2C["IAM · Comptes de service · Secret Manager · KMS · WIF"]
+    end
+    subgraph PIPE["Pipeline DevSecOps"]
+        PIPE_C["GitHub Actions → Semgrep → Trivy → Artifact Registry → Cloud Run"]
+    end
+    subgraph TERRA["Pipeline infrastructure"]
+        TERRA_C["Terraform → scan IaC → approbation → apply etat distant GCS"]
+    end
+    USERS --> L1
+    L1 -->|trafic filtree| L3
+    L3 -->|acces prive| L4
+    L4 -->|interne uniquement| L6
+    L6 --> L5
+    L5 -->|sink de journaux| L7
+    L2 -.->|deploiement| L3
+    PIPE -.->|deploy| L3
+    TERRA -.->|terraform apply| L4
+    style L1 fill:#E3F2FD,stroke:#1565C0
+    style L3 fill:#E3F2FD,stroke:#1565C0
+    style L4 fill:#E3F2FD,stroke:#1565C0
+    style L5 fill:#E3F2FD,stroke:#1565C0
+    style L6 fill:#E3F2FD,stroke:#1565C0
+    style L7 fill:#E3F2FD,stroke:#1565C0
+    style L2 fill:#FFF3E0,stroke:#E65100
+    style PIPE fill:#E8F5E9,stroke:#2E7D32
+    style TERRA fill:#E8F5E9,stroke:#2E7D32
+        </div>
+    </div>
+
+    <!-- SCHEMA 2: Cas d'utilisation -->
+    <h2>2. Figure 4 - Cas d'utilisation du socle Zero Trust</h2>
+    <div class="schema-container">
+        <div class="schema-desc">8 cas d'utilisation avec acteurs legitimes (vert) et hostiles (rouge)</div>
+        <div class="mermaid">
+graph TB
+    A1["A1 - Utilisateur final"]
+    A2["A2 - Analyste securite"]
+    A3["A3 - Administrateur"]
+    A4["A4 - Developpeur"]
+    A5["A5 - Chaine CI"]
+    A6["A6 - Taches automatisees"]
+    H1["H1 - Attaquant opportuniste"]
+    H2["H2 - Attaquant cible"]
+    H3["H3 - Participant fraudeur"]
+    H4["H4 - Attaquant chaine approvisionnement"]
+    H5["H5 - Acteur interne"]
+    UC1["UC1 - Acceder a une application"]
+    UC2["UC2 - Consulter les alertes"]
+    UC3["UC3 - Qualifier une alerte"]
+    UC4["UC4 - Livrer une version"]
+    UC5["UC5 - Modifier l infrastructure"]
+    UC6["UC6 - Detecter comportement suspect"]
+    UC7["UC7 - Enrichir une alerte"]
+    UC8["UC8 - Prioriser les correctifs"]
+    A1 -->|F1| UC1
+    A2 -->|F1| UC2
+    A2 -->|F1| UC3
+    A4 -->|F3| UC4
+    A5 -->|F3| UC4
+    A3 -->|F7| UC5
+    A5 -->|F7| UC5
+    A6 -->|F4| UC6
+    A6 -->|F5| UC7
+    A4 -->|F6| UC8
+    A6 -->|F6| UC8
+    H1 -.->|exploite| UC1
+    H2 -.->|cible| UC1
+    H3 -.->|manipule| UC1
+    H4 -.->|detourne| UC4
+    H5 -.->|acces legitime| UC5
+    style A1 fill:#4CAF50,color:white
+    style A2 fill:#4CAF50,color:white
+    style A3 fill:#4CAF50,color:white
+    style A4 fill:#4CAF50,color:white
+    style A5 fill:#4CAF50,color:white
+    style A6 fill:#4CAF50,color:white
+    style H1 fill:#f44336,color:white
+    style H2 fill:#f44336,color:white
+    style H3 fill:#f44336,color:white
+    style H4 fill:#f44336,color:white
+    style H5 fill:#f44336,color:white
+        </div>
+    </div>
+
+    <!-- SCHEMA 3: Vue dynamique des flux -->
+    <h2>3. Figure 6 - Vue dynamique : les sept flux F1 a F7</h2>
+    <div class="schema-container">
+        <div class="schema-desc">7 flux de donnees traversant l'architecture</div>
+        <div class="mermaid">
+graph TB
+    USER["Utilisateurs externes"]
+    ANALYST["Analyste securite"]
+    ADMIN["Administrateur"]
+    DEV["Developpeur"]
+    CI["Chaine CI"]
+    AUTO["Taches automatisees"]
+    subgraph EDGE["L1 - EDGE"]
+        ARMOR["Cloud Armor WAF + Rate Limit"]
+    end
+    subgraph WL["L3 - Charges de travail"]
+        APP["app-elson"]
+        API["api-platform"]
+        DASH["dash-secu"]
+    end
+    subgraph NET["L4 - Reseau prive"]
+        VPC["VPC - PSA - NAT"]
+    end
+    subgraph ML["L6 - ML Enrichissement"]
+        ML_EMB["ml-embed"]
+        EJ["enrich-job"]
+    end
+    subgraph DATA["L5 - Donnees"]
+        SQL["Cloud SQL"]
+        BQ["BigQuery SIEM"]
+    end
+    subgraph OBS["L7 - Observabilite"]
+        LOG["Cloud Logging"]
+    end
+    USER -->|"F1 acces"| ARMOR
+    ANALYST -->|"F1 supervision"| DASH
+    ARMOR --> APP
+    ARMOR --> DASH
+    APP -->|"F2 donnees"| VPC
+    API -->|"F2 donnees"| VPC
+    VPC --> SQL
+    DEV -->|"F3 livraison"| CI
+    CI -->|"F3 deploy"| APP
+    CI -->|"F3 deploy"| ML_EMB
+    ARMOR -.->|"F4 logs"| LOG
+    APP -.->|"F4 logs"| LOG
+    VPC -.->|"F4 logs"| LOG
+    LOG --> BQ
+    AUTO -->|"F5 detection"| EJ
+    EJ -->|"F5 enrichissement"| ML_EMB
+    EJ -->|"F5 enrichissement"| BQ
+    BQ -->|"F5 stockage"| SQL
+    BQ -->|"F6 feedback"| DASH
+    DASH -.->|"F6 loop"| CI
+    ADMIN -->|"F7 infrastructure"| CI
+    CI -->|"F7 provisionnement"| VPC
+    style USER fill:#F3E5F5,stroke:#6A1B9A
+    style ANALYST fill:#F3E5F5,stroke:#6A1B9A
+    style ADMIN fill:#F3E5F5,stroke:#6A1B9A
+    style DEV fill:#F3E5F5,stroke:#6A1B9A
+    style CI fill:#F3E5F5,stroke:#6A1B9A
+    style AUTO fill:#F3E5F5,stroke:#6A1B9A
+        </div>
+    </div>
+
+    <!-- SCHEMA 4: Vue de deploiement -->
+    <h2>4. Figure 7 - Vue de deploiement : composants GCP et flux</h2>
+    <div class="schema-container">
+        <div class="schema-desc">Composants GCP reels deployes dans le projet menal-prod</div>
+        <div class="mermaid">
+graph TB
+    USERS["Utilisateurs / Administrateur / Analyste"]
+    subgraph GCP["Projet GCP - menal-prod"]
+        subgraph L1["L1 - EDGE"]
+            L1C["Cloud DNS · Global ALB HTTPS · Cloud Armor WAF"]
+        end
+        subgraph L3["L3 - Charges de travail Cloud Run"]
+            APP["Application ELSON Cloud Run"]
+            API["API FastAPI + Dashboard Cloud Run"]
+        end
+        subgraph L4["L4 - Reseau prive VPC"]
+            L4C["Sous-reseaux prives · PSA · Cloud NAT"]
+        end
+        subgraph L6["L6 - ML Enrichissement Semantique"]
+            ML["ml-embed Cloud Run · ATTACK-BERT egress AUCUN"]
+            EJ["enrich-job Cloud Run Job · Scheduler 5min"]
+        end
+        subgraph L5["L5 - Donnees"]
+            SQL["Cloud SQL PostgreSQL prive HA PITR"]
+            BQ["BigQuery evenements detections"]
+        end
+        subgraph L7["L7 - Observabilite"]
+            L7C["Cloud Logging · Monitoring · alertes SLOs"]
+        end
+    end
+    subgraph L2["L2 - Identite et securite transversal"]
+        L2C["IAM · Comptes de service · Secret Manager · KMS · WIF"]
+    end
+    subgraph PIPE["Pipeline DevSecOps"]
+        PIPEC["GitHub Actions WIF · Semgrep · Trivy · Artifact Registry · Cloud Run"]
+    end
+    subgraph TERRA["Pipeline infrastructure"]
+        TERRAC["Terraform fmt validate plan · scan IaC · approbation · apply etat distant GCS"]
+    end
+    USERS --> L1
+    L1 -->|trafic filtree| L3
+    L3 -->|acces prive| L4
+    L4 -->|interne| L6
+    EJ --> ML
+    L6 --> L5
+    L5 -->|sink journaux| L7
+    L2 -.->|deploiement| L3
+    PIPE -.->|deploy| L3
+    TERRA -.->|terraform apply| L4
+    style L1 fill:#E3F2FD,stroke:#1565C0
+    style L3 fill:#E3F2FD,stroke:#1565C0
+    style L4 fill:#E3F2FD,stroke:#1565C0
+    style L5 fill:#E3F2FD,stroke:#1565C0
+    style L6 fill:#E3F2FD,stroke:#1565C0
+    style L7 fill:#E3F2FD,stroke:#1565C0
+    style L2 fill:#FFF3E0,stroke:#E65100
+    style PIPE fill:#E8F5E9,stroke:#2E7D32
+    style TERRA fill:#E8F5E9,stroke:#2E7D32
+        </div>
+    </div>
+
+    <!-- SCHEMA 5: Sequence CI/CD -->
+    <h2>5. Figure 11 - Sequence de la chaine de livraison applicative</h2>
+    <div class="schema-container">
+        <div class="schema-desc">4 portes de securite bloquantes dans la chaine CI/CD</div>
+        <div class="mermaid">
+sequenceDiagram
+    participant D as Developpeur
+    participant G as GitHub
+    participant GH as GitHub Actions
+    participant GL as Gitleaks
+    participant SG as Semgrep
+    participant TV as Trivy
+    participant AR as Artifact Registry
+    participant CR as Cloud Run
+    D->>G: git push
+    G->>GH: Declenchement workflow
+    rect rgb(255, 235, 238)
+        Note over GH,GL: Porte 1 - Secret scanning
+        GH->>GL: Execution Gitleaks
+        alt Secret detecte
+            GL-->>GH: ECHEC
+            GH-->>G: Pipeline bloque
+        end
+    end
+    rect rgb(255, 243, 224)
+        Note over GH,SG: Porte 2 - Analyse statique SAST
+        GH->>SG: Execution Semgrep
+        alt Finding severite ERROR
+            SG-->>GH: ECHEC
+            GH-->>G: Pipeline bloque
+        end
+    end
+    rect rgb(255, 249, 196)
+        Note over GH,TV: Porte 3 - Scan image et dependances
+        GH->>GH: Docker build multi-stage
+        GH->>TV: Trivy scan image
+        GH->>TV: Trivy scan dependances
+        alt CVE CRITICAL detecte
+            TV-->>GH: ECHEC
+            GH-->>G: Pipeline bloque
+        end
+    end
+    GH->>AR: Push image sha256
+    AR-->>GH: Image stockee
+    rect rgb(232, 245, 233)
+        Note over GH,CR: Porte 4 - Deploiement
+        GH->>CR: gcloud run deploy
+        CR-->>GH: Deploie
+        CR-->>D: Notification succes
+    end
+    Note over D,CR: Aucune cle exportee - auth via WIF
+        </div>
+    </div>
+
+    <!-- SCHEMA 6: Sequence Detection -->
+    <h2>6. Figure 16 - Sequence de la chaine de detection</h2>
+    <div class="schema-container">
+        <div class="schema-desc">Flux complet : Collecte → Detection → Enrichissement → Affichage</div>
+        <div class="mermaid">
+sequenceDiagram
+    participant CR as Cloud Run app
+    participant ALB as ALB
+    participant LOG as Cloud Logging
+    participant BQ as BigQuery
+    participant SIGMA as Regles Sigma SQL
+    participant EJ as enrich-job
+    participant ML as ml-embed ATTACK-BERT
+    participant API as api-platform
+    participant DASH as dash-secu
+    rect rgb(227, 242, 253)
+        Note over CR,LOG: F4 - Collecte filtree
+        CR->>LOG: Logs applicatifs
+        ALB->>LOG: Logs requetes et verdicts Cloud Armor
+        LOG->>BQ: Sink_filtre raw_logs
+    end
+    rect rgb(255, 243, 224)
+        Note over BQ,SIGMA: F5 - Detection fenetre 15 min
+        BQ->>SIGMA: Requete planifiee
+        SIGMA->>BQ: Ecrit dans detections
+    end
+    rect rgb(232, 245, 233)
+        Note over BQ,DASH: F5 - Enrichissement semantique
+        EJ->>BQ: Lit siem.detections
+        EJ->>ML: POST /embed texte detection
+        ML-->>EJ: vecteur 768d int8 quantifie
+        EJ->>BQ: Recherche vectorielle cosine similarity 0.60
+        EJ->>BQ: Ecrit dans alert_enrichment
+    end
+    rect rgb(243, 229, 245)
+        Note over API,DASH: F6 - Score et priorisation
+        API->>BQ: Lecture alert_enrichment
+        API->>API: Calcul score incident
+        API-->>DASH: Incidents priorises
+    end
+    Note over CR,DASH: ml-embed ne peut PAS modifier raw_logs ni detections
+        </div>
+    </div>
+
+    <!-- SCHEMA 7: Gantt Planning -->
+    <h2>7. Figure 3 - Diagramme de Gantt : previsionnel vs realise</h2>
+    <div class="schema-container">
+        <div class="schema-desc">Planning du PFE sur 6 mois avec les 6 phases principales</div>
+        <div class="mermaid">
+gantt
+    title Planning du PFE - Previsionnel vs Realise
+    dateFormat  YYYY-MM-DD
+    axisFormat  %d/%m
+    section Conception
+    Audit de l'existant           :a1, 2026-01-20, 14d
+    Etat de l art                 :a2, after a1, 14d
+    Analyse des menaces EBIOS     :a3, after a2, 14d
+    Conception architecture       :a4, after a3, 14d
+    section Infrastructure
+    Terraform fondations          :b1, 2026-03-03, 7d
+    Terraform reseau et donnees   :b2, after b1, 7d
+    Terraform workloads           :b3, after b2, 7d
+    Terraform ML                  :crit, b4, after b3, 14d
+    section Chaine de livraison
+    CI CD applicative             :c1, after b2, 7d
+    CI CD infrastructure          :c2, after b3, 7d
+    Tests de refus                :c3, after c1, 7d
+    section Detection
+    Collecte et BigQuery          :d1, after b3, 7d
+    Regles Sigma SQL              :d2, after d1, 7d
+    section Enrichissement
+    ml-embed ATTACK-BERT          :crit, e1, after d2, 21d
+    enrich-job                    :crit, e2, after e1, 14d
+    Integration score             :e3, after e2, 7d
+    section Validation
+    Campagne de tests T1-T20      :f1, after e3, 14d
+    Mesures et evaluation         :f2, after f1, 7d
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+            sequence: { useMaxWidth: true, actorMargin: 50, mirrorActors: false },
+            gantt: { useMaxWidth: true, fontSize: 12 }
+        });
+    </script>
+</body>
+</html>

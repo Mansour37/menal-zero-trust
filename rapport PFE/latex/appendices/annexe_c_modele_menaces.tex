@@ -1,0 +1,208 @@
+% =============================================================
+% Annexe C — Modèle de menaces détaillé
+% Complément du chapitre 3 : codification des ateliers 1 à 3, échelles,
+% les vingt-quatre scénarios opérationnels rattachés à leur frontière de
+% confiance, la cartographie du risque et les décisions de traitement.
+% La formulation des vingt exigences est dans le corps (§3.5.1).
+% =============================================================
+\chapter{Modèle de menaces détaillé}
+\label{ann:modele-menaces}
+
+Cette annexe porte le détail des ateliers de l'analyse EBIOS Risk Manager du \cref{ch:besoins-menaces} :
+codification, échelles de cotation, vingt-quatre scénarios opérationnels et appréciation du
+risque. Les catégories STRIDE y sont notées S (usurpation d'identité), T (altération), R
+(répudiation), I (divulgation), D (déni de service) et E (élévation de privilège).
+
+\section{Codification, scénarios stratégiques et échelles de cotation}
+
+Le corps du chapitre désigne valeurs métier, biens supports et sources de risque par leur nom ;
+le \cref{tab:codification} donne la codification à laquelle renvoient les colonnes des
+tableaux qui suivent, et le rattachement de chaque valeur métier à ses biens supports.
+
+\begin{longtable}{|P{2.5cm}|P{12.8cm}|}
+\caption[Codification des ateliers 1 à 3]{Codification des valeurs métier, biens supports et sources de risque}
+\label{tab:codification} \\
+\hline
+\textbf{Famille} & \textbf{Codes et désignations} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Famille} & \textbf{Codes et désignations} \\
+\hline
+\endhead
+Valeurs métier & VM1 corpus linguistique constitué · VM2 identités et voix des contributeurs ·
+VM3 intégrité de la compétition · VM4 disponibilité du service · VM5 intégrité des preuves de
+supervision · VM6 crédibilité technique de MENAL \\ \hline
+Biens supports & BS1 base applicative · BS2 entrepôt de supervision · BS3 charges de travail ·
+BS4 chaîne de livraison applicative · BS5 coffre de secrets · BS6 identités et autorisations ·
+BS7 dépôt de code et état de l'infrastructure · BS8 tâche d'enrichissement · BS9 point d'entrée
+public \\ \hline
+Sources de risque & SR1 attaquant opportuniste (A7) · SR2 acteur intéressé par le corpus (A8) ·
+SR3 participant fraudeur (A9) · SR4 chaîne d'approvisionnement logicielle (A10) · SR5 interne ou
+prestataire (A11) · \emph{SR6 acteur étatique organisé --- écarté par décision explicite, hors
+proportion avec les moyens du périmètre} \\ \hline
+Rattachement & VM1 dépend de BS1, BS3, BS4, BS5, BS6 et BS7 · VM2 de BS1, BS5, BS6 et BS7 ·
+VM3 de BS1 et BS6 · VM4 de BS1, BS3, BS4, BS6 et BS9 · VM5 de BS2, BS4, BS6, BS7 et BS8 ·
+VM6 n'a pas de bien support propre : elle est la conséquence transverse de l'atteinte des cinq
+autres \\
+\hline
+\end{longtable}
+
+Le \cref{tab:scenarios-strategiques} donne les sept scénarios stratégiques de l'atelier~3,
+avec leur source de risque, la valeur métier atteinte et la gravité retenue.
+
+\begin{longtable}{|P{1cm}|P{9.0cm}|P{2.8cm}|P{2.2cm}|}
+\caption{Scénarios stratégiques}
+\label{tab:scenarios-strategiques} \\
+\hline
+\textbf{\#} & \textbf{Chemin de haut niveau} & \textbf{Source $\rightarrow$ valeur} & \textbf{Gravité} \\
+\hline
+\endfirsthead
+\hline
+\textbf{\#} & \textbf{Chemin de haut niveau} & \textbf{Source $\rightarrow$ valeur} & \textbf{Gravité} \\
+\hline
+\endhead
+SS1 & Accès direct à la base de données, copie du corpus et des identités & SR2 $\rightarrow$ VM1, VM2 & \textbf{G4} critique \\ \hline
+SS2 & Obtention et téléchargement de l'URL ou du jeton d'export du corpus & SR2 $\rightarrow$ VM1 & \textbf{G4} critique \\ \hline
+SS3 & Détournement de l'identité de déploiement, déploiement non revu & SR4, SR5 $\rightarrow$ VM1, VM4, VM5 & \textbf{G4} critique \\ \hline
+SS4 & Altération ou effacement des journaux et des détections & SR2, SR5 $\rightarrow$ VM5 & G3 grave \\ \hline
+SS5 & Contournement des contrôles applicatifs, classement faussé & SR3 $\rightarrow$ VM3 & G3 grave \\ \hline
+SS6 & Saturation ou détournement d'un service exposé & SR1 $\rightarrow$ VM4 & G2 significative \\ \hline
+SS7 & Divulgation d'un secret permettant de reconstituer des accès légitimes & SR1, SR5 $\rightarrow$ VM1, VM2 & \textbf{G4} critique \\
+\hline
+\end{longtable}
+
+Le \cref{tab:echelles} définit les quatre niveaux de gravité et les quatre niveaux de
+vraisemblance, avec leur critère de classement. La vraisemblance est appréciée à partir de ce qui
+est observé sur des systèmes comparables, non d'une probabilité calculée : le périmètre ne fournit
+pas la base statistique qu'un calcul supposerait.
+
+\begin{table}[htbp]
+\caption{Échelles de gravité et de vraisemblance}
+\label{tab:echelles}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|P{2.5cm}|P{4.75cm}|P{2.8cm}|P{4.75cm}|}
+\hline
+\textbf{Gravité} & \textbf{Critère} & \textbf{Vraisemblance} & \textbf{Critère} \\
+\hline
+G1 Mineure & Gêne interne, sans conséquence externe & V1 Minime & Suppose des moyens ou un accès
+préalable importants \\ \hline
+G2 Significative & Interruption de service ou perte de données limitée et récupérable &
+V2 Significative & Réalisable par un attaquant motivé disposant d'un accès initial limité \\ \hline
+G3 Grave & Perte d'intégrité durable, contestation, perte de confiance & V3 Forte & Régulièrement
+observé sur des systèmes comparables \\ \hline
+G4 Critique & Divulgation de données personnelles ou perte de l'actif principal & V4 Maximale &
+Systématique, observé en continu sur tout service exposé \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Scénarios opérationnels}
+
+Le \cref{tab:scenarios-operationnels} liste les vingt-quatre scénarios opérationnels
+obtenus en appliquant STRIDE aux sept flux, chacun rattaché à la frontière qu'il franchit, à son
+scénario stratégique d'origine et, lorsque c'est possible, à une technique de la matrice MITRE
+ATT\&CK~\cite{mitre_attack} --- qui décrit des comportements observés, non des défauts de
+conception.
+
+\begingroup
+\small
+\setlength{\tabcolsep}{4pt}
+\setlength{\LTpre}{4pt}
+\setlength{\LTpost}{4pt}
+\begin{longtable}{|P{0.8cm}|P{1.3cm}|P{1.1cm}|P{6.7cm}|P{1.6cm}|P{1.1cm}|P{1.2cm}|}
+\caption[Scénarios opérationnels et frontières]{Scénarios opérationnels, rattachés à leur frontière de confiance}
+\label{tab:scenarios-operationnels} \\
+\hline
+\textbf{\#} & \textbf{Flux / TB} & \textbf{STRIDE} & \textbf{Scénario opérationnel} & \textbf{ATT\&CK} & \textbf{G / V} & \textbf{Scén. strat.} \\
+\hline
+\endfirsthead
+\hline
+\textbf{\#} & \textbf{Flux / TB} & \textbf{STRIDE} & \textbf{Scénario opérationnel} & \textbf{ATT\&CK} & \textbf{G / V} & \textbf{Scén. strat.} \\
+\hline
+\endhead
+SO1 & F1 / TB2 & I, E & Exploitation d'une vulnérabilité applicative exposée sur Internet & T1190 & G3 / V3 & SS1 \\ \hline
+SO2 & F1 / TB1 & S & Réutilisation d'identifiants valides obtenus ailleurs & T1078 & G3 / V3 & SS5 \\ \hline
+SO3 & F1 / TB1 & S & Recherche exhaustive de mot de passe sur des comptes existants & T1110 & G2 / V3 & SS5 \\ \hline
+SO4 & F1 / TB1 & D & Saturation du service exposé par un volume de requêtes anormal & T1498/99 & G2 / V3 & SS6 \\ \hline
+SO5 & F1 / TB1 & I & Balayage automatisé de la surface exposée & T1595 & G1 / V4 & SS6 \\ \hline
+SO6 & F2 / TB4 & I & Accès direct à la base de données depuis Internet & T1530 & \textbf{G4} / V2 & SS1 \\ \hline
+SO7 & F2 / \textbf{TB5} & E & Identité de service applicative lisant hors de son périmètre & T1078.004 & G3 / V2 & SS1 \\ \hline
+SO8 & F2 / TB4 & I & Jeton d'accès aux données non lié à une identité, transmissible & T1550 & \textbf{G4} / V2 & SS2 \\ \hline
+SO9 & F3 / \textbf{TB5} & S & Détournement de l'identité de déploiement par une clé exportée & T1552.001 & \textbf{G4} / V2 & SS3 \\ \hline
+SO10 & F3 / \textbf{TB5} & T & Code malveillant via une dépendance ou image de base compromise & T1195.002 & \textbf{G4} / V2 & SS3 \\ \hline
+SO11 & F3 / \textbf{TB5} & E & Déploiement d'un artefact non contrôlé, portes contournées & T1195 & G3 / V2 & SS3 \\ \hline
+SO12 & F3 / \textbf{TB5} & I & Divulgation d'un secret versionné dans le dépôt ou son historique & T1552.001 & \textbf{G4} / V3 & SS7 \\ \hline
+SO13 & F4 / \textbf{TB5} & T & Altération ou suppression de journaux pour dissimuler une action & T1070 & G3 / V2 & SS4 \\ \hline
+SO14 & F4 / \textbf{TB5} & D & Désactivation ou dégradation de la collecte de journaux & T1562 & G3 / V2 & SS4 \\ \hline
+SO15 & F4 / --- & R & Absence de trace permettant d'attribuer une action à un acteur & --- & G3 / V2 & SS4 \\ \hline
+SO16 & F5 / \textbf{TB5} & T & Écriture du composant d'enrichissement dans les tables qu'il analyse & T1070 & G3 / V2 & SS4 \\ \hline
+SO17 & F5 / TB3 & E & Composant d'encodage utilisé comme rebond vers d'autres ressources & T1078.004 & G3 / V1 & SS3 \\ \hline
+SO18 & F5 / TB3 & D & Saturation du composant d'encodage par un volume d'alertes anormal & T1499 & G2 / V2 & SS6 \\ \hline
+SO19 & F6 / --- & T & Falsification du rattachement d'une vulnérabilité pour la déclasser & --- & G2 / V1 & SS3 \\ \hline
+SO20 & F7 / \textbf{TB5} & E & Modification de l'infrastructure sans revue, accès direct au fournisseur & T1098 & \textbf{G4} / V2 & SS3 \\ \hline
+SO21 & F7 / \textbf{TB5} & I, T & Accès en lecture/écriture à l'état de l'infrastructure & T1530 & \textbf{G4} / V2 & SS3, SS7 \\ \hline
+SO22 & F7 / \textbf{TB5} & E & Création d'une identité ou d'un droit par un acteur ayant un premier accès & T1098.001 & \textbf{G4} / V2 & SS3 \\ \hline
+SO23 & Tous / \textbf{TB5} & E & Détournement de ressources de calcul pour un usage illégitime & T1496 & G2 / V2 & SS6 \\ \hline
+SO24 & Tous / TB3 & I & Exfiltration par un canal sortant autorisé, vers une destination indiscernable de la légitime & T1567 & G3 / V2 & SS1, SS2 \\
+\hline
+\end{longtable}
+\endgroup
+
+\textbf{Rattachement des frontières.} La règle --- la frontière retenue est celle que le scénario
+franchit indûment, non celle où se trouve le contrôle qui le traite --- est énoncée au
+\cref{ch:besoins-menaces}. Deux cas appellent une précision. \textbf{SO12} porte sur un
+secret déposé dans le dépôt de code, magasin extérieur au socle : la divulgation n'a lieu à
+l'intérieur d'aucune frontière, mais son exploitation franchit TB5, et c'est elle qui est cotée.
+\textbf{SO16} est rattaché à TB5 bien que la tâche d'enrichissement atteigne l'entrepôt par la
+route privée (F5b) : le magasin visé appartient au plan managé, et le contrôle qui y répond est un
+droit d'écriture, non une règle réseau.
+
+\textbf{Note de version.} Les identifiants renvoient à la version~19 de la matrice ATT\&CK
+(\cref{sec:attck-matrice}), où deux techniques employées ici ont changé de tactique --- T1070 et
+T1562 ---, ce qui conditionne la comparabilité de la couverture du \cref{ch:validation}.
+
+\section{Cartographie et traitement du risque}
+
+\textbf{Cartographie du risque avant traitement}, par croisement gravité $\times$ vraisemblance,
+case par case. \textbf{G4 critique} : SO6, SO8, SO9, SO10, SO20, SO21 et SO22 en V2 ; SO12 en V3.
+\textbf{G3 grave} : SO17 en V1 ; SO7, SO13, SO14, SO15, SO16 et SO24 en V2 ; SO1 et SO2 en V3.
+\textbf{G2 significative} : SO19 en V1 ; SO18 et SO23 en V2 ; SO3 et SO4 en V3. \textbf{G1
+mineure} : SO5 en V4. Toute case non nommée est vide.
+
+\textbf{Lecture.} La zone de risque la plus élevée regroupe huit scénarios, dont sept concernent
+les chaînes de livraison et de provisionnement (F3, F7) ou l'accès direct aux données (F2) ; six
+franchissent TB5 et deux TB4. SO12, seul scénario critique de vraisemblance forte, correspond
+exactement au point bloquant B2 de l'audit du \cref{ch:cadre-existant}. Le
+\cref{tab:decisions-traitement} récapitule la décision retenue pour chaque scénario.
+
+\begin{table}[htbp]
+\caption{Décisions de traitement du risque}
+\label{tab:decisions-traitement}
+\centering
+\scriptsize
+\begin{tabular}{|P{3.0cm}|P{5.7cm}|P{6.6cm}|}
+\hline
+\textbf{Décision} & \textbf{Scénarios} & \textbf{Justification} \\
+\hline
+Réduire & SO1, SO4, SO6 à SO16, SO18, SO20 à SO24 & Traités par des contrôles d'architecture, détaillés au \cref{ch:conception} \\ \hline
+Réduire partiellement & SO2, SO3, SO5 & Le socle limite l'exposition et détecte ; le traitement complet relève du code applicatif, hors périmètre \\ \hline
+Réduire puis accepter le résiduel & SO17, SO19 & Rebond depuis l'encodage sans chemin vers une ressource privée depuis le retrait du composant du réseau ; contrôles posés sur F6 ; résiduel accepté à la date de \dateref{}, décision datée et révisable \\ \hline
+Transférer & --- & Aucun transfert (pas d'assurance ni de sous-traitance de sécurité dans le périmètre) \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Les vingt-quatre scénarios sont rattachés à une décision, sans exception} ; trois
+appellent une précision. \textbf{SO15} --- absence de trace attribuant une action --- relève de la
+réduction au titre de l'exigence EX13, la journalisation d'audit des quatre services porteurs de
+données ; T13 est \emph{partiellement conforme} : ces journaux ne sont acheminés vers aucune
+destination dédiée ni exploités par une règle, de sorte que l'attribution est possible sans être
+incontestable. Pour \textbf{SO17 et SO19}, l'acceptation du résiduel suit les mesures de réduction
+au lieu de s'y substituer : SO17 est réduit au plan réseau et son résiduel est la sortie managée
+du composant d'encodage, dont T14 établit l'étendue ; pour SO19, la condition de réévaluation
+reste une comparaison sur le flux F6, dont le mode opératoire est publié pour qu'un tiers
+l'exécute --- elle n'est pas inscrite au plan de validation continue, qui ne porte que six
+protocoles (T12, T14, T15, T17, T19, T20).

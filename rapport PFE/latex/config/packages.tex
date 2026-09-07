@@ -1,0 +1,125 @@
+% =============================================================
+% packages.tex — Déclaration des paquets
+% Compilation requise : XeLaTeX (fontspec charge la police système
+% "Times New Roman" — installée par défaut sous Windows/MiKTeX).
+% =============================================================
+
+% --- Police et langue ---
+\usepackage{fontspec}
+\usepackage[french]{babel}
+\usepackage{csquotes}
+
+% --- Mise en page ---
+% Recto verso (norme ESPRIT §A.1) : marges symétriques 2,5 cm imposées
+% sur les quatre côtés (pas de fer à reliure asymétrique).
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{chngcntr}
+\usepackage{etoolbox}
+% NB : ni "needspace" ni "emptypage" ne sont installés localement et la
+% machine n'a pas d'accès réseau pour les récupérer (cf. formatting.tex :
+% leurs effets sont reproduits avec des primitives du noyau LaTeX).
+
+% --- Figures, tableaux, graphiques ---
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,calc,fit,backgrounds}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{subcaption}
+% Type de flottant dédié « Graphique » (histogrammes, courbes), numéroté
+% et listé séparément de Fig./Tab., conformément à la norme ESPRIT §C.
+% Ni "float" ni "newfloat" (utilisé en interne par \DeclareCaptionType
+% des versions récentes de "caption") ne sont installés hors ligne : le
+% type de flottant est déclaré à la main avec les primitives du noyau
+% LaTeX, exactement comme \figure et \table le sont dans classes.dtx.
+% Sans compteur "within", la numérotation est continue sur tout le
+% document (pas de remise à zéro par chapitre).
+\makeatletter
+\newcounter{graphique}
+\renewcommand{\thegraphique}{\arabic{graphique}}
+\def\fps@graphique{htbp}
+\def\ftype@graphique{4}
+\def\ext@graphique{lgr}
+\def\fnum@graphique{Graph.~\thegraphique}
+\newenvironment{graphique}{\@float{graphique}}{\end@float}
+\newenvironment{graphique*}{\@dblfloat{graphique}}{\end@dblfloat}
+\newcommand*\l@graphique{\@dottedtocline{1}{1.5em}{2.8em}}
+% \listof{type}{heading} n'existe pas dans le noyau LaTeX2e : c'est en
+% réalité une commande fournie par le paquet "float" (indisponible hors
+% ligne). \listofgraphiques est donc récrite à la main, sur le modèle
+% exact de \listoffigures dans classes.dtx.
+\newcommand{\listgraphiquename}{Liste des graphiques}
+\newcommand\listofgraphiques{%
+  \if@twocolumn
+    \@restonecoltrue\onecolumn
+  \else
+    \@restonecolfalse
+  \fi
+  \chapter*{\listgraphiquename}%
+  \@mkboth{\MakeUppercase\listgraphiquename}{\MakeUppercase\listgraphiquename}%
+  \addcontentsline{toc}{chapter}{\listgraphiquename}%
+  \@starttoc{lgr}%
+  \if@restonecol\twocolumn\fi
+}
+% Les classes standard n'ajoutent pas les listes des figures et des
+% tableaux au sommaire. Les deux redéfinitions ci-dessous les y ajoutent
+% au bon numéro de page, comme la liste des graphiques ci-dessus.
+\renewcommand\listoffigures{%
+  \if@twocolumn
+    \@restonecoltrue\onecolumn
+  \else
+    \@restonecolfalse
+  \fi
+  \chapter*{\listfigurename}%
+  \@mkboth{\MakeUppercase\listfigurename}{\MakeUppercase\listfigurename}%
+  \addcontentsline{toc}{chapter}{\listfigurename}%
+  \@starttoc{lof}%
+  \if@restonecol\twocolumn\fi
+}
+\renewcommand\listoftables{%
+  \if@twocolumn
+    \@restonecoltrue\onecolumn
+  \else
+    \@restonecolfalse
+  \fi
+  \chapter*{\listtablename}%
+  \@mkboth{\MakeUppercase\listtablename}{\MakeUppercase\listtablename}%
+  \addcontentsline{toc}{chapter}{\listtablename}%
+  \@starttoc{lot}%
+  \if@restonecol\twocolumn\fi
+}
+\makeatother
+
+% --- Encadrés (principes clés, alertes, éléments en attente) ---
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+
+% --- Bibliographie ---
+\usepackage[
+  backend=biber,
+  style=numeric,
+  sorting=nyt,
+  maxbibnames=99,
+  urldate=long
+]{biblatex}
+
+% --- Liens et références croisées (chargés en dernier) ---
+% Bibliographie en drapeau : evite l'etirement des URL par la
+% justification et quatre depassements de ligne.
+\appto\bibsetup{\raggedright}
+
+% NB : "microtype" n'est pas installé localement et la machine n'a pas d'accès
+% réseau pour le récupérer (même situation que "needspace" et "emptypage",
+% cf. plus haut ; vérifié le 30/08/2026). Les débordements de ligne sont donc
+% traités par la réserve d'étirement \emergencystretch fixée dans
+% formatting.tex, qui les ramène tous sous le seuil de 10 pt.
+\usepackage{hyperref}
+\usepackage{cleveref}

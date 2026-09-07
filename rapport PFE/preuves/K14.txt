@@ -1,0 +1,22 @@
+==================================================================
+ PREUVE K14
+ Test T1 du pare-feu applicatif — 3x403 + 1x200 (rejeu direct)
+ ---
+ genere le : 2026-08-28 12:36:33 UTC
+ projet    : menal-zero-trust-staging
+ dataset   : menal_security_staging
+==================================================================
+
+Cible : https://elson.menal-sarl.com (pare-feu applicatif Cloud Armor)
+
+[SQLi] charge d injection SQL      -> HTTP 403 (text/html; charset=UTF-8)
+[XSS ] charge de script inter-site -> HTTP 403 (text/html; charset=UTF-8)
+[LFI ] charge d inclusion locale   -> HTTP 403 (text/html; charset=UTF-8)
+[ OK ] requete de controle legitime -> HTTP 200 (text/html; charset=UTF-8)
+
+Attendu : trois 403 (charges refusees au perimetre) puis un 200 (controle).
+
+------------------------------------------------------------------
+ code de retour : 0
+ fin            : 2026-08-28 12:36:35 UTC
+------------------------------------------------------------------

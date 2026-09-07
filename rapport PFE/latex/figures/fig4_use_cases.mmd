@@ -1,0 +1,64 @@
+---
+title: "Figure 4 — Cas d'utilisation du socle Zero Trust"
+---
+graph TB
+    subgraph "Frontière du système"
+        direction TB
+    end
+
+    %% Actors
+    A1["👤 A1 — Utilisateur final"]
+    A2["🔍 A2 — Analyste sécurité"]
+    A3["⚙️ A3 — Administrateur"]
+    A4["💻 A4 — Développeur"]
+    A5["🤖 A5 — Chaîne CI (non humain)"]
+    A6["🔄 A6 — Tâches automatisées (non humain)"]
+
+    H1["⛔ H1 — Attaquant opportuniste"]
+    H2["⛔ H2 — Attaquant ciblé"]
+    H3["⛔ H3 — Participant fraudeur"]
+    H4["⛔ H4 — Attaquant chaîne d'approvisionnement"]
+    H5["⛔ H5 — Acteur interne / prestataire"]
+
+    %% Use Cases
+    UC1["UC1 — Accéder à une\napplication hébergée"]
+    UC2["UC2 — Consulter les alertes\net leur contexte"]
+    UC3["UC3 — Qualifier une alerte\net enregistrer un verdict"]
+    UC4["UC4 — Livrer une nouvelle\nversion d'une application"]
+    UC5["UC5 — Modifier\nl'infrastructure"]
+    UC6["UC6 — Détecter automatiquement\nun comportement suspect"]
+    UC7["UC7 — Enrichir une alerte\nd'un contexte d'attaque"]
+    UC8["UC8 — Prioriser les correctifs\nselon les menaces observées"]
+
+    %% Legitimate actor connections
+    A1 -->|"F1 — accès public"| UC1
+    A2 -->|"F1 — accès supervision"| UC2
+    A2 -->|"F1 — écriture verdict"| UC3
+    A4 -->|"F3 — push code"| UC4
+    A5 -->|"F3 — build & deploy"| UC4
+    A3 -->|"F7 — apply Terraform"| UC5
+    A5 -->|"F7 — pipeline infra"| UC5
+    A6 -->|"F4 — collecte logs"| UC6
+    A6 -->|"F5 — enrichissement"| UC7
+    A4 -->|"F6 — alertes priorisées"| UC8
+    A6 -->|"F6 — boucle détection"| UC8
+
+    %% Hostile actor connections (dashed)
+    H1 -.->|"exploite"| UC1
+    H2 -.->|"cible"| UC1
+    H3 -.->|"manipule"| UC1
+    H4 -.->|"détourne"| UC4
+    H5 -.->|"accès légitime"| UC5
+
+    %% Relationships between use cases
+    UC3 -.->|"référence"| UC6
+    UC8 -.->|"utilise"| UC7
+
+    %% Styling
+    classDef legit fill:#4CAF50,stroke:#2E7D32,color:white,stroke-width:2px
+    classDef hostile fill:#f44336,stroke:#c62828,color:white,stroke-width:2px
+    classDef uc fill:#E3F2FD,stroke:#1565C0,color:#0D47A1,stroke-width:2px
+
+    class A1,A2,A3,A4,A5,A6 legit
+    class H1,H2,H3,H4,H5 hostile
+    class UC1,UC2,UC3,UC4,UC5,UC6,UC7,UC8 uc

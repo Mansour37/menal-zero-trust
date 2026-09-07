@@ -1,0 +1,27 @@
+==================================================================
+ PREUVE K21
+ Alerte R2 du 19/08/2026 — 13 requetes bloquees en 15 min
+ ---
+ genere le : 2026-08-28 12:01:47 UTC
+ projet    : menal-zero-trust-staging
+ dataset   : menal_security_staging
+==================================================================
+
+Source : menal_security_staging.detections_archive_pre_20260824
+(archive figee des detections anterieures au 24/08/2026)
+
++---------------------+---------+----------+----------------+---------------------------------+--------------+-----------------+----------------------------------------------------------------------+
+|   horodatage_utc    | rule_id | severity |     entity     |             service             | mitre_tactic | mitre_technique |                               message                                |
++---------------------+---------+----------+----------------+---------------------------------+--------------+-----------------+----------------------------------------------------------------------+
+| 2026-08-19 04:11:08 | R2      | MEDIUM   | 136.66.70.87   | menal-elson-backend-staging     | TA0040       | T1498           | 15 requetes bloquees par Cloud Armor depuis 136.66.70.87 en 15 min   |
+| 2026-08-19 08:41:04 | R2      | MEDIUM   | 47.251.13.59   | menal-api-backend-staging       | TA0040       | T1498           | 20 requetes bloquees par Cloud Armor depuis 47.251.13.59 en 15 min   |
+| 2026-08-19 09:31:04 | R2      | MEDIUM   | 93.123.109.228 | menal-api-backend-staging       | TA0040       | T1498           | 15 requetes bloquees par Cloud Armor depuis 93.123.109.228 en 15 min |
+| 2026-08-19 16:56:08 | R2      | MEDIUM   | 41.188.105.40  | menal-elson-api-backend-staging | TA0040       | T1498           | 13 requetes bloquees par Cloud Armor depuis 41.188.105.40 en 15 min  |
+| 2026-08-19 22:46:07 | R2      | MEDIUM   | 93.123.109.228 | menal-api-backend-staging       | TA0040       | T1498           | 16 requetes bloquees par Cloud Armor depuis 93.123.109.228 en 15 min |
+| 2026-08-19 22:56:05 | R2      | MEDIUM   | 138.2.102.66   | menal-api-backend-staging       | TA0040       | T1498           | 11 requetes bloquees par Cloud Armor depuis 138.2.102.66 en 15 min   |
++---------------------+---------+----------+----------------+---------------------------------+--------------+-----------------+----------------------------------------------------------------------+
+
+------------------------------------------------------------------
+ code de retour : 0
+ fin            : 2026-08-28 12:01:58 UTC
+------------------------------------------------------------------

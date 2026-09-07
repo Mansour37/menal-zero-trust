@@ -1,0 +1,41 @@
+% =============================================================
+% resume.tex — Résumé en français
+% Équivalent strict de frontmatter/abstract.tex : toute modification
+% ici doit être répercutée à l'identique dans l'abstract anglais.
+% Le résumé et l'abstract partagent une seule page (norme ESPRIT §H,
+% « Résumé / Abstract : 1 page ») : abstract.tex enchaîne sur cette page
+% sans \chapter*, avec un titre de même graisse et de même corps.
+% =============================================================
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+\thispagestyle{plain}
+\vspace*{-10pt}
+
+{\footnotesize
+
+Ce mémoire présente la conception, la réalisation et l'évaluation d'un socle d'hébergement
+sécurisé sur Google Cloud pour MENAL-SARL. Le point de départ est une application pilote sur un
+serveur unique, sans reproductibilité complète ni chaîne de détection. La démarche associe audit
+technique, analyse de risque, vingt exigences vérifiables, architecture Zero Trust,
+infrastructure décrite en code et portes de contrôle DevSecOps bloquantes. Le socle obtenu
+sépare les identités de service, déploie sans clé permanente et exécute sept règles de détection
+sur une collecte filtrée de journaux ; un modèle spécialisé rapproche les alertes des techniques
+MITRE ATT\&CK, hors du score d'incident. Le 19/08/2026, treize requêtes malveillantes d'un
+scénario de bout en bout ont toutes été bloquées en HTTP~403, retrouvées dans les journaux et
+agrégées par la règle R2 quinze minutes plus tard. Le 24/08/2026, une sortie réseau non
+autorisée et une connexion croisée entre locataires ont été refusées et journalisées, les deux
+horodatages se recoupant ; le contrôle d'isolation des données du locataire a réussi six
+vérifications sur six. La restauration de la base a été mesurée à 32~min~45~s, sans perte de
+données. Les limites principales sont la sortie réseau non gouvernée de deux charges de travail
+détachées du sous-réseau, un motif de traversée de chemin encore partiellement filtré, l'instance
+de base de données encore partagée entre locataires et l'absence de mesures complètes de coût et
+de qualité sémantique. Le socle est reproductible et exploitable en recette ; l'apport principal
+n'est pas un composant nouveau mais une méthode : chaque contrôle est associé au test qui en
+démontre l'efficacité, et le mémoire publie les contrôles qui tiennent comme ceux qui ne
+tiennent pas encore.
+
+\par\vspace{4pt}
+\noindent\textbf{Mots-clés :} Zero Trust, DevSecOps, Google Cloud, infrastructure as code,
+SIEM, MITRE ATT\&CK, sécurité multi-locataire.
+
+}

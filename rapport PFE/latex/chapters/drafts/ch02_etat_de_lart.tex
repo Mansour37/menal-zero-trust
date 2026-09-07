@@ -1,0 +1,239 @@
+% =============================================================
+% Chapitre 2 — État de l'art (~7 pages, resserré — cf. sommaire §7.3)
+% Revu le 2026-08-11 (pédagogique + 3 relectures techniques ciblées) :
+% corrections appliquées, citations complétées.
+% =============================================================
+\chapter{État de l'art}
+\label{ch:etat-art}
+
+Ce chapitre pose les fondements théoriques mobilisés dans la suite du rapport. Il ne s'agit
+pas d'un inventaire exhaustif de la littérature Zero Trust --- un travail de recherche plus
+long pourrait lui consacrer un chapitre entier --- mais d'une synthèse ciblée sur les
+notions qui conditionnent directement les choix de conception présentés au
+chapitre~\ref{ch:conception} : les limites du modèle périmétrique, le modèle Zero Trust, la
+sécurisation de la chaîne de livraison logicielle, les approches de détection de menaces, et
+la gouvernance de l'infrastructure par le code.
+
+\section{Limites du modèle de sécurité périmétrique}
+
+Deux repères orientent l'ensemble de ce chapitre et seront précisés progressivement : le
+modèle \emph{Zero Trust}, qui refuse toute confiance accordée à une entité du seul fait de sa
+position réseau, et son corollaire opérationnel, le \emph{principe du moindre privilège} ---
+n'accorder à chaque entité que les droits strictement nécessaires à l'action qu'elle exécute.
+C'est au regard de ces deux repères que les limites du modèle périmétrique, exposées
+ci-dessous, prennent tout leur sens.
+
+Pendant plusieurs décennies, la sécurité des systèmes d'information a reposé sur un modèle
+dit \emph{périmétrique} : un ensemble de pare-feux, de zones démilitarisées et de réseaux
+privés virtuels délimite une frontière entre un extérieur considéré comme hostile et un
+intérieur considéré comme digne de confiance. Une fois cette frontière franchie --- par
+exemple via des identifiants volés --- un attaquant se déplace en général librement vers ses
+cibles, car les communications internes ne sont pas soumises aux mêmes contrôles que les
+communications entrantes.
+
+\textit{Un scénario illustre concrètement cette limite : un poste de travail compromis par
+hameçonnage permet à un attaquant de récupérer les identifiants VPN d'un employé ; une fois
+connecté, il hérite implicitement de la confiance accordée à toute machine \og interne \fg{},
+et peut alors explorer le réseau, identifier des serveurs de bases de données non exposés
+publiquement, et y accéder --- non pas parce que ses droits l'y autorisent explicitement, mais
+parce qu'aucun contrôle supplémentaire ne s'interpose une fois le périmètre franchi.} Ce n'est
+pas un défaut d'implémentation isolé : c'est une conséquence structurelle d'un modèle où la
+confiance est accordée une fois, à l'entrée, plutôt que vérifiée à chaque interaction.
+
+Ce modèle repose sur une hypothèse de plus en plus fragile à mesure que les organisations
+migrent leurs applications vers des plateformes cloud, où la notion même de \og périmètre
+réseau \fg{} perd son sens : les ressources ne sont plus regroupées derrière une frontière
+unique, mais distribuées entre des services managés, des fonctions serverless et des bases
+de données accessibles par API. C'est exactement le contexte dans lequel s'inscrit MENAL :
+une infrastructure entièrement hébergée sur Google Cloud Platform, où aucun \og réseau
+interne \fg{} au sens classique n'existe.
+
+\section{Le modèle Zero Trust et la publication NIST SP 800-207}
+\label{sec:zero-trust-nist}
+
+Le principe Zero Trust renverse l'hypothèse du modèle périmétrique : la position d'une
+entité --- utilisateur, service, machine --- sur le réseau ne lui confère plus aucun crédit
+de confiance, et c'est la légitimité de chaque demande, prise individuellement, qui doit
+être établie au moment où elle se présente \parencite{kindervag2010}.
+
+La publication de référence sur ce sujet est le \emph{NIST Special Publication 800-207,
+Zero Trust Architecture} \parencite{nist800207}, qui formalise l'architecture autour de
+trois composants logiques --- un moteur de politique, un administrateur de politique et des
+points d'application de politique --- et énonce sept principes (\emph{tenets}) fondateurs.
+Trois d'entre eux structurent directement la suite de ce rapport : l'accès à chaque ressource
+est accordé sur une base par session, réévaluée à chaque transaction ; l'authentification et
+l'autorisation sont strictement appliquées de façon dynamique avant tout accès ; et
+l'entreprise surveille en continu l'intégrité et la posture de sécurité de l'ensemble de ses
+actifs. Le principe du moindre privilège n'est pas énoncé comme un tenet séparé dans le
+document, mais il irrigue plusieurs d'entre eux --- notamment l'octroi d'accès restreint au
+strict nécessaire pour accomplir une tâche donnée.
+
+Concrètement, les trois composants logiques de la norme collaborent selon un schéma simple :
+un sujet --- utilisateur ou charge de travail --- adresse une demande d'accès à une ressource ;
+le \emph{moteur de politique} évalue cette demande au regard de la politique en vigueur et des
+signaux disponibles (identité, état de l'équipement, contexte de la requête) et rend une
+décision d'octroi ou de refus ; l'\emph{administrateur de politique} traduit cette décision en
+instruction technique et établit --- ou refuse d'établir --- le chemin de communication ; le
+\emph{point d'application de politique} exécute cette décision en autorisant, surveillant ou
+interrompant la connexion. Aucune étape de ce schéma ne repose sur la localisation réseau du
+sujet.
+
+En complément de NIST SP~800-207, qui formalise l'architecture cible, le \emph{Zero Trust
+Maturity Model} de la CISA \parencite{cisa_zt_maturity_model} propose une grille de progression
+par paliers (traditionnel, initial, avancé, optimal) sur cinq piliers --- identité, appareils,
+réseau, charges de travail applicatives, données. Ce référentiel offre un repère qualitatif
+utile pour situer un projet donné sur une trajectoire de maturité plutôt que sur un état binaire
+conforme/non conforme --- une nuance pertinente pour un socle d'infrastructure qui, comme celui
+de MENAL, applique les principes Zero Trust progressivement plutôt que d'un seul bloc.
+
+Antérieur de plusieurs années à la formalisation NIST et ayant contribué à façonner le
+paradigme Zero Trust au sens large, le projet \emph{BeyondCorp} de Google reste l'expérience
+industrielle la plus documentée de ce modèle : il a permis de supprimer le recours au VPN
+traditionnel pour l'ensemble des accès internes de l'entreprise, en le remplaçant par une
+vérification contextuelle de l'identité et de l'état de l'équipement à chaque requête
+\parencite{beyondcorp2014}.
+
+\begin{keybox}[title=Ce que MENAL retient du NIST SP 800-207]
+Trois éléments de la norme structurent directement la conception présentée au
+chapitre~\ref{ch:conception} --- synthèse de plusieurs tenets et du postulat de compromission
+énoncés par le document, non des citations littérales : la vérification explicite à chaque
+appel (aucune confiance accordée au seul fait d'être \og dans le réseau \fg{}), le principe du
+moindre privilège appliqué par compte de service, et la présomption qu'une partie de
+l'infrastructure peut déjà être compromise --- ce qui justifie la journalisation systématique
+plutôt qu'une confiance a posteriori.
+\end{keybox}
+
+\section{DevSecOps et sécurisation de la chaîne de livraison logicielle}
+
+Le déplacement des contrôles de sécurité vers le début du cycle de développement --- souvent
+résumé par l'expression \emph{« shift left »} \parencite{shiftleft_smith2001} --- répond à un
+constat simple : plus une vulnérabilité est détectée tard dans le cycle de livraison, plus son
+coût de correction est élevé. L'approche DevSecOps consiste à automatiser ces contrôles à
+l'intérieur même du pipeline d'intégration et de déploiement, en les transformant en
+conditions bloquantes de progression plutôt qu'en vérifications réalisées après coup par une
+équipe dédiée. \textit{Concrètement, une porte bloquante refuse par exemple la progression du
+pipeline dès qu'une image contient une dépendance présentant une vulnérabilité connue de
+sévérité critique, plutôt que de se contenter de journaliser cette vulnérabilité pour une revue
+ultérieure.}
+
+Au-delà de ces pratiques ponctuelles de scan, un effort de standardisation plus récent cherche
+à formaliser des niveaux de garantie vérifiables pour l'ensemble de la chaîne de construction
+logicielle. Le cadre \emph{Supply-chain Levels for Software Artifacts} (SLSA), porté par
+l'Open Source Security Foundation, définit une échelle de maturité --- de la simple traçabilité
+du processus de build jusqu'à la génération de provenances signées et vérifiables --- qui
+structure la manière dont un pipeline peut \emph{prouver}, et non simplement affirmer,
+l'intégrité d'un artefact publié \parencite{slsa_framework}.
+
+Plusieurs incidents documentés de la chaîne d'approvisionnement logicielle illustrent que la
+chaîne de livraison est elle-même une cible et non un simple canal de déploiement : la
+compromission d'un pipeline de build pour y insérer du code malveillant avant distribution
+\parencite{cisa_aa20_352a}, la fuite de clés d'accès stockées dans des systèmes de gestion de
+version --- un phénomène mesuré à grande échelle sur les dépôts publics
+\parencite{gitguardian_sprawl} --- et l'utilisation d'images de base obsolètes héritant de
+vulnérabilités déjà connues \parencite{gcp_container_best_practices}. Deux pratiques sont
+particulièrement pertinentes pour ce projet : la fédération d'identité pour l'authentification
+des pipelines (évitant le stockage de clés statiques de longue durée), et l'analyse
+systématique des images et dépendances avant leur publication \parencite{owasp_cicd_top10}.
+
+\section{Détection de menaces : règles statiques et approches sémantiques}
+
+Les systèmes de gestion des informations et des événements de sécurité (SIEM) reposent
+historiquement sur des règles de détection statiques, qui comparent des événements
+journalisés --- isolément ou en séquence sur une fenêtre glissante --- à des signatures ou à
+des motifs connus. Cette approche est efficace pour les menaces déjà répertoriées, mais
+atteint ses limites face à des événements qui ne correspondent à aucune règle existante tout
+en étant sémantiquement proches d'une technique d'attaque documentée --- par exemple dans le
+référentiel MITRE ATT\&CK \parencite{mitre_attack,mitre_attack_design2018}.
+
+Les modèles d'embedding sémantique --- qui transforment un texte en vecteur numérique de
+telle sorte que deux textes proches en sens le soient aussi dans l'espace vectoriel
+\parencite{devlin_bert2019} --- offrent une approche complémentaire : rapprocher un événement
+non couvert par une règle d'une technique d'attaque connue, sur la base d'une similarité de
+sens plutôt que d'une correspondance exacte. Un choix de conception important, développé au
+chapitre~\ref{ch:conception}, est de retenir un modèle d'embedding \emph{non génératif} : la
+sortie est un vecteur déterministe, non un texte produit par un modèle de langage. Ce choix
+supprime le vecteur d'attaque par injection de prompt --- aucune sortie textuelle générée à
+partir du contenu des journaux ne peut être interprétée comme une instruction par le système
+--- sans exclure pour autant une manipulation adversariale du vecteur lui-même, un risque
+distinct traité au chapitre~\ref{ch:conception}. Il facilite également, sans la garantir à lui
+seul, la reproductibilité d'un résultat d'audit : celle-ci suppose en outre que la version du
+modèle et le pipeline de comparaison (seuils de similarité, index de recherche vectorielle)
+restent eux-mêmes figés dans le temps.
+
+Dans la pratique, les deux approches ne s'excluent pas. La littérature sur la détection hybride
+positionne généralement les règles statiques comme un premier filtre à faible coût de calcul,
+et réserve l'évaluation sémantique --- plus coûteuse --- aux seuls événements qui échappent à ce
+premier filtre, plutôt qu'à l'ensemble du flux journalisé. Cette architecture en cascade limite
+le volume d'événements soumis à l'étape la plus coûteuse, tout en conservant la capacité de
+rapprocher un événement inédit d'une technique documentée. Les limites propres à l'approche par
+embedding --- faux positifs, faux négatifs, dérive du modèle face à des techniques non vues à
+l'entraînement --- sont examinées au chapitre~\ref{ch:conception}, au moment où elles peuvent
+être mises en regard des choix de seuils retenus pour MENAL.
+
+\section{Infrastructure as Code et gouvernance}
+
+Décrire l'infrastructure par un code déclaratif et versionné --- plutôt que par des
+opérations manuelles dans une console --- permet de la traiter comme un artefact à part
+entière : revu avant modification, testé, et reproductible de façon quasi identique
+\parencite{iac_morris2020}. Cette pratique répond à deux besoins distincts : la
+\emph{reproductibilité} (un environnement peut être recréé dans un état fonctionnellement
+équivalent, à partir du seul code) et la \emph{détection de dérive} (tout écart entre l'état
+déclaré et l'état réel devient visible au lieu de s'accumuler silencieusement)
+\parencite{hashicorp_drift}. \textit{Un exemple concret de dérive : un opérateur modifie
+manuellement, via la console web du fournisseur cloud, une règle de pare-feu pour débloquer en
+urgence un accès --- une pratique courante lorsqu'un incident presse. Sans détection de dérive,
+cette modification reste invisible dans le code source : le prochain déploiement automatisé
+peut soit l'écraser silencieusement (perte de la correction), soit, si le code n'est jamais
+réappliqué, laisser cette exception non documentée s'accumuler indéfiniment.} Décrire
+l'infrastructure de façon déclarative --- en indiquant l'état voulu plutôt que la séquence
+d'opérations pour l'atteindre --- rend ce type d'écart détectable par simple comparaison entre
+l'état déclaré dans le code et l'état réellement observé sur la plateforme cible.
+
+Cette distinction structure directement le choix, développé au
+chapitre~\ref{ch:conception}, de traiter l'ensemble de l'infrastructure de MENAL comme du
+code Terraform versionné et revu avant application.
+
+\section{Synthèse et positionnement de MENAL}
+
+Le tableau~\ref{tab:positionnement-etat-art} résume, pour cinq critères directement issus des
+sections précédentes, la manière dont chacun des trois modèles couverts par ce chapitre y
+répond : le modèle périmétrique traditionnel, une architecture cloud native générique (qui
+bénéficie des garanties de la plateforme sans les compléter par une démarche Zero Trust
+explicite), et l'architecture Zero Trust retenue pour MENAL.
+
+\begin{table}[htbp]
+\centering
+\caption{Positionnement de l'architecture MENAL face au modèle périmétrique et au cloud natif générique}
+\label{tab:positionnement-etat-art}
+\begin{tabular}{@{}P{5.5cm}P{3cm}P{3cm}P{3.3cm}@{}}
+\toprule
+\textbf{Critère} & \textbf{Architecture périmétrique} & \textbf{Cloud natif générique} & \textbf{Zero Trust MENAL} \\
+\midrule
+Vérification systématique des accès & Non & Partielle & Oui \\
+Moindre privilège, défense en profondeur & Non & Partielle & Oui \\
+Segmentation et limitation des mouvements latéraux & Non & Partielle & Oui \\
+Sécurité intégrée au cycle de déploiement & Non & Oui & Oui \\
+Dashboard SIEM --- détection et investigation d'incidents & Non & Non & Oui \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La colonne \og cloud natif générique \fg{} illustre un point développé au
+\S\ref{sec:zero-trust-nist} : migrer vers le cloud lève une partie des limites du modèle
+périmétrique (§2.1) par construction, mais ne suffit pas à lui seul --- sans démarche Zero
+Trust explicite, la vérification des accès et la segmentation restent partielles, et la
+détection outillée (SIEM) reste absente.
+
+Ces quatre notions --- confiance explicite plutôt qu'implicite, sécurisation de la chaîne de
+livraison, détection hybride règles/sémantique, gouvernance de l'infrastructure par le code
+--- ne sont pas traitées isolément dans ce projet : elles s'articulent autour d'un principe
+transversal détaillé au chapitre~\ref{ch:conception}, celui d'une architecture où chaque
+contrôle de sécurité peut être démontré par un test de contournement, et où les décisions
+d'architecture sont tracées plutôt qu'implicites.
+
+Aucune de ces quatre notions n'est traitée par MENAL comme un absolu binaire : chacune
+correspond à un point d'équilibre choisi, documenté et assumé --- au sens de la grille de
+maturité par paliers évoquée au \S\ref{sec:zero-trust-nist} --- plutôt qu'à une conformité
+totale à un référentiel donné. C'est ce choix, plutôt qu'un état de l'art exhaustif, que le
+chapitre~\ref{ch:conception} traduit en décisions d'architecture concrètes pour MENAL, avant
+que le chapitre~\ref{ch:mise-en-oeuvre} n'en détaille la mise en œuvre effective.

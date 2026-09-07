@@ -1,0 +1,680 @@
+% =============================================================
+% Annexe A — Études comparatives détaillées
+% Alimentée depuis Ch.1 (§1.2.3, §1.3.3) et Ch.2 (§2.3.4, §2.5, §2.6).
+% Les grilles qui portent une justification de choix ont été remontées dans le corps
+% du chapitre 2 ; cette annexe ne conserve que le détail de grille et les sources.
+% =============================================================
+\chapter{Études comparatives détaillées}
+\label{ann:etudes-comparatives}
+
+% --- Blancs autour des flottants, resserrés pour les annexes A à F
+%     (valeurs LaTeX par défaut : 20 pt, 12 pt, 12 pt). Rétablis en fin de
+%     l'annexe~F : le réglage ne sort pas du périmètre de cette équipe. ---
+\setlength{\textfloatsep}{10pt plus 2pt minus 2pt}
+\setlength{\intextsep}{8pt plus 2pt minus 2pt}
+\setlength{\floatsep}{8pt plus 2pt minus 2pt}
+
+
+\section{Audit de l'existant et positionnement (issus du \cref{ch:cadre-existant})}
+\label{ann:etudes-comparatives-ch1}
+
+Cette section porte le détail de ce que le \cref{ch:cadre-existant} condense : le
+positionnement à quinze critères des trois modèles d'architecture comparés
+(\cref{subsec:positionnement-modeles}). La répartition des 41~critères de l'audit du
+29/07/2026 par catégorie et par statut n'y est pas redonnée : elle est portée par la
+\cref{graph:audit-41} du corps, qui la publie en entier --- fonctionnel prêt à 86~\%, technique
+et conformité à 0~\%, sécurité à mi-chemin, portant à la fois les points forts applicatifs et
+les six constats bloquants.
+
+\subsection{Positionnement complet à quinze critères}
+
+Le \cref{tab:positionnement-15-complet} reprend l'intégralité de la comparaison introduite au
+\cref{subsec:positionnement-modeles} entre le modèle A (architecture périmétrique de l'existant),
+le modèle B (hébergement cloud managé sans démarche de sécurité explicite) et le modèle C (socle
+Zero Trust visé par le projet). Les sept premiers critères proviennent des principes Zero
+Trust~\cite{nist800207} ; les critères 8 à 11 reprennent les carences C2 à C4 et l'apport original
+du projet ; les critères 12 à 15 traduisent des contraintes d'ingénierie réelles, sur lesquelles le
+modèle C ne l'emporte pas systématiquement. Légende : \pictoPleinAudit~couvert par conception,
+\pictoPartielAudit~partiellement couvert ou dépendant de la configuration,
+\pictoVideAudit~non couvert.
+
+\begingroup
+\small
+\setlength{\LTpre}{4pt}
+\setlength{\LTpost}{4pt}
+\begin{longtable}{|P{0.7cm}|P{7.6cm}|P{3.0cm}|c|c|c|}
+\caption[Positionnement des trois modèles]{Positionnement complet des trois modèles sur quinze critères}
+\label{tab:positionnement-15-complet}\\
+\hline
+\textbf{\#} & \textbf{Critère} & \textbf{Origine} & \textbf{A} & \textbf{B} & \textbf{C} \\
+\hline
+\endfirsthead
+\hline
+\textbf{\#} & \textbf{Critère} & \textbf{Origine} & \textbf{A} & \textbf{B} & \textbf{C} \\
+\hline
+\endhead
+\hline
+\endfoot
+1 & Vérification explicite de l'identité à chaque requête & NIST SP 800-207 &
+  \pictoVideAudit & \pictoPartielAudit & \pictoPleinAudit \\ \hline
+2 & Aucune confiance accordée à la position réseau & NIST SP 800-207 &
+  \pictoVideAudit & \pictoPartielAudit & \pictoPleinAudit \\ \hline
+3 & Moindre privilège, une identité par charge de travail & NIST SP 800-207 &
+  \pictoVideAudit & \pictoPartielAudit & \pictoPleinAudit \\ \hline
+4 & Micro-segmentation, limitation des mouvements latéraux & NIST SP 800-207 &
+  \pictoVideAudit & \pictoPartielAudit & \pictoPartielAudit \\ \hline
+5 & Hypothèse de compromission : tout est journalisé & NIST SP 800-207 &
+  \pictoVideAudit & \pictoPartielAudit & \pictoPleinAudit \\ \hline
+6 & Collecte, corrélation et conservation des événements & NIST SP 800-207 &
+  \pictoVideAudit & \pictoPartielAudit & \pictoPleinAudit \\ \hline
+7 & Surveillance continue et amélioration & NIST SP 800-207 &
+  \pictoVideAudit & \pictoVideAudit & \pictoPartielAudit \\ \hline
+8 & Infrastructure entièrement décrite en code & Carence C2 &
+  \pictoVideAudit & \pictoVideAudit & \pictoPleinAudit \\ \hline
+9 & Contrôles de sécurité bloquants dans la livraison & Carence C3 &
+  \pictoVideAudit & \pictoPartielAudit & \pictoPartielAudit \\ \hline
+10 & Règles de détection écrites, versionnées et mesurées & Carence C4 &
+  \pictoVideAudit & \pictoVideAudit & \pictoPartielAudit \\ \hline
+11 & Priorisation des vulnérabilités par la menace observée & Apport du projet &
+  \pictoVideAudit & \pictoVideAudit & \pictoPartielAudit \\ \hline
+12 & Coût mensuel d'exploitation & Contrainte projet &
+  \pictoPleinAudit & \pictoPartielAudit & \pictoPartielAudit \\ \hline
+13 & Simplicité initiale, délai de mise en service & Contrainte projet &
+  \pictoPleinAudit & \pictoPartielAudit & \pictoVideAudit \\ \hline
+14 & Mise à l'échelle horizontale & Contrainte projet &
+  \pictoVideAudit & \pictoPleinAudit & \pictoPartielAudit \\ \hline
+15 & Maturité, support éditeur, compétences disponibles & Contrainte projet &
+  \pictoPartielAudit & \pictoPleinAudit & \pictoVideAudit \\
+\end{longtable}
+\endgroup
+
+\textbf{Lecture du tableau.} Les onze premières lignes montrent l'apport du modèle retenu, les
+quatre dernières ce qu'il coûte, et se lisent avec la même attention. Le modèle~C perd sur la
+simplicité initiale (ligne~13), sur la mise à l'échelle (ligne~14, hors objectif du projet) et sur
+la maturité opérationnelle (ligne~15) ; le coût mensuel (ligne~12) n'est comparable qu'en
+apparence, la facturation directe du modèle~A n'intégrant ni sauvegarde externalisée, ni détection,
+ni reprise après incident. Ces trois critères perdus sont ce qui rend les onze autres crédibles, et
+ils sont repris tels quels en \cref{sec:limites}.
+
+\textbf{La ligne~4 appelle une note : son verdict n'a pas bougé, sa raison a changé du tout au
+tout.} Avant la refonte du plan réseau, le modèle~C n'obtenait qu'un \pictoPartielAudit~faute de
+toute segmentation ; celle-ci existe désormais (\cref{subsec:reseau-cible}) et le verdict reste
+pourtant intermédiaire, pour un motif entièrement différent : \textbf{elle s'arrête au plan du
+réseau}. Base de données et entrepôt de supervision demeurent partagés, le pare-feu autorisant
+les deux identités à joindre la même adresse ; l'isolation du plan de la donnée est une
+conception datée et chiffrée, non un état appliqué.
+
+\section{État de l'art et choix technologiques (issus du \cref{ch:etat-art})}
+\label{ann:etudes-comparatives-ch2}
+
+Les grilles qui portent directement une justification de choix figurent dans le corps du
+\cref{ch:etat-art} ; cette annexe ne conserve que ce qui alourdirait le corps sans y ajouter
+d'argument.
+
+\subsection{Comparaison des modes d'exécution}
+\label{ann:modes-execution}
+
+Trois modes d'exécution ont été comparés sur six critères. La conclusion étant déjà portée par le
+\cref{tab:plateforme-10-criteres} et par la décision D01, le tableau en documente ici le seul
+détail : l'exécution de conteneurs sans serveur réduit la charge d'administration et le coût à
+faible trafic, introduit le démarrage à froid mesuré au \cref{ch:validation} et ne donne
+qu'une isolation réseau intermédiaire.
+
+Cette dernière ligne appelle une précision : son motif a changé sans que son verdict bouge. La
+sortie réseau directe a levé la réserve initiale, chaque instance portant désormais une interface
+que les règles nomment (\cref{subsec:reseau-cible}). Le pictogramme reste intermédiaire pour deux
+motifs qui subsistent : le sélecteur disponible est l'étiquette réseau et non le compte de
+service, et trois charges de l'application hébergée partagent un même compte, donc une même
+étiquette, et restent indiscernables pour une règle --- un orchestrateur managé conserve
+l'avantage sur ce seul critère.
+
+\begin{table}[htbp]
+\caption{Comparaison des trois modes d'exécution étudiés}
+\centering
+\scriptsize
+{Légende : \pictoPleinAudit~favorable, \pictoPartielAudit~intermédiaire, \pictoVideAudit~défavorable.
+\par\smallskip}
+\begin{tabular}{|P{6.1cm}|P{3.0cm}|P{3.0cm}|P{3.0cm}|}
+\hline
+\textbf{Critère} & \textbf{Machines virtuelles} & \textbf{Orchestrateur managé} &
+\textbf{Conteneurs sans serveur} \\
+\hline
+Charge d'administration & \pictoVideAudit & \pictoVideAudit & \pictoPleinAudit \\ \hline
+Coût à faible trafic & \pictoPartielAudit & \pictoVideAudit & \pictoPleinAudit \\ \hline
+Système de fichiers persistant & \pictoPleinAudit & \pictoPleinAudit & \pictoVideAudit \\ \hline
+Isolation réseau fine & \pictoPartielAudit & \pictoPleinAudit & \pictoPartielAudit \\ \hline
+Tâches longues & \pictoPleinAudit & \pictoPleinAudit & \pictoPartielAudit \\ \hline
+Démarrage à froid & \pictoPleinAudit & \pictoPleinAudit & \pictoVideAudit \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Alternatives évaluées puis écartées, couche par couche}
+\label{ann:alternatives-couches}
+
+Cet inventaire complète le \cref{tab:briques-structurantes} de la section suivante : pour chacune des six couches, il
+nomme les alternatives réellement évaluées avant la brique retenue. Il est publié ici parce qu'il
+relève du matériel de reproduction --- il permet de refaire le choix --- et non de
+l'argumentation, portée par le corps.
+
+{\small\noindent
+\emph{N1a} --- deux autres grands fournisseurs de cloud, un fournisseur européen généraliste,
+deux hébergeurs à forfait ; le réseau par défaut ou partagé, le connecteur d'accès sans serveur,
+le mandataire filtrant en sortie, le point de terminaison privé ; orchestrateur de conteneurs
+managé, machines virtuelles, fonctions à la demande ; répartiteur régional, filtrage
+auto-hébergé. \emph{N1b} --- identité unique partagée et droits au niveau du projet, clé de
+compte de service exportée, agent et coffre auto-hébergés, chiffrement géré par le fournisseur,
+module matériel de sécurité, fournisseur d'identité externe, facteur résistant à l'hameçonnage.
+\emph{N1c} --- image mono-étage ou minimale, registre public ou auto-hébergé, cadre synchrone
+classique, application monopage, migrations à la main. \emph{N1d} --- trois autres familles de
+bases, les quatre autres modèles de supervision du \cref{tab:supervision-cinq}, deux ordonnanceurs
+externes, disque local, agent de collecte tiers. \emph{N1e} --- format de règles neutre avec
+moteur de conversion, moteur du fournisseur, modèle de chaîne d'attaque, modèle généraliste,
+pondération de termes sans apprentissage de domaine, modèle génératif, inférence managée.
+\emph{N1f} --- service d'intégration du fournisseur, moteur auto-hébergé, autre analyseur de
+secrets, analyseur commercial, analyseurs d'images concurrents.\par}
+
+\subsection{Sources et réserves de la comparaison d'hébergement}
+\label{ann:etudes-comparatives-plateforme}
+
+Les paliers gratuits (critères 1 et 3 du \cref{tab:plateforme-10-criteres}) et les implantations
+régionales (critère 4) reposent sur la documentation publique des fournisseurs, consultée le
+27/08/2026 : paliers gratuits et régions de Google
+Cloud~\cite{gcp_free_tier,gcp_regions_zones}, régions d'Amazon Web Services~\cite{aws_regions},
+implantations de Hetzner~\cite{hetzner_locations} et régions de Scaleway~\cite{scaleway_regions}.
+Les colonnes \og{}Azure\fg{} et \og{}OVH\fg{} n'ont pas pu être sourcées à cette date, les pages de
+documentation correspondantes étant dynamiques et inaccessibles depuis l'environnement de travail ;
+leurs valeurs relèvent donc de la connaissance générale de l'auteur et non d'une vérification
+documentaire.
+
+Les deux réserves méthodologiques annoncées au \cref{sec:plateforme-criteres} trouvent ici leur
+justification documentaire : aucune mesure de latence depuis Nouakchott n'ayant été conduite, le
+critère~4 est apprécié à partir des seules implantations régionales publiées ci-dessus ; et les
+grilles tarifaires n'ayant pas été relevées à une date unique ni pour un dimensionnement identique,
+le critère~2 est apprécié à partir des modèles de facturation, non de prix mesurés.
+
+\section{Inventaire technologique détaillé des trente-trois briques}
+\label{ann:fiche-versions}
+
+Cette annexe porte l'inventaire complet dont le \cref{sec:trente-trois-briques} ne publie que la
+synthèse par couche. Elle se compose de deux tableaux qui décrivent \textbf{les mêmes
+trente-trois briques dans le même ordre} et se lisent ligne pour ligne : le premier donne, pour
+chacune, le critère qui a décidé de son adoption et le prix payé pour elle ; le second, la version
+ou le paramètre retenu et le mode de verrouillage de cette version. Les deux colonnes décisives
+sont respectivement le prix payé --- un avantage sans contrepartie nommée n'est pas un arbitrage
+--- et le mode de verrouillage --- une version connue ne dit rien de la reproductibilité si rien
+n'empêche la valeur de changer seule.
+
+\subsection{Critère décisif et prix payé, brique par brique}
+\label{ann:briques-detail}
+
+Le rôle de chaque brique est porté par son libellé, le produit étant nommé entre parenthèses à sa
+première occurrence.
+
+\begingroup
+% NB : la taille est imposee a 8 pt par \AtBeginEnvironment{longtable}{\scriptsize}
+% (config/formatting.tex) ; toute declaration de taille posee ici serait sans effet.
+\setlength{\tabcolsep}{2pt}
+\renewcommand{\arraystretch}{0.92}
+\setlength{\LTpre}{2pt}
+\setlength{\LTpost}{2pt}
+\begin{longtable}{|P{3.50cm}|P{5.10cm}|P{6.90cm}|}
+\caption{Les trente-trois briques structurantes, par couche : critère décisif et prix payé}
+\label{tab:briques-structurantes}\\
+\hline
+\textbf{Brique et rôle} & \textbf{Critère décisif} & \textbf{Prix payé} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Brique et rôle} & \textbf{Critère décisif} & \textbf{Prix payé} \\
+\hline
+\endhead
+\hline
+\endfoot
+\multicolumn{3}{|l|}{\textbf{N1a --- Socle et infrastructure : huit briques}} \\ \hline
+Fournisseur de cloud public unique (Google Cloud) : support de l'ensemble du socle, dans une
+région européenne unique &
+Seul à réunir dans un même service le stockage, le langage de détection et la recherche
+vectorielle (\cref{sec:plateforme-criteres}) &
+Réversibilité perdue, coût direct supérieur à un forfait, aucune région en Afrique de
+l'Ouest \\ \hline
+
+Infrastructure décrite en code (Terraform, 16~modules) : provisionnement, reproductibilité,
+détection de dérive &
+Maturité de l'écosystème de modules et portabilité de la description &
+Langage déclaratif : toute logique conditionnelle passe par des compteurs, moins lisibles qu'un
+langage général. L'état est un actif à protéger que le code ne décrit pas, et un plan ciblé peut
+inclure des remplacements destructifs sans rapport \\ \hline
+
+Exécution de conteneurs sans serveur (Cloud Run, D01) : support des cinq services et des trois
+tâches &
+Aucun système d'exploitation à durcir ni cluster à exploiter --- décisif sous contrainte
+mono-opérateur &
+Démarrage à froid mesuré : environ deux secondes sur l'API, 94~s au centile~99 sur le service
+d'encodage, ce qui a imposé de recalibrer le budget de la sonde. Aucune charge à état, aucune
+tâche longue \\ \hline
+
+Réseau privé virtuel en mode personnalisé : un sous-réseau par locataire, accès privé aux
+données, refus par défaut dans les deux sens &
+Contrôle explicite des plages et refus par défaut \textbf{en entrée et en sortie}, chaque
+autorisation étant nominative : aucune règle d'autorisation ne comporte de plage source, ce qui
+serait de la confiance de zone &
+Trois sous-réseaux et douze règles là où l'ancien plan en déclarait deux et quatre : les refus
+croisés croissent comme le carré du nombre de locataires, ce qui borne la conception à trois ou
+quatre. Et le sélecteur demeure l'\textbf{étiquette réseau}, la plateforme n'exposant pas le
+compte de service au niveau des interfaces de sortie : la frontière est opposable à une charge de
+travail compromise, \textbf{non à un opérateur capable de déployer} \\ \hline
+
+Sortie réseau directe : interface réseau attachée à chaque instance dans le sous-réseau de son
+locataire, en remplacement du connecteur d'accès sans serveur (D15, bascule service par service
+du 12 au 15/08/2026) &
+C'est ce qui rend le pare-feu applicable aux charges de travail : sans adresse dans un
+sous-réseau, aucune règle ne peut les désigner, ni comme source ni comme cible, et un refus par
+défaut en sortie resterait une déclaration sans effet &
+Chaque instance active consomme une adresse du sous-réseau, là où le connecteur en immobilisait
+seize quel que fût le trafic : une montée en charge imprévue peut épuiser un \texttt{/26}. Le
+rattachement de l'interface intervient au démarrage de l'instance, donc dans le chemin du
+démarrage à froid. Enfin le socle \textbf{perd un objet observable} : les interfaces sont
+éphémères et ne se donnent à voir que par les journaux de flux \\ \hline
+
+Accès privé aux services managés : connexion à la base sans adresse publique &
+Élimine structurellement l'exposition de la base &
+Plage allouée automatiquement par le fournisseur, non maîtrisée dans la description ; le module
+de base n'est pas réinstanciable en l'état, le pairage étant câblé à l'intérieur \\ \hline
+
+Répartiteur de charge applicatif global : point d'entrée public unique, terminaison du
+chiffrement, routage par nom d'hôte vers quatre services &
+Point d'entrée unique = point de contrôle unique ; certificats gérés et renouvelés par le
+fournisseur &
+La gestion avancée du trafic --- pondération, mise en miroir, politiques de réessai --- n'est pas
+disponible dans la variante retenue. L'entrée des services étant restreinte à ce seul chemin, la
+garantie repose sur un contrôle unique, sans défense en profondeur \\ \hline
+
+Filtrage applicatif managé au bord (Cloud Armor) : refus des charges d'attaque connues,
+limitation de débit, restriction géographique &
+Aucun composant à exploiter ; règles maintenues par le fournisseur ; application uniforme aux
+quatre points d'entrée, sans exception &
+Cinq familles de règles retenues sur onze disponibles, à la sensibilité la plus basse :
+arbitrage explicite entre faux positifs et évasions --- quatre motifs sur cinq bloqués au test
+réel du 19/08/2026. Aucune protection adaptative : le seuil anti-saturation est fixe \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{N1b --- Identité, secrets et chiffrement : six briques}} \\ \hline
+Gestion des identités et des accès du fournisseur : sept identités de service, droits au moindre
+privilège, aucun rôle primitif &
+Une identité par charge de travail : c'est ce qui remplace les pare-feux internes (PR2) &
+Plusieurs liaisons demeurent à l'échelle du projet là où une portée par ressource serait possible ;
+la granularité par instance n'existe pas pour la base ; et aucune politique d'organisation ne
+rend la règle préventive (É7) --- elle est tenue par discipline, vérifiée par inventaire \\ \hline
+
+Fédération d'identité pour la chaîne de livraison (D08) : authentification de la chaîne sans clé
+permanente, sous condition de dépôt et de branche &
+Supprime la classe de risque au lieu de la gérer : il n'y a pas de clé à faire fuir &
+Dépendance à la forge logicielle comme émetteur d'assertion : sa compromission devient un chemin
+d'accès. La restriction de branche tient par une condition d'attribut, non par la liaison
+elle-même \\ \hline
+
+Coffre de secrets managé : neuf secrets, un par usage, injectés par référence dans les services &
+Chiffrement par clé gérée et liaison d'accès \textbf{par secret}, jamais au niveau du projet &
+Dépendance réseau à l'exécution pour un secret, là où le montage natif était disponible ; un
+secret subsiste hors clé gérée, vestige d'une interface antérieure dont le retrait est
+planifié \\ \hline
+
+Service de gestion de clés, chiffrement par clés gérées : entrepôt, secrets et espace média ;
+rotation à 90~jours &
+Contrôle de la rotation et de la révocation, exigé par la nature des données de l'application
+hébergée &
+Niveau de protection logiciel et non matériel ; le chiffrement de l'entrepôt n'est pas
+rétroactif ; il est structurellement inapplicable à la base, le champ étant immuable après
+création \\ \hline
+
+Authentification applicative par jeton signé et rôles (D10) : contrôle d'accès à l'API de
+supervision, trois rôles, vérification route par route &
+Aucune dépendance externe ; le rôle devient visible dans la signature de chaque point d'entrée,
+donc auditable en lecture &
+Aucun mécanisme de révocation : un jeton reste valide jusqu'à son expiration après une
+déconnexion ou un changement de rôle, et l'état actif d'un compte n'est vérifié qu'à
+l'émission \\ \hline
+
+Second facteur par code temporel à usage unique : renforcement de l'accès au tableau de bord ;
+secret chiffré au repos &
+Standard ouvert, vérifiable hors ligne, sans dépendance ni coût par usage &
+Pas de résistance à l'hameçonnage ; aucun code de secours, donc la perte du terminal exige une
+intervention en base ; le secret est protégé par un chiffrement applicatif dont la clé unique
+sans version interdit toute rotation \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{N1c --- Exécution, conteneurisation et applications : six briques}} \\ \hline
+Conteneurisation multi-étage, utilisateur non privilégié, base épinglée par empreinte : format de
+livraison de tous les services &
+Surface réduite et image finale débarrassée des outils de construction, ce qui a permis
+d'éliminer une vulnérabilité critique en retirant le gestionnaire de paquets &
+Construction plus longue et fichiers de description plus complexes ; la mise à jour de la base
+épinglée redevient un geste manuel à chaque publication \\ \hline
+
+Registre d'images privé du fournisseur (D07) : stockage des artefacts déployés &
+Un registre unique : deux registres constituent deux surfaces de chaîne d'approvisionnement et
+une ambiguïté sur la source de vérité &
+Aucune immuabilité d'étiquette déclarée, aucune politique de nettoyage, et l'analyse de
+vulnérabilité reste externe à la plateforme --- l'image y est publiée avant d'être
+analysée \\ \hline
+
+Cadre applicatif à validation typée pour l'API : vingt et un points d'entrée, unique accès aux
+données de sécurité &
+Validation déclarative en entrée \textbf{et} contrat de sortie forcé : le contrôle d'accès
+devient visible dans la signature de chaque point d'entrée &
+Aucun bénéfice de l'asynchronisme, les pilotes retenus étant synchrones. Aucune version portée
+par les points d'entrée ; la documentation d'interface demeure publique \\ \hline
+
+Cadre web à rendu serveur pour le tableau de bord (D14) : douze vues, sept routes serveur &
+Le jeton d'authentification reste côté serveur et n'est jamais lisible par un script client
+--- propriété de sécurité, pas de confort &
+Rendu dynamique à chaque requête, aucune mise en cache statique ; démarrage à froid au-delà de
+dix secondes, qui impose d'y maintenir une instance active ; couverture de tests de
+3,00~\% au 28/08/2026 \\ \hline
+
+Accès à la base par connecteur applicatif chiffré : liaison entre l'API et la base &
+Tunnel chiffré mutuellement authentifié vers l'adresse privée : c'est le plus strict des trois
+modes disponibles &
+Dépendance à une bibliothèque cliente supplémentaire et à un pilote purement interprété, donc
+synchrone --- c'est ce pilote qui interdit l'asynchronisme de la ligne précédente \\ \hline
+
+Outil de migration de schéma versionné : évolution du schéma relationnel de la plateforme &
+Le schéma devient reconstructible depuis le dépôt --- réponse directe au constat bloquant B5 de
+l'audit &
+Aucune automatisation dans la chaîne : les migrations de la plateforme sont déclenchées à la
+main, là où l'application hébergée les exécute par une tâche avant déploiement \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{N1d --- Données et entrepôt de supervision : cinq briques}} \\ \hline
+Base relationnelle managée, haute disponibilité régionale (D03, D13) : comptes, rôles, journal
+d'audit applicatif, données de l'application hébergée &
+Restauration à un instant donné et bascule régionale sans exploitation à charge --- décisif
+sous contrainte mono-opérateur, et mesuré à 32~min~45~s pour zéro perte le 03/08/2026 &
+Instance de gamme d'entrée facturée au tarif haute disponibilité ; chiffrement par clés gérées
+structurellement impossible ; \textbf{une seule instance partagée entre les locataires} \\ \hline
+
+Entrepôt de données généraliste comme système de supervision (BigQuery, D04) : dix tables ---
+journaux normalisés, détections, enrichissement, vulnérabilités, verdicts &
+Seule option offrant stockage, langage de détection \textbf{et} recherche vectorielle dans le
+même service, sans base spécialisée (D06) &
+Ni règles, ni interface, ni corrélation, ni support fournis : trois chantiers à construire.
+Plafond de règles maintenables par une personne. Poste de coût dominant, avec un minimum
+forfaitaire par table balayée. Aucun index vectoriel déployé : chaque recherche parcourt tout le
+référentiel \\ \hline
+
+Requêtes planifiées de l'entrepôt comme ordonnanceur : douze exécutions, cinq normalisations et
+sept règles de détection &
+Aucun composant supplémentaire : l'ordonnancement vit là où vivent les données (PR1), et le
+moteur d'orchestration a été retiré après soixante exécutions en échec consécutives &
+Cadence plancher de cinq minutes imposée par le service ; aucune dépendance entre exécutions,
+donc aucune garantie d'ordre ; les seuils sont figés dans les requêtes \\ \hline
+
+Stockage objet avec prévention d'accès public et clés gérées : espace média de l'application
+hébergée &
+L'application d'origine écrivait sur le disque local, ce qui interdisait toute mise à l'échelle
+et toute reprise : c'était le constat bloquant B6 &
+Aucun versionnement d'objet, aucune règle de cycle de vie : une suppression accidentelle est
+irréversible \\ \hline
+
+Collecte de journaux et exports vers l'entrepôt : quatre exports déclarés en code, filtrage à la
+source &
+Filtrage \textbf{au moment de la collecte} et non après stockage : c'est le levier de coût
+principal (besoin BNF3) &
+Trois exports sur quatre filtrent réellement ; celui du répartiteur ingère la totalité du trafic
+et reste le poste de coût dominant. La liste des services collectés étant explicite, un service
+oublié disparaît de la supervision sans erreur visible. Les journaux d'accès aux données restent
+dans l'espace par défaut, à conservation modifiable \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{N1e --- Détection et enrichissement sémantique : quatre briques}} \\ \hline
+Règles de détection versionnées, écrites dans le dialecte de l'entrepôt : sept règles R1 à R7,
+fenêtre glissante, déduplication, étiquetage par technique &
+Aucun moteur de conversion ne cible ce dialecte : la traduction manuelle évite une dépendance
+de conversion pour sept règles (verrou V2) &
+Aucune portabilité vers un autre système de supervision, aucun accès au corpus communautaire,
+et un plafond de couverture lié au volume maintenable par une personne --- six techniques et
+cinq tactiques sur quinze \\ \hline
+
+Référentiel de techniques d'attaque (MITRE ATT\&CK) : vocabulaire commun conception-détection,
+grille de couverture, cible de l'enrichissement &
+Seul référentiel qui fournit à la fois un vocabulaire de détection et un catalogue textuel
+encodable &
+Le dénominateur est la matrice intégrale, qui couvre des systèmes absents du périmètre : tout
+taux rapporté à ce dénominateur est structurellement bas, ce qui conduit le mémoire à publier
+l'inventaire nominatif des techniques plutôt qu'un pourcentage \\ \hline
+
+Modèle de représentation de phrases spécialisé en cybersécurité (D05) : encodage des détections
+et des techniques en vecteurs comparables &
+Représentation par phrase entraînée sur le vocabulaire du domaine ; \textbf{et surtout}, un
+modèle qui produit un vecteur n'exécute aucune instruction, là où soumettre des journaux à un
+modèle génératif transmettrait une entrée contrôlée par l'attaquant à un composant qui suit des
+instructions &
+Aucune explication en langue naturelle ; poids d'environ 440~mégaoctets embarqués dans l'image ;
+consommation mémoire au pic de l'ordre de 900~mégaoctets ; qualité non établie sur des alertes
+courtes et bruitées (verrou V3) \\ \hline
+
+Moteur d'inférence embarqué, exécution sur processeur généraliste : service d'encodage interne,
+sans sortie publique et sans droit sur l'entrepôt &
+Exécution locale et déterministe, sans appel externe ni coût par appel, et sans transmission de
+données de sécurité à un tiers &
+Démarrage à froid de 94~s au pic, qui a imposé de recalibrer le budget de la sonde de
+disponibilité ; l'export quantifié a été testé puis rejeté sur mesure, donc les poids restent
+en précision flottante simple \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{N1f --- Chaîne de livraison et chaîne de provisionnement : quatre
+briques}} \\ \hline
+Forge logicielle et son moteur d'exécution (GitHub Actions) : porte la chaîne de livraison
+applicative (F3) et la chaîne de provisionnement de l'infrastructure (F7) &
+Intégration native avec la fédération d'identité, qui supprime la clé permanente &
+Les actions réutilisées sont référencées par étiquette mobile : une redirection d'étiquette
+ferait exécuter un code différent sans qu'une ligne du dépôt change \\ \hline
+
+Détection de secrets versionnés (Gitleaks, D09) : première porte bloquante de la chaîne &
+Coût quasi nul, gain élevé, et \textbf{placement en tête de chaîne} : un secret est compromis
+dès sa publication, le détecter tôt déclenche la rotation pendant qu'elle sert encore &
+Jeu de règles par défaut, non spécialisé au domaine ; résultats disponibles dans les journaux
+de la chaîne uniquement, sans format d'échange normalisé \\ \hline
+
+Analyse statique du code (Semgrep) : deuxième porte bloquante &
+Exécutable localement, jeu de règles ouvert, exclusions justifiables ligne à ligne plutôt que
+globalement &
+Le jeu de règles distant évolue : le verdict pouvait varier à version d'outil identique, ce qui
+a imposé un verrouillage de version. Sept exclusions nominatives à maintenir \\ \hline
+
+Analyse de vulnérabilité des images et de la configuration (Trivy) : troisième porte bloquante,
+sur les deux chaînes, avec restitution du rapport dans la supervision (F6) &
+\textbf{Un seul outil couvre les images et la description d'infrastructure} : un composant en
+moins, application directe de PR1 &
+Aucune génération de nomenclature logicielle ni de signature d'artefact, alors que l'outil en
+est capable : deux familles de contrôle restent découvertes (décision D07). Les vulnérabilités
+sans correctif amont sont ignorées \\
+\end{longtable}
+\endgroup
+
+\subsection{Version retenue et mode de verrouillage}
+\label{ann:versions-detail}
+
+Le \cref{tab:fiche-versions} donne, brique par brique et dans l'ordre du tableau précédent, la
+version ou le paramètre retenu et le \textbf{mode de verrouillage}. Les valeurs ont été relevées le \textbf{28/08/2026}, à deux exceptions signalées en
+cellule : empreintes des images de base (19/08/2026) et version de l'analyseur statique
+(24/08/2026).
+
+\emph{Verrouillé} : un
+fichier de verrouillage suivi dans le dépôt fige la valeur. \emph{Épinglé} : la valeur est écrite
+dans le code, lisible et revue, mais rien n'en atteste l'intégrité. \emph{Étiquette mobile} : la
+valeur change sans qu'une ligne du dépôt soit modifiée. \textbf{Une seule ligne est dépourvue de
+version relevable}, en fin de tableau : la configuration de l'environnement de recette --- chemins
+protégés, services collectés, adresses d'administration exemptées --- est portée par un fichier de
+valeurs exclu du dépôt, qui contient des décisions de sécurité et aucun secret. Son versionnement
+est la mesure de reproductibilité la plus rentable qu'ait identifiée le relevé.
+
+\begingroup
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.0}
+\setlength{\LTpre}{4pt}
+\setlength{\LTpost}{4pt}
+\begin{longtable}{|P{3.4cm}|P{7.5cm}|P{4.4cm}|}
+\caption[Fiche de version des briques structurantes]{Fiche de version des trente-trois briques structurantes et mode de verrouillage}
+\label{tab:fiche-versions}\\
+\hline
+\textbf{Brique} & \textbf{Version ou paramètre retenu} & \textbf{Verrouillage} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Brique} & \textbf{Version ou paramètre retenu} & \textbf{Verrouillage} \\
+\hline
+\endhead
+\hline
+\endfoot
+\multicolumn{3}{|l|}{\textbf{N1a --- Socle et infrastructure}} \\ \hline
+Fournisseur de cloud public unique &
+Projet unique, région \texttt{europe-west1} &
+Épinglé (variables de la racine d'environnement) \\ \hline
+Infrastructure décrite en code &
+Outil \texttt{>= 1.7} (borne basse seule) ; fournisseurs de ressources 5.45.2, aléatoire 3.9.0,
+forge 6.13.0 &
+Fournisseurs verrouillés par fichier versionné ; l'outil n'a pas de borne haute \\ \hline
+Exécution de conteneurs sans serveur &
+Deuxième génération exclusivement ; sortie intégrale vers le sous-réseau du locataire, sortie
+managée pour les deux charges détachées ; entrée limitée au répartiteur &
+Épinglé (type de ressource et paramètres codés dans le module) \\ \hline
+Réseau privé virtuel personnalisé &
+Trois sous-réseaux en /26, deux occupés ; accès privé aux services du fournisseur ; douze règles de
+pare-feu et refus par défaut en priorité 65534 en entrée comme en sortie
+(\cref{subsec:reseau-cible}) ; journaux de flux échantillonnés à 0,1, métadonnées exclues &
+Épinglé \\ \hline
+Sortie réseau directe &
+Une interface par instance dans le sous-réseau de son locataire ; sortie \texttt{ALL\_TRAFFIC} ;
+une étiquette réseau par compte de service &
+Épinglé (sous-réseau et étiquette codés dans le module). La solidarité entre l'étiquette et le
+compte de service tient à leur déclaration dans le même bloc, donc à une convention d'écriture et
+non à un contrôle ; la bascule vers le sélecteur par compte de service est prévue par une variable
+du module \\ \hline
+Accès privé aux services managés &
+Plage réservée de longueur /16 &
+Partiellement épinglé : préfixe déclaré, adresse de début choisie par le fournisseur \\ \hline
+Répartiteur de charge global &
+Variante classique ; profil de chiffrement moderne, version minimale de transport 1.2 ; trois
+certificats gérés &
+Épinglé \\ \hline
+Filtrage applicatif managé &
+Neuf règles ; cinq jeux de signatures en version \texttt{v33-stable}, sensibilité 1 ; seuils de
+10 et de 1000 requêtes par 60~s &
+Épinglé quant au nom de version ; contenu des signatures maintenu par l'éditeur, non
+lisible \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{N1b --- Identité, secrets et chiffrement}} \\ \hline
+Gestion des identités et des accès &
+Sept identités de service ; aucun rôle primitif ; aucune clé exportée &
+Épinglé (liaisons déclarées en code) \\ \hline
+Fédération d'identité de la chaîne &
+Condition d'attribut portant sur le dépôt \emph{et} sur la branche \texttt{refs/heads/main} &
+Épinglé \\ \hline
+Coffre de secrets managé &
+Neuf secrets, huit sous clé gérée &
+Épinglé ; versions de secret référencées par \texttt{latest}, donc mobiles \\ \hline
+Service de gestion de clés &
+Deux clés ; rotation à 90 jours ; niveau de protection logiciel &
+Épinglé \\ \hline
+Authentification par jeton signé et rôles &
+Algorithme de signature figé en constante ; durée de vie 60~min ; jeton intermédiaire 5~min sans
+rôle &
+Épinglé dans le code applicatif \\ \hline
+Second facteur par code temporel &
+Standard RFC~6238 ; secret de 160~bits ; fenêtre de dérive d'un pas &
+Épinglé \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{N1c --- Exécution, conteneurisation et applications}} \\ \hline
+Conteneurisation multi-étage, utilisateur non privilégié &
+Bases épinglées par empreinte : \texttt{sha256:a116514e\ldots} (interpréteur Python 3.12),
+\texttt{sha256:fb4cd12c\ldots} (exécution Node 20), \texttt{sha256:2c941e86\ldots} (service
+d'encodage) --- relevé le 19/08/2026 &
+Verrouillé par empreinte dans les fichiers de construction versionnés \\ \hline
+Registre d'images privé &
+Format conteneur, région \texttt{europe-west1} ; aucune étiquette immuable déclarée &
+Épinglé quant au registre ; artefacts de l'application hébergée référencés par étiquette
+mobile \\ \hline
+Cadre applicatif de l'API &
+Couche d'accès aux données 2.0.36 ; dépendances figées &
+Verrouillé par fichier de dépendances versionné \\ \hline
+Cadre web du tableau de bord &
+14.2.35 &
+Verrouillé : l'installation se fait à partir du fichier de verrouillage versionné \\ \hline
+Connecteur applicatif chiffré vers la base &
+Type d'adresse privé imposé ; réserve de 5 connexions, débordement de 2, recyclage à 1800~s &
+Épinglé \\ \hline
+Outil de migration de schéma &
+Trois révisions linéaires, de \texttt{001} à \texttt{003} &
+Verrouillé par fichier versionné : les révisions vivent dans le dépôt \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{N1d --- Données et entrepôt de supervision}} \\ \hline
+Base relationnelle managée &
+PostgreSQL 15 ; classe de machine à cœur partagé ; haute disponibilité régionale ; retour à un
+instant donné sur 7 jours ; 100 connexions &
+Épinglé \\ \hline
+Entrepôt de supervision &
+Un jeu de données, dix tables ; partitionnement par jour ; expiration à 90 jours sur les deux
+tables de journaux &
+Épinglé \\ \hline
+Requêtes planifiées comme ordonnanceur &
+Douze exécutions à cadence de cinq minutes ; fenêtre glissante de quinze minutes &
+Épinglé \\ \hline
+Stockage objet &
+Accès uniforme au niveau du dépôt, prévention d'accès public appliquée, clé gérée régionale &
+Épinglé \\ \hline
+Collecte de journaux et exports &
+Quatre exports ; identité d'écriture unique par export ; tables partitionnées &
+Épinglé \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{N1e --- Détection et enrichissement sémantique}} \\ \hline
+Règles de détection versionnées &
+Sept règles, R1 à R7, définies dans un module unique &
+Verrouillé par fichier versionné \\ \hline
+Référentiel de techniques d'attaque &
+Version 19 (28/04/2026), quinze tactiques &
+Consigné dans le mémoire ; le chargement du catalogue ne fige aucune version dans le code \\ \hline
+Modèle de représentation de phrases &
+Export en précision flottante simple, étiquette \texttt{v1.0}, 768 dimensions, seuil de
+similarité 0,60 &
+Épinglé et vérifié à l'exécution : la tâche refuse de s'exécuter hors développement sur
+l'étiquette d'un substitut \\ \hline
+Moteur d'inférence embarqué &
+Exécution sur processeur généraliste ; deux gibioctets de mémoire ; budget de démarrage de
+150~s &
+Épinglé \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{N1f --- Chaîne de livraison et chaîne de provisionnement}} \\ \hline
+Forge logicielle et moteur d'exécution &
+Actions de récupération du dépôt, d'authentification et de déploiement en \texttt{v4} et
+\texttt{v2} &
+Étiquette mobile --- dette reconnue, écartée nominativement de l'analyse statique, justification
+écrite \\ \hline
+Détection de secrets versionnés &
+Action de forge \texttt{v2} ; jeu de règles par défaut &
+Étiquette mobile \\ \hline
+Analyse statique du code &
+1.173.0 ; jeu de règles par défaut de l'éditeur ; sept exclusions nominatives --- relevé le
+24/08/2026 &
+Épinglé pour l'outil ; le jeu de règles est distant et mobile \\ \hline
+Analyse de vulnérabilité des images et de la configuration &
+Action de forge \texttt{v0.36.0} ; blocage sur criticité maximale corrigeable &
+Épinglé \\ \hline
+
+\multicolumn{3}{|l|}{\textbf{Paramétrage transverse des briques ci-dessus}} \\ \hline
+Configuration de l'environnement de recette (chemins protégés, services collectés, adresses
+d'administration) &
+--- &
+Non versionné : fichier de valeurs exclu du dépôt bien qu'il ne contienne aucun secret \\
+\end{longtable}
+\endgroup
+
+\medskip
+
+\begin{alertbox}[boxsep=1pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+\textbf{Ce que le verrouillage des versions ne verrouille pas.} Épingler la version d'un outil
+d'analyse ne fige pas le \textbf{jeu de règles distant} qu'il télécharge à l'exécution, comme
+l'établit le décompte de règles chargées les 20 et 24/08/2026 à version d'outil identique
+(\cref{sec:chaine-livraison}) : la chaîne est reproductible quant aux \emph{outils} qu'elle
+exécute, non quant aux \emph{critères} qu'ils appliquent. Le contrôle compensatoire est la
+conservation des journaux d'exécution, qui portent le nombre de règles évaluées ; le seuil de
+bascule serait l'hébergement du jeu de règles dans le dépôt. Le raisonnement vaut aussi pour les
+signatures du filtrage applicatif et les versions de secret référencées par étiquette mobile.
+\end{alertbox}

@@ -1,0 +1,148 @@
+% =============================================================
+% Chapitre 1 — Contexte, entreprise et problématique (~5.5 pages)
+% =============================================================
+\chapter{Contexte, entreprise et problématique}
+\label{ch:contexte}
+
+\section{Présentation de MENAL et du service d'accueil}
+
+MENAL-SARL est une société de droit mauritanien, également implantée en France, fondée en
+2025 et spécialisée dans les services informatiques, les technologies numériques et la
+fourniture de solutions IT. L'entreprise accompagne les acteurs publics et privés dans leur
+transformation numérique, en particulier sur les enjeux de digitalisation, de sécurité des
+systèmes d'information et de gestion des infrastructures, avec l'ambition de devenir un
+acteur de référence en Mauritanie dans le domaine des technologies de l'information.
+
+Son activité s'articule autour de deux axes complémentaires. D'une part, des services
+informatiques couvrant l'ensemble du cycle de vie des systèmes d'information : conception
+et déploiement d'architectures cloud (Google Cloud Platform, AWS), mise en place de
+solutions sécurisées selon les approches DevSecOps et Zero Trust, développement
+d'applications web et d'API sécurisées, conception et industrialisation de pipelines de
+données, intégration de solutions de supervision et de monitoring, ainsi qu'audit,
+sécurisation et optimisation de systèmes existants. D'autre part, la fourniture de
+matériels et de solutions informatiques clés en main : équipements (serveurs, postes de
+travail, matériel réseau), installation, déploiement d'infrastructures et maintenance.
+MENAL-SARL se positionne ainsi comme un prestataire global, assurant un accompagnement de
+bout en bout, de la conception à l'exploitation.
+
+\begin{keybox}[title=Lien avec le PFE]
+Le présent projet s'inscrit directement dans cet axe stratégique : il répond à la volonté
+de MENAL de développer des solutions cloud sécurisées, à travers la conception et le
+déploiement d'une architecture Zero Trust sur Google Cloud Platform, intégrant des
+pipelines de données, une API sécurisée et une application web, selon une approche
+DevSecOps.
+\end{keybox}
+
+\begin{attentedoc}
+Présentation du \emph{service d'accueil} encore manquante : équipe, mission du service,
+positionnement dans l'organigramme de MENAL. Le guide pédagogique demande explicitement de
+\emph{« se focaliser sur une présentation personnelle du service dans lequel a été effectué
+le projet »} --- ce volet ne peut pas être rédigé à partir du seul document de présentation
+générale de l'entreprise déjà fourni.
+\end{attentedoc}
+
+\section{Contexte du stage et mission confiée}
+
+Le stage s'inscrit dans une démarche de MENAL visant à héberger plusieurs applications
+métier sur une infrastructure Google Cloud Platform (GCP) unique, mutualisée et sécurisée.
+L'application \textbf{ELSON}, plateforme éducative de crowdsourcing, sert d'application
+exemple pour valider concrètement le socle : c'est un cas réel plutôt qu'un scénario de
+laboratoire abstrait.
+
+\begin{keybox}[title=Périmètre du projet]
+Le périmètre du PFE porte sur le \textbf{socle d'hébergement} --- point d'entrée, identité,
+exécution des services, réseau, données, enrichissement par IA, supervision --- et sur la
+\textbf{chaîne de livraison DevSecOps} qui l'alimente. Le code applicatif interne d'ELSON
+est explicitement hors périmètre : seule sa capacité à être hébergée par le socle est
+étudiée.
+\end{keybox}
+
+\todo{Décrire précisément le rôle tenu durant le stage : conception, implémentation, tests
+--- avec des exemples concrets de tâches réalisées personnellement (cf. guide pédagogique,
+exigence de \og description des tâches quotidiennes \fg{}).}
+
+\section{Problématique}
+\label{sec:problematique}
+
+Deux constats motivent ce travail. D'une part, un modèle de sécurité fondé sur la confiance
+accordée au réseau interne devient difficile à justifier dès lors que les applications sont
+hébergées dans le cloud et que la chaîne de livraison logicielle constitue elle-même une
+cible. D'autre part, la conformité à un modèle de sécurité (Zero Trust, DevSecOps) est
+souvent \emph{déclarée} sur la base d'un schéma d'architecture, sans qu'elle soit
+effectivement démontrée par des tests.
+
+La problématique retenue pour ce PFE est formulée comme suit :
+
+\begin{quote}
+\itshape
+Comment concevoir et déployer, avec les moyens et le calendrier d'un projet de fin
+d'études, un socle d'hébergement conforme aux principes Zero Trust (NIST SP~800-207) où
+chaque contrôle de sécurité peut être \textbf{prouvé par un test de contournement qui
+échoue} plutôt qu'affirmé sur plan, tout en conservant un projet réaliste --- simplicité
+assumée, coûts maîtrisés, écarts entre conception et implémentation documentés plutôt que
+masqués ?
+\end{quote}
+
+\begin{attentedoc}
+Formulation à confirmer avec l'encadrant académique et l'encadrant entreprise avant de la
+figer --- elle conditionne la cohérence de l'introduction générale et de la conclusion.
+\end{attentedoc}
+
+\section{Étude de l'existant}
+\label{sec:etude-existant}
+
+Contrairement à un projet décisionnel qui remplace un système d'information existant, ce
+projet ne remplace pas un logiciel : il construit un socle là où aucun n'existait.
+\emph{« L'existant »} désigne donc ici l'état des pratiques de sécurité et d'hébergement
+avant le socle, tel que documenté par l'audit de sécurité préalable de l'application ELSON.
+
+\subsection{Description de l'existant}
+
+Avant le projet, chaque application est déployée et sécurisée au cas par cas, sans garantie
+de cohérence entre applications. ELSON, première application destinée à être hébergée sur le
+socle, a fait l'objet d'un audit de sécurité préalable qui a mis en évidence une dette
+technique caractéristique d'un environnement construit sans socle commun. Aucun mécanisme de
+détection ou de corrélation d'événements de sécurité n'existe avant ce projet, et
+l'infrastructure existante n'est pas décrite en code.
+
+\subsection{Critique de l'existant}
+
+Cinq manques structurent directement les objectifs retenus pour ce PFE (§\ref{sec:objectifs}) :
+
+\begin{itemize}
+  \item des secrets mal gérés, sans gestion centralisée ;
+  \item l'absence de séparation d'identité par service, rendant possible une élévation de
+        privilège implicite ;
+  \item l'absence de détection --- aucune visibilité sur les menaces avant le projet ;
+  \item l'absence de reproductibilité --- une infrastructure non versionnée, donc non
+        reconstructible de façon fiable en cas d'incident ;
+  \item l'absence de modèle multi-tenant --- impossible d'accueillir une deuxième application
+        sans dupliquer tout l'effort de sécurisation.
+\end{itemize}
+
+Chacun de ces constats motive directement l'un des cinq premiers objectifs du projet, détaillés
+en §\ref{sec:objectifs} (cf. cahier des charges §2.2, objectifs O1 à O5 --- le sixième
+objectif, O6, relève de la valeur pédagogique de la soutenance et non d'un manque technique de
+l'existant).
+
+\section{Objectifs du PFE}
+\label{sec:objectifs}
+
+\begin{enumerate}
+  \item Concevoir une architecture cible conforme aux principes Zero Trust (NIST
+        SP~800-207) et documenter chaque décision d'architecture dans un registre dédié.
+  \item Mettre en place une chaîne de livraison DevSecOps avec des portes de sécurité
+        bloquantes (secrets, analyse statique, vulnérabilités des images).
+  \item Déployer un système de détection (SIEM) enrichi par un modèle sémantique non
+        génératif reliant les vulnérabilités détectées dans le pipeline aux techniques
+        d'attaque effectivement observées.
+  \item Valider l'architecture par un plan de tests de contournement démontrant chaque
+        contrôle de sécurité annoncé.
+  \item Documenter, sans les masquer, les écarts entre l'architecture visée et
+        l'architecture réellement déployée.
+\end{enumerate}
+
+\section{Démarche et plan du rapport}
+
+\todo{Paragraphe de transition annonçant les chapitres 2 à 5 --- à rédiger une fois la
+structure définitive validée (cf. \texttt{00\_SOMMAIRE\_PFE\_MENAL.md}).}

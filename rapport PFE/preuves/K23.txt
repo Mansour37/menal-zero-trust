@@ -1,0 +1,25 @@
+==================================================================
+ PREUVE K23
+ Faux vert de la porte SAST le 16/08 (Semgrep 0 regle)
+ ---
+ genere le : 2026-08-28 11:20:36 UTC
+ projet    : menal-zero-trust-staging
+ dataset   : menal_security_staging
+==================================================================
+
+Execution CI : 31969797991 (16/08/2026, « CI - Build & Deploy », VERTE)
+Source : journaux de la forge logicielle
+
+Conclusion de l etape d analyse de securite :
+  Security Scans -> success
+
+Ce que la porte verte cachait (Semgrep n a evalue aucune regle) :
+2026-08-16T20:11:18.3463195Z === Running: SEMGREP_RULES="p/default" semgrep ci
+2026-08-16T20:11:19.6157547Z Traceback (most recent call last):
+2026-08-16T20:11:19.6177488Z     raise ValueError(f"invalid rule severity value: {value}")
+2026-08-16T20:11:19.6178079Z ValueError: invalid rule severity value: MEDIUM
+
+------------------------------------------------------------------
+ code de retour : 0
+ fin            : 2026-08-28 11:20:40 UTC
+------------------------------------------------------------------

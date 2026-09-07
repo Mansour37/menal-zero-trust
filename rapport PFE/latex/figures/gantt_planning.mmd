@@ -1,0 +1,41 @@
+---
+title: "Figure 3 — Diagramme de Gantt : prévisionnel vs réalisé"
+---
+gantt
+    title Planning du PFE — Prévisionnel vs Réalisé
+    dateFormat  YYYY-MM-DD
+    axisFormat  %d/%m
+
+    section Conception
+    Audit de l'existant           :a1, 2026-01-20, 14d
+    État de l'art & référentiels  :a2, after a1, 14d
+    Analyse des menaces (EBIOS)   :a3, after a2, 14d
+    Conception architecture       :a4, after a3, 14d
+
+    section Infrastructure
+    Terraform - fondations        :b1, 2026-03-03, 7d
+    Terraform - réseau & données  :b2, after b1, 7d
+    Terraform - workloads         :b3, after b2, 7d
+    Terraform - ML                :crit, b4, after b3, 14d
+
+    section Chaîne de livraison
+    CI/CD applicative             :c1, after b2, 7d
+    CI/CD infrastructure          :c2, after b3, 7d
+    Tests de refus                :c3, after c1, 7d
+
+    section Détection
+    Collecte & BigQuery           :d1, after b3, 7d
+    Règles Sigma/SQL              :d2, after d1, 7d
+
+    section Enrichissement
+    ml-embed (ATT&CK-BERT)        :crit, e1, after d2, 21d
+    enrich-job                    :crit, e2, after e1, 14d
+    Intégration score             :e3, after e2, 7d
+
+    section Validation
+    Campagne de tests T1-T20      :f1, after e3, 14d
+    Mesures & évaluation          :f2, after f1, 7d
+
+    section Réalisé (écarts)
+    Généralisation du socle       :crit, g1, 2026-05-04, 10d
+    Report journalisation réseau  :done, g2, 2026-05-11, 5d

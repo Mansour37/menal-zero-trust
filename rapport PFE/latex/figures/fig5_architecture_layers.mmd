@@ -1,0 +1,88 @@
+---
+title: "Figure 5 — Architecture globale du socle Zero Trust MENAL"
+---
+graph TB
+    %% Top: Users
+    USERS["👤 Utilisateurs / Administrateur / Analyste"]
+
+    %% L1 - EDGE
+    subgraph L1["L1 — EDGE"]
+        direction LR
+        L1_CONTENT["Cloud DNS · Global ALB (HTTPS) · Cloud Armor (WAF, rate limiting)"]
+    end
+
+    %% L3 - Workloads
+    subgraph L3["L3 — Charges de travail (Cloud Run)"]
+        direction LR
+        APP["Application ELSON"]
+        API_DASH["API FastAPI + Dashboard Next.js\nSA2 / SA3"]
+    end
+
+    %% L4 - Network
+    subgraph L4["L4 — Réseau privé (VPC)"]
+        direction LR
+        L4_CONTENT["Sous-réseaux privés · PSA · Cloud NAT · refus par défaut"]
+    end
+
+    %% L6 - ML
+    subgraph L6["L6 — ML / Enrichissement Sémantique"]
+        direction LR
+        ML_EMBED["ml-embed\n(Cloud Run · ATTACK-BERT · egress : AUCUN)"]
+        ENRICH["enrich-job (Cloud Run Job)\nCloud Scheduler (toutes les 5 min)"]
+    end
+
+    %% L5 - Data
+    subgraph L5["L5 — Données"]
+        direction LR
+        SQL["Cloud SQL PostgreSQL\nprivé · HA · PITR"]
+        BQ["BigQuery\nevenements / détections"]
+    end
+
+    %% L7 - Observability
+    subgraph L7["L7 — Observabilité"]
+        direction LR
+        L7_CONTENT["Cloud Logging · Monitoring · alertes / SLOs · uptime checks"]
+    end
+
+    %% L2 - Identity (transversal, on the side)
+    subgraph L2["L2 — Identité et sécurité (transversal)"]
+        direction TB
+        L2_CONTENT["IAM · Comptes de service · Secret Manager\nCloud KMS · WIF"]
+    end
+
+    %% Pipelines (on the side)
+    subgraph PIPE_CICD["Pipeline DevSecOps"]
+        direction TB
+        PIPE_CICD_CONTENT["GitHub Actions → Semgrep (SAST) → Trivy →\nArtifact Registry → Cloud Run"]
+    end
+
+    subgraph PIPE_INFRA["Pipeline infrastructure"]
+        direction TB
+        PIPE_INFRA_CONTENT["Terraform fmt/validate/plan → scan IaC →\napprobation → apply (état distant GCS)"]
+    end
+
+    %% Main flow
+    USERS --> L1
+    L1 -->|"trafic filtré"| L3
+    L3 -->|"accès privé"| L4
+    L4 -->|"interne uniquement"| L6
+    L6 --> L5
+    L5 -->|"sink de journaux"| L7
+
+    %% L2 connects to L3
+    L2 -.->|"déploiement"| L3
+
+    %% Pipelines connect to L3
+    PIPE_CICD -.->|"déploiement"| L3
+    PIPE_INFRA -.->|"provisionnement"| L4
+
+    %% Styling
+    classDef mainLayer fill:#E3F2FD,stroke:#1565C0,color:#0D47A1,stroke-width:2px
+    classDef sideLayer fill:#FFF3E0,stroke:#E65100,color:#BF360C,stroke-width:2px
+    classDef pipeline fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20,stroke-width:2px
+    classDef user fill:#F3E5F5,stroke:#6A1B9A,color:#4A148C,stroke-width:2px
+
+    class USERS user
+    class L1,L3,L4,L5,L6,L7 mainLayer
+    class L2 sideLayer
+    class PIPE_CICD,PIPE_INFRA pipeline

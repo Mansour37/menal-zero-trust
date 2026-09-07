@@ -1,0 +1,21 @@
+==================================================================
+ PREUVE K22
+ Planification sans difference — No changes (64 bits + jeton)
+ ---
+ genere le : 2026-08-28 13:00:56 UTC
+ projet    : menal-zero-trust-staging
+ dataset   : menal_security_staging
+==================================================================
+
+Terraform : Terraform v1.14.9
+Jeton du compte actif : OK
+
+init : OK
+
+[0m[1m[32mNo changes.[0m[1m Your infrastructure matches the configuration.[0m
+and found no differences, so no changes are needed.
+
+------------------------------------------------------------------
+ code de retour : 0
+ fin            : 2026-08-28 13:01:45 UTC
+------------------------------------------------------------------

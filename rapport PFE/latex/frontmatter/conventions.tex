@@ -1,0 +1,87 @@
+% =============================================================
+% conventions.tex — Conventions de notation
+% Légende unique des familles d'identifiants employées dans le corps
+% du mémoire, et convention de désignation des composants.
+% Voir PLAN_REFONTE_PFE.md §11.6 et §11.7.
+% =============================================================
+\chapter*{Conventions de notation}
+\addcontentsline{toc}{chapter}{Conventions de notation}
+\thispagestyle{plain}
+
+\noindent\textbf{Désignation des composants.} Les composants du socle sont désignés par leur
+\emph{capacité} --- ce qu'ils font --- plutôt que par leur nom commercial, afin que
+l'architecture reste lisible indépendamment du fournisseur. Le produit qui réalise chaque
+capacité est indiqué entre parenthèses à sa première occurrence, et la correspondance complète
+figure au tableau d'inventaire technologique de la \cref{sec:trente-trois-briques}.
+
+\medskip
+\noindent\textbf{Familles d'identifiants.} Le mémoire emploie des codes préfixés pour rendre la
+traçabilité vérifiable d'un chapitre à l'autre : une menace, l'exigence qui la traite, le contrôle
+qui la met en \oe uvre et le test qui la vérifie portent chacun un identifiant stable. Chaque
+famille est \emph{établie} une seule fois, dans le chapitre porté en bandeau du tableau ci-dessous,
+et le reste du mémoire n'y renvoie plus que par le code. Les séries sont complètes : aucun numéro
+n'est manquant à l'intérieur d'une série.
+
+\begingroup
+\setlength{\LTpre}{6pt}
+\setlength{\LTpost}{6pt}
+\begin{longtable}{|P{1.7cm}|P{10.9cm}|P{2.7cm}|}
+\hline
+\textbf{Préfixe} & \textbf{Signification} & \textbf{Série} \\
+\hline
+\endhead
+\multicolumn{3}{|l|}{\textbf{Chapitre~\ref{ch:cadre-existant}} --- contexte, existant et problématique} \\ \hline
+C & Carence structurante de l'existant & C1--C5 \\ \hline
+Q & Question dérivée de la problématique & Q1--Q6 \\ \hline
+O & Objectif du projet & O1--O6 \\ \hline
+PH & Phase du projet & PH0--PH7 \\ \hline
+\multicolumn{3}{|l|}{\textbf{Chapitre~\ref{ch:etat-art}} --- état de l'art et choix technologiques} \\ \hline
+V & Verrou identifié dans l'état de l'art & V1--V4 \\ \hline
+\multicolumn{3}{|l|}{\textbf{Chapitre~\ref{ch:besoins-menaces}} --- besoins et modélisation des menaces} \\ \hline
+A & Acteur du modèle, légitime ou hostile & A1--A11 \\ \hline
+BF & Besoin fonctionnel & BF1--BF13 \\ \hline
+BNF & Besoin non fonctionnel & BNF1--BNF7 \\ \hline
+TB & Frontière de confiance & TB1--TB5 \\ \hline
+SO & Scénario opérationnel de menace & SO1--SO24 \\ \hline
+EX & Exigence de sécurité & EX1--EX20 \\ \hline
+\multicolumn{3}{|l|}{\textbf{Chapitre~\ref{ch:conception}} --- conception de l'architecture} \\ \hline
+PR & Principe directeur d'architecture & PR1--PR4 \\ \hline
+L & Niveau du modèle en couches & L1--L7 \\ \hline
+F & Flux de l'architecture & F1--F7 \\ \hline
+D & Décision d'architecture & D00--D16 \\ \hline
+É & Écart entre conception et implémentation & É1--É11 \\ \hline
+\multicolumn{3}{|l|}{\textbf{Chapitre~\ref{ch:realisation}} --- réalisation et industrialisation} \\ \hline
+R & Règle de détection & R1--R7 \\ \hline
+\multicolumn{3}{|l|}{\textbf{Chapitre~\ref{ch:validation}} --- validation et mesure} \\ \hline
+T & Protocole de la campagne de validation & T1--T20 \\
+\hline
+\end{longtable}
+\endgroup
+% Ce tableau est hors numérotation (norme ESPRIT, C26). longtable incrémente le
+% compteur « table » même sans \caption : sans ce décrément, la liste des
+% tableaux démarrerait au numéro 2.
+\addtocounter{table}{-1}
+
+\medskip
+\noindent Quatre familles ne servent qu'à l'analyse de risque et sont définies là où elles servent,
+en annexe~\ref{ann:modele-menaces} : valeurs métier VM1--VM6, biens supports BS1--BS9, sources de
+risque SR1--SR6 et scénarios stratégiques SS1--SS7. Deux échelles de cotation y emploient les
+préfixes G et V --- gravité G1--G4, vraisemblance V1--V4 --- sans rapport avec les verrous V1--V4
+du tableau ci-dessus : le contexte est toujours celui d'une case de la cartographie du risque. Les
+sept jalons M1--M7 du planning sont, eux, définis avec la figure qui les porte, au
+chapitre~\ref{ch:realisation}.
+
+% --- Compacité de la table des matières (norme ESPRIT §H : 2 pages) ---
+% report.cls insère 1,0 em de blanc avant chaque entrée de niveau chapitre
+% (\l@chapter, l. 615). Le mémoire en compte vingt-trois : ce seul interligne
+% coûte une page de liminaires. Il est ramené à 0,1 em ; les entrées de section
+% ne sont pas touchées. Emplacement provisoire : ce réglage appartient à
+% config/formatting.tex, hors du périmètre d'écriture de cette équipe ; il est
+% posé ici parce que conventions.tex est le dernier fichier chargé avant
+% \tableofcontents. À déplacer à la prochaine passe.
+\makeatletter
+\patchcmd{\l@chapter}{\vskip 1.0em \@plus\p@}{\vskip 0.1em \@plus\p@}{}%
+  {\typeout{ATTENTION : patch de compacite de la table des matieres NON applique}}
+\makeatother
+
+\clearpage

@@ -1,0 +1,232 @@
+% =============================================================
+% formatting.tex — Mise en forme imposée par le guide pédagogique
+% (Rapport Stage Pédagogique, ESPRIT, §"Forme du Rapport")
+% =============================================================
+
+% --- Police : Times New Roman, 12 pt pour le corps du texte ---
+\setmainfont{Times New Roman}
+% Si "Times New Roman" n'est pas trouvée par XeLaTeX (machine sans
+% cette police système), remplacer temporairement par :
+%   \setmainfont{Liberation Serif}   (clone métrique libre de Times)
+
+% --- Police à chasse fixe (extraits de config, \ttfamily) : Consolas
+%     couvre les caractères de dessin de boîte (─│├└) utilisés dans les
+%     arborescences de fichiers, absents de Latin Modern Mono par défaut ---
+\setmonofont{Consolas}
+
+% --- Interligne : 1.15 ---
+\setstretch{1.15}
+\Urlmuskip=0mu plus 1mu\relax
+
+% --- Paragraphes : alinéa de première ligne 0,50 cm et respiration légère
+%     après le paragraphe, conformément au gabarit retenu. ---
+\setlength{\parindent}{0.5cm}
+% L'alinéa de première ligne marque déjà le début de paragraphe : le blanc
+% inter-paragraphe est ramené de 2 pt à 0 pt (réserve d'étirement conservée
+% pour la mise en colonne). Sur les 133 pages numérotées, ce seul réglage
+% rendait quatre pages de blanc sans rien retirer au texte (mesuré 30/08/2026).
+\setlength{\parskip}{0pt plus 1pt}
+
+% --- Aucun mot coupé en fin de ligne ---
+% Le rapport privilégie les mots entiers, y compris pour les composés. Une
+% tolérance modérée et une réserve d'étirement évitent les débordements sans
+% transformer le texte en drapeau.
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\pretolerance=1500
+\tolerance=3500
+\emergencystretch=2em
+
+% --- Justification à droite et à gauche (comportement par défaut
+%     de LaTeX en mode "flush" — aucune commande supplémentaire). La langue
+%     reste le français, mais les pénalités ci-dessus neutralisent la césure. ---
+
+% --- Contrôle des veuves et orphelines (norme ESPRIT §A.2) ---
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+\raggedbottom
+
+% --- Titres : gras, taille décroissante selon la profondeur (18/16/14/12 pt),
+%     numérotés 1, 1.1, 1.1.1 ; retraits normalisés (norme ESPRIT §B.2) :
+%       - 0,20 cm de retrait du titre par rapport au bord de la page
+%       - 0,30 cm de retrait des lignes suivantes d'un titre sur deux lignes
+%       - 0,20 cm entre le numéro et le texte du titre
+\titleformat{\chapter}[hang]
+  {\hangindent=0.3cm\hangafter=1\normalfont\bfseries\fontsize{18}{22}\selectfont}
+  {\chaptertitlename~\thechapter}{0.2cm}{}
+\titlespacing*{\chapter}{0.2cm}{0pt}{14pt}
+
+\titleformat{\section}[hang]
+  {\hangindent=0.3cm\hangafter=1\normalfont\bfseries\fontsize{16}{19}\selectfont}
+  {\thesection}{0.2cm}{}
+\titlespacing*{\section}{0.2cm}{10pt}{4pt}
+
+\titleformat{\subsection}[hang]
+  {\hangindent=0.3cm\hangafter=1\normalfont\bfseries\fontsize{14}{17}\selectfont}
+  {\thesubsection}{0.2cm}{}
+\titlespacing*{\subsection}{0.2cm}{7pt}{3pt}
+
+\titleformat{\subsubsection}[hang]
+  {\hangindent=0.3cm\hangafter=1\normalfont\bfseries\fontsize{12}{14}\selectfont}
+  {\thesubsubsection}{0.2cm}{}
+\titlespacing*{\subsubsection}{0.2cm}{5pt}{2pt}
+
+% --- Paragraphes solidaires : un titre ne doit jamais rester seul en
+%     bas de page (norme ESPRIT §A.2). Réserve la place d'au moins
+%     quelques lignes de texte après chaque titre de section. Équivalent
+%     manuel de \Needspace* (paquet "needspace" indisponible hors ligne),
+%     construit avec \pagegoal/\pagetotal, primitives du noyau LaTeX. ---
+\newcommand{\reservespace}[1]{%
+  \par\nobreak
+  % Garde 1 : sur une page encore vierge, \pagegoal vaut \maxdimen ;
+  % la soustraction n'a alors aucun sens et il n'y a rien a reserver.
+  \ifdim\pagegoal=\maxdimen\else
+    \dimen0=\pagegoal \advance\dimen0 by -\pagetotal
+    \ifdim\dimen0<#1
+      % Garde 2 : ne jamais ejecter une page a peine commencee, sous peine
+      % de produire une page de trois lignes suivie d'un grand blanc.
+      \ifdim\pagetotal>0.4\textheight \newpage \fi
+    \fi
+  \fi
+}
+% \pretocmd{\section}{\reservespace{4\baselineskip}}{}{}   % desactive : voir la note ci-dessous
+% \pretocmd{\subsection}{\reservespace{3\baselineskip}}{}{}   % desactive : voir la note ci-dessous
+% \pretocmd{\subsubsection}{\reservespace{3\baselineskip}}{}{}   % desactive : voir la note ci-dessous
+% NOTE (26/08/2026) : les trois accrochages ci-dessus sont desactives.
+% La macro lit la position courante AVANT que TeX ait coupe le paragraphe en
+% cours : la valeur lue est celle de la page precedente, la garde passe, et le
+% saut de page produit exactement l'artefact qu'elle pretend eviter, soit une
+% page de trois lignes suivie d'un grand blanc. Les penalites de veuve et
+% d'orpheline, fixees plus haut a 10000, suffisent a empecher un titre isole en
+% bas de page. La macro est conservee pour un eventuel appel manuel.
+
+% --- Sous-titre de chapitre (italique, centré, non numéroté, absent de
+%     la table des matières) — norme ESPRIT §B.3 / plan détaillé ---
+\newcommand{\soustitrechapitre}[1]{%
+  \begingroup
+  \centering\itshape\large #1\par
+  \endgroup
+  \vspace{10pt}%
+}
+
+% --- Profondeur de numérotation et de table des matières : chapitre,
+%     section, sous-section (norme ESPRIT §B.1, recommandation de ne
+%     pas descendre en dessous du niveau 3) ---
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{1}
+
+% --- Tableaux longs : une taille légèrement réduite améliore la lecture des
+%     matrices denses et limite les ruptures, sans descendre sous 8 pt. ---
+\AtBeginEnvironment{longtable}{\scriptsize}
+
+% --- Grille des tableaux : bordure extérieure et séparation de chaque ligne
+%     et de chaque colonne. La largeur réduite des marges internes compense les
+%     filets verticaux sans dépasser la largeur utile de la page. ---
+\setlength{\tabcolsep}{3pt}
+\setlength{\arrayrulewidth}{0.4pt}
+\renewcommand{\arraystretch}{1.0}
+
+% --- Placement des flottants ---
+% Les valeurs par défaut de LaTeX sont conservatrices : une page portant une
+% figure doit conserver au moins 20 % de texte (\textfraction) et un flottant
+% de tête ne peut occuper plus de 70 % de la hauteur (\topfraction). Avec une
+% trentaine de figures, dont plusieurs occupent la moitié d'une page, la
+% conjonction des deux laissait des pages remplies à 55 % suivies d'un grand
+% blanc. Les seuils sont donc relâchés : une figure peut désormais partager sa
+% page avec le texte qui la suit, ce qui densifie le document sans rien retirer.
+% Blancs autour des flottants et de leurs légendes. Les valeurs de la classe
+% (20 pt autour d'un flottant, 12 pt sous une légende) ont été calibrées pour
+% des documents à cinq ou six illustrations ; le mémoire en compte plus de
+% quatre-vingts, et ce blanc seul coûtait environ deux pages.
+\setlength{\textfloatsep}{8pt plus 3pt minus 2pt}
+\setlength{\intextsep}{8pt plus 3pt minus 2pt}
+\setlength{\floatsep}{8pt plus 3pt minus 2pt}
+\setlength{\abovecaptionskip}{4pt}
+\setlength{\belowcaptionskip}{0pt}
+\setlength{\LTpre}{6pt}
+\setlength{\LTpost}{6pt}
+
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.70}
+\renewcommand{\textfraction}{0.06}
+\renewcommand{\floatpagefraction}{0.72}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+
+% --- Numérotation des pages : bas à droite, "page / total" ---
+% Confirmé par la norme ESPRIT §A.1 : « en bas à droite, sous la forme
+% page/total » — implémenté ci-dessous comme "n / N".
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[R]{\thepage\,/\,\pageref{LastPage}}
+\renewcommand{\headrulewidth}{0pt}
+
+% Les pages d'ouverture de chapitre utilisent le style "plain" par
+% défaut : on le redéfinit pour garder la pagination bas-droite.
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[R]{\thepage\,/\,\pageref{LastPage}}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% --- Numérotation continue des figures, tableaux et graphiques (pas de
+%     remise à zéro par chapitre), séparée par type (norme ESPRIT §C) :
+%     Fig. 1, Tab. 1, Graph. 1, chaque type comptant indépendamment sur
+%     l'ensemble du document. Le compteur "graphique" (package float,
+%     cf. packages.tex) ne compte pas par chapitre par construction. ---
+\counterwithout{figure}{chapter}
+\counterwithout{table}{chapter}
+\captionsetup[figure]{name=Fig.,labelsep=period}
+\captionsetup[table]{name=Tab.,labelsep=period}
+\captionsetup[graphique]{labelsep=period}
+% --- Francisation de cleveref (defaut L2) ---
+% Les \crefname doivent imperativement etre poses dans \AtBeginDocument.
+% En preambule, les \renewcommand des conjonctions s'accumulent dans
+% \extras<langue> et provoquent un depassement de pile au premier
+% \selectlanguage (reproduit et isole le 26/08/2026).
+\AtBeginDocument{%
+  \crefname{figure}{figure}{figures}%
+  \Crefname{figure}{Figure}{Figures}%
+  \crefname{table}{tableau}{tableaux}%
+  \Crefname{table}{Tableau}{Tableaux}%
+  \crefname{section}{section}{sections}%
+  \Crefname{section}{Section}{Sections}%
+  \crefname{subsection}{section}{sections}%
+  \Crefname{subsection}{Section}{Sections}%
+  \crefname{subsubsection}{section}{sections}%
+  \Crefname{subsubsection}{Section}{Sections}%
+  \crefname{chapter}{chapitre}{chapitres}%
+  \Crefname{chapter}{Chapitre}{Chapitres}%
+  \crefname{graphique}{graphique}{graphiques}%
+  \Crefname{graphique}{Graphique}{Graphiques}%
+  \renewcommand{\crefpairconjunction}{ et }%
+  \renewcommand{\crefmiddleconjunction}{, }%
+  \renewcommand{\creflastconjunction}{ et }%
+  \renewcommand{\crefrangeconjunction}{ \`a }%
+  \renewcommand{\crefpairgroupconjunction}{ et }%
+  \renewcommand{\creflastgroupconjunction}{ et }%
+}
+
+% --- Recto verso : pas d'en-tête/pied de page sur les pages blanches
+%     insérées par \cleardoublepage avant chaque chapitre. Reproduit
+%     manuellement l'effet du paquet "emptypage" (indisponible hors
+%     ligne), selon la méthode standard documentée. ---
+\makeatletter
+\let\origcleardoublepage\cleardoublepage
+\newcommand{\clearemptydoublepage}{%
+  \clearpage
+  {\pagestyle{empty}\origcleardoublepage}%
+}
+\renewcommand{\cleardoublepage}{\clearemptydoublepage}
+\makeatother
+
+% --- Liens hypertexte discrets (impression recto-verso conservée) ---
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=blue!50!black,
+  pdfborder={0 0 0}
+}

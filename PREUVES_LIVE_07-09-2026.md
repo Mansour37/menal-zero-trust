@@ -145,7 +145,7 @@ Enrichissement de mon attaque LFI par le modèle `attack-bert-onnx-fp32@v1.0` (O
 
 | Rang | Technique | Tactique | Similarité | Statut |
 |---|---|---|---|---|
-| 1 | **T1003.008** — OS Credential Dumping (/etc/passwd) | Credential Access | **0,65** | mapped |
+| 1 | **T1003.008** — OS Credential Dumping (/etc/passwd) | Credential Access | **0,71** | mapped |
 | 2 | T1003.002 | — | 0,64 | (alternate) |
 | 3 | T1556.003 | — | 0,638 | (alternate) |
 

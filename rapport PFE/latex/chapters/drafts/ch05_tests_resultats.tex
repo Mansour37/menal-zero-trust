@@ -1,0 +1,131 @@
+% =============================================================
+% Chapitre 5 — Tests, validation, résultats et écarts (~10 pages)
+% Le plan de tests (18 tests) est repris de la méthodologie projet
+% (document réel) ; les RÉSULTATS restent [À COMPLÉTER] tant que
+% 09_AUDIT_E2E_STAGING n'est pas fourni en intégralité — ne jamais
+% remplir la colonne "résultat obtenu" par extrapolation.
+% =============================================================
+\chapter{Tests, validation, résultats et écarts}
+\label{ch:tests}
+
+\section{Méthodologie et plan de tests Zero Trust}
+
+Le principe de validation retenu est celui du \emph{contrôle contourné volontairement} :
+chaque test consiste à tenter de déjouer un contrôle de sécurité annoncé, et c'est l'échec
+de cette tentative qui constitue la preuve. Dix-huit scénarios ont été définis, couvrant les
+sept couches de l'architecture ainsi que les deux pipelines de livraison (applicatif et
+infrastructure).
+
+\begin{longtable}{@{}P{1cm}P{6.2cm}P{6.8cm}@{}}
+\caption{Plan de tests de contournement Zero Trust}
+\label{tab:plan-tests} \\
+\toprule
+\textbf{\#} & \textbf{Tentative} & \textbf{Résultat attendu} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{\#} & \textbf{Tentative} & \textbf{Résultat attendu} \\
+\midrule
+\endhead
+T1 & Contournement du point d'entrée (accès direct à l'URL interne d'un service) & Refus
+(403/404) \\
+T2 & Connexion à la base de données applicative depuis Internet & Délai d'attente / refus ---
+pas d'adresse publique \\
+T3 & Appel du composant d'enrichissement sémantique sans jeton d'identité, depuis le réseau
+privé & Refus (401/403) \\
+T4 & Écriture dans la table de détections avec le compte de service de l'enrichissement &
+Refus (intégrité des preuves) \\
+T5 & Lecture d'un secret applicatif avec un compte de service d'un autre composant & Refus
+(cloisonnement des secrets) \\
+T6 & Création d'une clé d'accès statique pour un compte de service & Refus (politique
+d'organisation) \\
+T7 & Commit contenant un secret factice & Pipeline en échec à l'étape de détection de
+secrets \\
+T8 & Injection volontaire de code non filtré dans une proposition de modification & Pipeline
+en échec à l'étape d'analyse statique \\
+T9 & Image de base volontairement obsolète & Pipeline en échec à l'étape d'analyse des
+vulnérabilités \\
+T10 & Déploiement référencé par étiquette mutable plutôt que par empreinte & Refusé par
+convention/contrôle du pipeline \\
+T11 & Requête avec charge utile d'injection sur le point d'entrée & Refus par le pare-feu
+applicatif, trace journalisée \\
+T12 & Sortie réseau non déclarée depuis un service applicatif & Bloquée, journalisée \\
+T13 & Scénario d'attaque simulé couvrant plusieurs tactiques sur une même entité en moins
+d'une heure & Incident chaîné, preuves listées \\
+T14 & Événement sans règle statique correspondante mais sémantiquement proche d'une
+technique connue & Rattachement sémantique au-dessus du seuil, ou non-rattachement assumé \\
+T15 & Modification manuelle hors du code d'infrastructure, puis nouvelle planification &
+Dérive détectée et annoncée \\
+T16 & Proposition d'infrastructure contenant une ressource volontairement mal configurée &
+Pipeline infra en échec à l'étape d'analyse de sécurité \\
+T17 & Tentative de déploiement vers la production depuis le pipeline de développement &
+Refus (identité fédérée limitée au projet cible) \\
+T18 & Comparaison des empreintes d'image entre les environnements & Identiques à l'octet
+près \\
+\bottomrule
+\end{longtable}
+
+\section{Résultats des tests de contournement}
+
+\begin{attentedoc}
+Cette section nécessite \texttt{09\_AUDIT\_E2E\_STAGING\_2026-08-07.md} en intégralité (ou
+le rejeu documenté des 18 tests sur l'environnement de référence). Ne pas remplir la colonne
+\og résultat obtenu \fg{} avant d'avoir cette source --- reprendre alors le même format à
+deux temps (scénario/critère puis résultat/preuve) que celui utilisé au tableau~
+\ref{tab:plan-tests}, en ajoutant une colonne \og preuve \fg{} (capture, extrait de
+journal).
+\end{attentedoc}
+
+\section{Mesures avant/après}
+
+Cinq indicateurs sont prévus pour comparer la posture de sécurité avant et après déploiement
+du socle, sur un même jeu de journaux rejoué : le rappel de détection sur des scénarios
+injectés, le taux de consolidation (alertes rapportées à des incidents), le délai moyen de
+détection, le délai moyen de correction, et la couverture des techniques d'attaque
+observables.
+
+\begin{attentedoc}
+Tableau à remplir avec des \textbf{mesures réelles} une fois disponibles --- ne jamais
+présenter une estimation comme une mesure. Si une mesure n'est pas disponible au moment de
+la rédaction, l'indiquer explicitement plutôt que l'omettre silencieusement.
+\end{attentedoc}
+
+\section{Écarts entre conception et implémentation réelle}
+
+\begin{attentedoc}
+Section à construire à partir de \texttt{06\_ECARTS\_IMPLEMENTATION.md}. Ne conserver du
+chapitre~\ref{ch:mise-en-oeuvre} que ce qui est confirmé réellement déployé ; lister ici
+chaque écart identifié avec sa raison.
+\end{attentedoc}
+
+\section{Difficultés rencontrées et corrections apportées}
+
+Trois incidents réels, déjà consignés dans les documents projet, illustrent bien l'esprit du
+guide pédagogique --- présenter les difficultés rencontrées plutôt qu'un déroulement
+idéalisé :
+
+\begin{itemize}
+  \item \textbf{Démarrage à froid du composant d'enrichissement plus long que prévu.} La
+        durée de démarrage à froid mesurée sur sept jours de supervision s'est révélée très
+        supérieure aux valeurs de référence initialement documentées, avec une moyenne
+        d'une trentaine de secondes et des pics proches de la minute et demie --- provoquant
+        des erreurs de service début août. La correction a consisté à élargir la fenêtre de
+        tolérance de la sonde de disponibilité.
+  \item \textbf{Décision assumée de doubler le coût de la base de données pour obtenir une
+        haute disponibilité réelle}, prise après un audit de bout en bout, plutôt que de
+        conserver l'objectif initial de \og best effort \fg{}.
+  \item \textbf{Incident de dérive lors du chiffrement géré par le client sur un secret} :
+        une application d'infrastructure partiellement en échec a laissé l'état local
+        enregistrer une configuration jamais réellement appliquée côté plateforme cloud.
+        L'écart a été détecté par une comparaison explicite entre l'état déclaré et la
+        réalité observée, puis corrigé par une opération de resynchronisation avant de
+        poursuivre. La leçon retenue : après toute application partiellement en échec, la
+        réalité doit être revérifiée avant de replanifier --- ne jamais supposer que
+        l'échec a laissé l'état intact.
+\end{itemize}
+
+\begin{attentedoc}
+Vérifier chaque chiffre ci-dessus contre \texttt{09\_AUDIT\_E2E\_STAGING\_2026-08-07.md}
+avant publication --- ce paragraphe reprend l'information disponible au moment de la
+rédaction du sommaire de travail, à confirmer mot pour mot.
+\end{attentedoc}

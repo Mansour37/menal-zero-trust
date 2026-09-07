@@ -1,0 +1,57 @@
+---
+title: "Figure 11 — Séquence de la chaîne de livraison applicative"
+---
+sequenceDiagram
+    participant D as 💻 Développeur
+    participant G as 📦 GitHub
+    participant GH as 🤖 GitHub Actions
+    participant GL as 🔒 Gitleaks
+    participant SG as 📊 Semgrep
+    participant TV as 🔍 Trivy
+    participant AR as 📦 Artifact Registry
+    participant CR as ☁️ Cloud Run
+
+    D->>G: git push (feature branch)
+    G->>GH: Déclenchement workflow
+
+    rect rgb(255, 235, 238)
+        Note over GH,GL: Porte 1 — Secret scanning
+        GH->>GL: Exécution Gitleaks
+        alt Secret détecté
+            GL-->>GH: ❌ ÉCHEC (exit 1)
+            GH-->>G: Pipeline bloqué
+            GH-->>D: Notification échec
+        end
+    end
+
+    rect rgb(255, 243, 224)
+        Note over GH,SG: Porte 2 — Analyse statique (SAST)
+        GH->>SG: Exécution Semgrep
+        alt Finding sévérité ERROR
+            SG-->>GH: ❌ ÉCHEC
+            GH-->>G: Pipeline bloqué
+        end
+    end
+
+    rect rgb(255, 249, 196)
+        Note over GH,TV: Porte 3 — Scan image + dépendances
+        GH->>GH: Docker build (multi-stage)
+        GH->>TV: Trivy scan image
+        GH->>TV: Trivy scan dépendances
+        alt CVE CRITICAL détecté
+            TV-->>GH: ❌ ÉCHEC
+            GH-->>G: Pipeline bloqué
+        end
+    end
+
+    GH->>AR: Push image (@sha256 digest)
+    AR-->>GH: ✅ Image stockée
+
+    rect rgb(232, 245, 233)
+        Note over GH,CR: Porte 4 — Déploiement
+        GH->>CR: gcloud run deploy --image @sha256:...
+        CR-->>GH: ✅ Déployé
+        CR-->>D: Notification succès
+    end
+
+    Note over D,CR: Aucune clé exportée — auth via WIF

@@ -1,0 +1,69 @@
+\babel@toc {french}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {french}{}\relax 
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {1}{\ignorespaces Fiche signalétique de l'entreprise d'accueil.}}{4}{table.caption.11}%
+\contentsline {table}{\numberline {2}{\ignorespaces Catégories de données traitées par l'application pilote et effet d'une exposition.}}{7}{table.1.2}%
+\contentsline {table}{\numberline {3}{\ignorespaces Objectifs et critères de succès du projet.}}{11}{table.1.3}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4}{\ignorespaces Les sept principes du NIST SP 800-207 et leur traduction pour le projet}}{14}{table.2.4}%
+\contentsline {table}{\numberline {5}{\ignorespaces Comparaison des cinq options de supervision sur les huit critères discriminants. Légende}}{17}{table.2.5}%
+\contentsline {table}{\numberline {6}{\ignorespaces Approches d'association alerte $\rightarrow $ technique ATT\&CK}}{17}{table.2.6}%
+\contentsline {table}{\numberline {7}{\ignorespaces Comparaison des six options d'hébergement sur les sept critères discriminants}}{19}{table.2.7}%
+\contentsline {table}{\numberline {8}{\ignorespaces Application du critère de sélection : deux admissions, deux rejets et un cas frontière}}{20}{table.2.8}%
+\contentsline {table}{\numberline {9}{\ignorespaces Les trente-trois briques structurantes, par couche : critère décisif et prix payé}}{20}{table.2.9}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {10}{\ignorespaces Acteurs du modèle, A1 à A11}}{27}{table.3.10}%
+\contentsline {table}{\numberline {11}{\ignorespaces Besoins fonctionnels}}{28}{table.3.11}%
+\contentsline {table}{\numberline {12}{\ignorespaces Besoins non fonctionnels}}{29}{table.3.12}%
+\contentsline {table}{\numberline {13}{\ignorespaces Les cinq frontières de confiance et les scénarios qui les franchissent}}{30}{table.3.13}%
+\contentsline {table}{\numberline {14}{\ignorespaces Formulation complète des vingt exigences de sécurité}}{33}{table.3.14}%
+\contentsline {table}{\numberline {15}{\ignorespaces Matrice de traçabilité menace--exigence--contrôle--test}}{34}{table.3.15}%
+\contentsline {table}{\numberline {16}{\ignorespaces Rattachement des exigences aux référentiels}}{35}{table.3.16}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {17}{\ignorespaces Plan d'adressage du réseau du socle, en service depuis le 11/08/2026}}{40}{table.4.17}%
+\contentsline {table}{\numberline {18}{\ignorespaces Règles de pare-feu en service, ciblées par identité}}{41}{table.4.18}%
+\contentsline {table}{\numberline {19}{\ignorespaces Ce que la frontière d'isolation des données arrête, et ce qu'elle n'arrête pas}}{44}{table.4.19}%
+\contentsline {table}{\numberline {20}{\ignorespaces Critères de recette des vues d'architecture}}{47}{table.caption.26}%
+\contentsline {table}{\numberline {21}{\ignorespaces Les sept flux de l'architecture.}}{47}{table.caption.27}%
+\contentsline {table}{\numberline {22}{\ignorespaces Conception détaillée des sept niveaux : composants, produits, contrôles et exigences}}{50}{table.4.22}%
+\contentsline {table}{\numberline {23}{\ignorespaces Matrice des identités et des droits.}}{54}{table.caption.31}%
+\contentsline {table}{\numberline {24}{\ignorespaces Registre synthétique des décisions d'architecture (justification complète en}}{58}{table.caption.35}%
+\contentsline {table}{\numberline {25}{\ignorespaces Écarts entre conception et implémentation.}}{59}{table.caption.36}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {26}{\ignorespaces Familles de contrôles de la chaîne de livraison applicative}}{64}{table.5.26}%
+\contentsline {table}{\numberline {27}{\ignorespaces Modèle de données de l'entrepôt de supervision : dix tables, un écrivain chacune}}{71}{table.caption.39}%
+\contentsline {table}{\numberline {28}{\ignorespaces État d'avancement de la couche d'enrichissement sémantique}}{73}{table.caption.40}%
+\contentsline {table}{\numberline {29}{\ignorespaces Cartographie des vues du tableau de bord}}{75}{table.5.29}%
+\contentsline {table}{\numberline {30}{\ignorespaces Caractérisation quantifiée des deux logiciels écrits, dépôt vérifié le 25/08/2026.}}{78}{table.caption.44}%
+\contentsline {table}{\numberline {31}{\ignorespaces Frontière de responsabilité entre le socle et l'éditeur}}{81}{table.5.31}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {32}{\ignorespaces Synthèse de la campagne de vingt tests, à la date de 25/08/2026{}}}{87}{table.6.32}%
+\contentsline {table}{\numberline {33}{\ignorespaces Plan de validation continue}}{90}{table.6.33}%
+\contentsline {table}{\numberline {34}{\ignorespaces Causes connues de non-couverture}}{91}{table.caption.48}%
+\contentsline {table}{\numberline {35}{\ignorespaces Restauration de la base, test réel du 3 août 2026}}{94}{table.caption.51}%
+\contentsline {table}{\numberline {36}{\ignorespaces Constats de coût datés}}{95}{table.caption.52}%
+\contentsline {table}{\numberline {37}{\ignorespaces Auto-évaluation de maturité Zero Trust}}{97}{table.6.37}%
+\contentsline {table}{\numberline {38}{\ignorespaces Coût d'accueil d'une application supplémentaire}}{100}{table.caption.54}%
+\contentsline {table}{\numberline {39}{\ignorespaces Maturité multi-locataire, axe par axe}}{100}{table.6.39}%
+\contentsline {table}{\numberline {40}{\ignorespaces Conditions de validité des résultats du chapitre}}{103}{table.caption.56}%
+\contentsline {table}{\numberline {41}{\ignorespaces Réponse aux six objectifs mesurables du projet}}{103}{table.6.41}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {42}{\ignorespaces Positionnement des trois modèles}}{110}{table.A.42}%
+\contentsline {table}{\numberline {43}{\ignorespaces Comparaison des trois modes d'exécution étudiés}}{111}{table.caption.59}%
+\contentsline {table}{\numberline {44}{\ignorespaces Fiche de version des briques structurantes}}{112}{table.A.44}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {45}{\ignorespaces Sécurité du fichier d'état d'infrastructure}}{115}{table.caption.60}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {46}{\ignorespaces Codification des ateliers 1 à 3}}{119}{table.C.46}%
+\contentsline {table}{\numberline {47}{\ignorespaces Scénarios stratégiques}}{119}{table.C.47}%
+\contentsline {table}{\numberline {48}{\ignorespaces Échelles de gravité et de vraisemblance}}{120}{table.caption.61}%
+\contentsline {table}{\numberline {49}{\ignorespaces Scénarios opérationnels et frontières}}{120}{table.C.49}%
+\contentsline {table}{\numberline {50}{\ignorespaces Décisions de traitement du risque}}{121}{table.caption.62}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {51}{\ignorespaces Registre complet des décisions d'architecture}}{123}{table.D.51}%
+\contentsline {table}{\numberline {52}{\ignorespaces Composants écartés et conditions de réévaluation}}{124}{table.D.52}%
+\contentsline {table}{\numberline {53}{\ignorespaces Prise en charge des exigences}}{125}{table.D.53}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {54}{\ignorespaces Grandeurs relevées et condition de publication de chacune}}{133}{table.caption.63}%

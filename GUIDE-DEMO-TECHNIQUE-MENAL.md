@@ -224,11 +224,11 @@ donne l'ampleur. »
 **Voix off.** « C'est l'apport principal. Pour aider une personne seule à qualifier une alerte, le
 socle propose automatiquement les trois techniques d'attaque les plus proches sémantiquement, avec
 un score. Sur mon attaque d'inclusion de fichier `/etc/passwd`, il propose **T1003.008 — vol
-d'identifiants via /etc/passwd, à 0,65**, alors qu'aucun mot "identifiant" n'apparaît dans la
+d'identifiants via /etc/passwd, à 0,71**, alors qu'aucun mot "identifiant" n'apparaît dans la
 requête : le modèle comprend le **sens**. Le rapprochement est **déterministe à modèle fixé** et
 **s'exécute localement** : un encodeur spécialisé, ATT&CK-BERT, pas un modèle génératif. Le socle
 propose, l'humain décide. »
-**Preuve.** P9 : T1003.008 (0,65), T1003.002 (0,64), T1556.003 (0,638), modèle
+**Preuve.** P9 : T1003.008 (0,71), T1003.002 (0,64), T1556.003 (0,638), modèle
 `attack-bert-onnx-fp32@v1.0`, seuil 0,60.
 
 ---
@@ -301,7 +301,7 @@ facteur au login — cela renforce le plan Zero Trust.
 | **« Comment déployez-vous sans clé ? »** | Fédération d'identité WIF : la chaîne présente un jeton GitHub, le cloud vérifie le dépôt **et** la branche, puis accorde une identité courte. Inventaire : **0 clé sur 8 comptes de service**. |
 | **« En quoi est-ce du Zero Trust et pas un pare-feu ? »** | L'adresse directe des services renvoie 404 (ingress interne+LB), la base n'a pas d'IP publique, et sur le plan de contrôle cloud c'est l'**identité** qui décide, pas le réseau. Démonstration live : 5 services → 404, 3 domaines → 200. |
 | **« Une seule alerte pour treize requêtes ? »** | Choix de conception : une détection par (règle, entité, fenêtre), dont le compteur donne l'ampleur. R2 écrit littéralement « 13 requêtes bloquées… en 15 min ». On évite la fatigue d'alerte. |
-| **« Qu'apporte la qualification assistée ? »** | Elle propose les 3 techniques ATT&CK les plus proches **sémantiquement**. Sur mon LFI `/etc/passwd`, elle propose T1003.008 (vol d'identifiants via /etc/passwd) à 0,65 — pertinent sans aucun mot-clé commun. Encodeur ATT&CK-BERT, déterministe, local. |
+| **« Qu'apporte la qualification assistée ? »** | Elle propose les 3 techniques ATT&CK les plus proches **sémantiquement**. Sur mon LFI `/etc/passwd`, elle propose T1003.008 (vol d'identifiants via /etc/passwd) à 0,71 — pertinent sans aucun mot-clé commun. Encodeur ATT&CK-BERT, déterministe, local. |
 | **« Combien de règles ? »** | Sept règles SQL versionnées (R1 force brute, R2 pic WAF, R3 traversal, R4 user-agent, R5 latence, R6 injection, R7 fichiers sensibles), plus deux règles temps réel en base. Chacune pose une technique MITRE. |
 | **« Le verdict, c'est réel ? »** | Oui : bouton de qualification dans la fiche incident, écriture append-only dans `analyst_verdicts` via l'API (rôle admin). Testé de bout en bout le 07/09. |
 | **« Y a-t-il quelque chose qui ne marche pas ? »** | Oui, et je l'assume : pas encore de projet production (dev+staging), le compte admin de démo n'a pas encore la MFA activée, la couverture de tests du dashboard est faible (3 %, dette tracée en CI), et le déploiement se fait par tag de commit et non par digest immuable. Ce sont mes prochains chantiers, chacun s'ajoute sans refondre l'architecture. |
@@ -331,4 +331,4 @@ facteur au login — cela renforce le plan Zero Trust.
 | **404 vs 200** | Frontière Zero Trust | P1–P2 |
 | **7 règles + 2 temps réel** | Détection versionnée | P6–P7 |
 | **score 100, +15** | Corrélation en incident (2 tactiques) | P8 |
-| **T1003.008 à 0,65** | Qualification sémantique réelle | P9 |
+| **T1003.008 à 0,71** | Qualification sémantique réelle | P9 |

@@ -1,0 +1,8 @@
+perimetre: "Perimetre (L1)"
+api: "API de supervision"
+dash: "Tableau de bord"
+bq: "Entrepot (SIEM)"
+perimetre -> api
+perimetre -> dash
+dash -> api: JWT
+api -> bq: identite seule

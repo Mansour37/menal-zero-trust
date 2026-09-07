@@ -1,0 +1,144 @@
+% =============================================================
+% Introduction générale (~3 pages) — sans numérotation de section.
+% Cinq mouvements imposés (note pédagogique ESPRIT) : sujet,
+% problématique (sans évoquer aucun résultat), démarche, objectifs,
+% annonce du plan. S'y ajoutent, depuis la refonte du 29/08/2026 :
+% l'encadré de convention de désignation, l'annonce du fil rouge et
+% la carte du mémoire (figure 0).
+% La problématique est rigoureusement identique à celle de la
+% section 1.4.1 : toute modification doit être répercutée aux deux
+% endroits.
+% =============================================================
+\chapter*{Introduction générale}
+\addcontentsline{toc}{chapter}{Introduction générale}
+\markboth{Introduction générale}{Introduction générale}
+
+\textbf{Sujet.} La sécurité des systèmes d'information repose traditionnellement sur un modèle
+périmétrique : filtrer en entrée, faire confiance à l'intérieur. Ce modèle a fait ses preuves
+quand les ressources étaient centralisées et les utilisateurs sur le réseau local. Il ne les
+fait plus aujourd'hui. Les applications migrent dans le cloud, les données sont accessibles de
+n'importe où, et les attaques les plus coûteuses exploitent un accès légitime détourné plutôt
+qu'une intrusion frontale.
+
+MENAL-SARL, entreprise de services informatiques implantée en Mauritanie et en France, a
+identifié ce risque sur l'une de ses applications clientes : ELSON, une plateforme de collecte
+participative pour les langues nationales de Mauritanie. Cette application collecte des données
+d'identité officielle et des enregistrements vocaux, qui constituent des données biométriques.
+Elle fonctionne, mais elle repose sur un serveur unique, avec confiance implicite entre tous ses
+composants et sans mécanisme de reproductibilité.
+
+\begin{keybox}[title={Convention de désignation}]
+Les composants du socle sont désignés par leur \emph{capacité} --- ce qu'ils font --- plutôt que
+par leur nom commercial, afin que l'architecture reste lisible indépendamment du fournisseur. Le
+produit qui réalise chaque capacité est indiqué entre parenthèses à sa première occurrence, et la
+correspondance complète figure au tableau d'inventaire technologique de
+\cref{sec:inventaire}. Les
+familles d'identifiants employées dans le corps sont récapitulées dans la page
+\emph{Conventions de notation}, en tête de document.
+\end{keybox}
+
+\textbf{Problématique.} Comment concevoir, déployer et surtout \emph{prouver} un socle
+d'hébergement cloud aligné sur les principes Zero Trust et sur une chaîne de livraison
+DevSecOps ? La question se pose dans les conditions réelles d'une entreprise émergente : une
+seule personne pour l'exploitation, un budget de quelques dizaines d'euros par mois, aucune
+solution de supervision commerciale. Et quel prix faut-il payer, en faux positifs, en latence de
+détection et en complexité, pour atteindre ce résultat ?
+
+La question n'est pas seulement technique. Elle comporte un coût : une architecture qui ne
+mesure pas ce qu'elle coûte n'est pas une architecture d'ingénieur. Elle comporte aussi une
+exigence de preuve. Chaque contrôle doit être associé à un test qui établit son efficacité,
+plutôt qu'à une simple déclaration de conformité.
+
+\textbf{Démarche.} Le projet suit une démarche en huit phases, PH0 à PH7, chacune fermée par un
+critère de sortie vérifiable et détaillée en \cref{subsec:demarche}. Un audit technique a d'abord
+établi l'état réel de l'existant. L'analyse de risque a ensuite identifié les scénarios
+d'attaque les plus critiques, traduits en vingt exigences vérifiables. L'architecture a été
+conçue autour de quatre principes directeurs : le principe de justification (PR1), qui impose à
+tout composant de justifier son existence ; le principe d'identité (PR2), qui fait de l'identité
+le plan de contrôle ; le principe d'intégrité de la preuve (PR3) ; et le principe de description
+en code (PR4). La réalisation a construit le socle en infrastructure décrite en code, avec deux
+chaînes de livraison et une chaîne de détection enrichie par un modèle de représentation
+sémantique. Une campagne de validation confronte enfin les résultats aux objectifs mesurables
+fixés au départ.
+
+\textbf{Objectifs.} Six objectifs mesurables structurent le projet : supprimer la confiance
+implicite du réseau (O1), rendre l'infrastructure reproductible (O2), contrôler la chaîne de
+livraison (O3), détecter les événements de sécurité (O4), enrichir les alertes de façon
+déterministe (O5), rester exploitable et économiquement soutenable (O6). Chaque objectif est
+associé à un indicateur, une cible et un moyen de vérification. Le \cref{ch:validation} y répond point par
+point.
+
+\textbf{Fil conducteur.} Une même attaque traverse ce mémoire de bout en bout. Le 19/08/2026,
+treize requêtes malveillantes ont été envoyées contre l'application hébergée en environnement de
+recette. Le lecteur les rencontrera successivement sous quatre formes : comme scénario de menace
+dérivé de l'analyse de risque au \cref{ch:besoins-menaces}, comme séquence de refus au périmètre au \cref{ch:conception},
+comme règle de détection au \cref{ch:realisation}, et comme mesure au \cref{ch:validation}. Suivre ce cas unique d'un
+chapitre à l'autre est la façon la plus courte de vérifier que la conception, la réalisation et
+la mesure parlent bien du même système.
+
+\textbf{Plan du mémoire.} Le \cref{ch:cadre-existant} établit le contexte et la problématique sur des faits
+vérifiés, et présente l'entreprise d'accueil ainsi que l'application qui sert de cas réel. Le
+\cref{ch:etat-art} examine l'état de l'art, justifie les choix technologiques et publie l'inventaire des
+briques structurantes du socle avec, pour chacune, le prix payé. Le \cref{ch:besoins-menaces} modélise les
+menaces à partir d'un diagramme de flux de données et de ses frontières de confiance, et en
+déduit les vingt exigences de sécurité. Le \cref{ch:conception} présente l'architecture Zero Trust qui les
+réalise, vue par vue et couche par couche. Le \cref{ch:realisation} rend compte de la réalisation :
+infrastructure en code, chaîne de livraison applicative, chaîne de provisionnement de
+l'infrastructure, chaîne de détection, tableau de bord et API de supervision, accueil d'un
+locataire. Le \cref{ch:validation} confronte l'ensemble à l'épreuve de la mesure --- tests adverses,
+évaluation de la détection, performance, résilience et coût --- puis énonce les conditions
+d'industrialisation du socle en service.
+
+La \cref{fig:carte-memoire} donne la carte de cette progression. Elle se lit de haut en bas :
+chaque chapitre consomme le livrable du précédent et en produit un nouveau, de sorte qu'aucun
+maillon ne repose sur une affirmation non établie en amont. C'est cette chaîne, et non
+l'accumulation de contrôles techniques, qui fait la démonstration.
+
+\textbf{Sur le volume de ce document.} Ce mémoire est plus long que le format habituel, et
+c'est un choix assumé plutôt qu'un débordement. La thèse défendue n'est pas qu'un socle a été
+construit, mais que chaque contrôle qui le compose est adossé à l'épreuve qui en établit
+l'efficacité : une chaîne qui va d'une menace à une exigence, de l'exigence à une décision
+d'architecture, de la décision au code qui la réalise, et du code au protocole qui la met à
+l'épreuve. Une telle chaîne ne se démontre pas par échantillonnage --- il suffit d'un maillon
+manquant pour qu'elle cesse d'en être une. C'est pourquoi les vingt exigences, les dix-sept
+décisions d'architecture, les écarts d'implémentation et les vingt protocoles sont publiés au
+complet, y compris lorsqu'ils concluent contre le socle.
+Le lecteur qui souhaite aller vite peut s'en tenir aux registres, qui donnent l'état du système
+sous forme tabulaire : la matrice de traçabilité du \cref{ch:besoins-menaces}, le registre des
+décisions et celui des écarts du \cref{ch:conception}, et le tableau de synthèse de la campagne
+au \cref{ch:validation}. Le corps du texte en est le développement argumenté, et les annexes le
+matériel de reproduction --- protocoles détaillés, extraits de configuration et jeu
+d'évaluation --- tenu hors du fil de lecture précisément pour ne pas l'alourdir.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  bloc/.style={nsysteme, text width=4.05cm, align=left},
+  prod/.style={text width=8.35cm, align=left, font=\scriptsize,
+               text=menalencre, anchor=west}]
+
+  \node[bloc] (c1) at (0,0.00) {\textbf{Chapitre~1}\\Contexte et existant};
+  \node[prod] at (2.35,0.00) {\textbf{Produit :} un audit daté sur 41~critères, cinq carences C1--C5, six objectifs mesurables O1--O6.};
+  \node[bloc] (c2) at (0,-1.32) {\textbf{Chapitre~2}\\État de l'art et choix};
+  \node[prod] at (2.35,-1.32) {\textbf{Produit :} quatre verrous V1--V4, l'inventaire des briques structurantes et le prix payé pour chacune.};
+  \node[bloc] (c3) at (0,-2.64) {\textbf{Chapitre~3}\\Besoins et menaces};
+  \node[prod] at (2.35,-2.64) {\textbf{Produit :} un diagramme de flux à cinq frontières de confiance, vingt exigences EX1--EX20 et la matrice de traçabilité.};
+  \node[bloc] (c4) at (0,-3.96) {\textbf{Chapitre~4}\\Conception};
+  \node[prod] at (2.35,-3.96) {\textbf{Produit :} quatre principes PR1--PR4, sept flux F1--F7, le registre des décisions D00--D16 et celui des écarts.};
+  \node[bloc] (c5) at (0,-5.28) {\textbf{Chapitre~5}\\Réalisation};
+  \node[prod] at (2.35,-5.28) {\textbf{Produit :} le socle décrit en code, deux chaînes de livraison, sept règles de détection R1--R7, les deux logiciels écrits.};
+  \node[bloc] (c6) at (0,-6.60) {\textbf{Chapitre~6}\\Validation et mesure};
+  \node[prod] at (2.35,-6.60) {\textbf{Produit :} vingt résultats de tests T1--T20, les mesures de détection, de résilience et de coût, les conditions d'industrialisation.};
+
+  \draw[fluxdonnee] (c1.south) -- (c2.north);
+  \draw[fluxdonnee] (c2.south) -- (c3.north);
+  \draw[fluxdonnee] (c3.south) -- (c4.north);
+  \draw[fluxdonnee] (c4.south) -- (c5.north);
+  \draw[fluxdonnee] (c5.south) -- (c6.north);
+
+\end{tikzpicture}
+\caption[Carte du mémoire : chaque chapitre consomme le livrable du précédent]{Carte du mémoire : chaque chapitre consomme le livrable du précédent. Aucun
+maillon de la démonstration ne repose sur une affirmation qui ne soit établie en amont.}
+\label{fig:carte-memoire}
+\end{figure}

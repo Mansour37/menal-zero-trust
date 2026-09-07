@@ -1,0 +1,48 @@
+% =============================================================
+% cover.tex — Page de garde
+% Fond officiel extrait du modèle ESPRIT fourni avec le guide
+% pédagogique (rapport PFE/rapport inspiree/Page Garde Rapport
+% Stage Fr.07f56ca2.docx), reconstitué fidèlement en LaTeX plutôt
+% que redessiné : seul le texte variable est positionné par-dessus.
+% =============================================================
+\newgeometry{margin=0cm}
+\begin{titlepage}
+\begin{tikzpicture}[remember picture, overlay]
+  % --- Fond officiel ESPRIT (pleine page A4) ---
+  \node[anchor=north west, inner sep=0pt] at (current page.north west)
+    {\includegraphics[width=\paperwidth,height=\paperheight]{figures/page_garde_fond.png}};
+
+  % --- Spécialité (à droite du libellé imprimé dans le fond) ---
+  % ATTENTION : \filiere vaut actuellement « Cycle ingénieur » (config/metadata.tex),
+  % qui est une valeur générique et non l'intitulé officiel de la filière ESPRIT.
+  % L'auteur doit confirmer l'intitulé exact auprès de la scolarité et le reporter
+  % dans config/metadata.tex avant la remise. Aucun intitulé n'est inventé ici.
+  \node[anchor=base west] at ([xshift=110mm,yshift=-119.9mm]current page.north west)
+    {\fontsize{16}{19}\selectfont\bfseries \filiere};
+
+  % --- Titre du rapport --- (24 pt centré, imposé par la norme ESPRIT §A.1)
+  \node[anchor=north, align=center, text width=160mm] at ([xshift=105mm,yshift=-140mm]current page.north west)
+    {\fontsize{24}{28}\selectfont\bfseries \rapporttitreaffiche};
+  \node[anchor=north, align=center, text width=160mm] at ([xshift=105mm,yshift=-174mm]current page.north west)
+    {\itshape\large \rapportsoustitre};
+
+  % --- Réalisé par / Encadré par ---
+  \node[anchor=north west] at ([xshift=30mm,yshift=-188mm]current page.north west)
+    {\normalsize Réalisé par : \textbf{\etudiantnom}};
+  \node[anchor=north west] at ([xshift=30mm,yshift=-200mm]current page.north west)
+    {\normalsize Encadré par :};
+  \node[anchor=north west] at ([xshift=35mm,yshift=-208mm]current page.north west)
+    {\normalsize Encadrant ESPRIT : \textbf{\encadrantacademique}};
+  \node[anchor=north west] at ([xshift=35mm,yshift=-216mm]current page.north west)
+    {\normalsize Encadrant Entreprise : \textbf{\encadrantentreprise}};
+
+  % --- Logo entreprise (dans le cadre en pointillés du fond) ---
+  \node[anchor=center] at ([xshift=130mm,yshift=-248mm]current page.north west)
+    {\includegraphics[height=18mm]{figures/logo_menal.png}};
+
+  % --- Année universitaire ---
+  \node[anchor=north west] at ([xshift=30mm,yshift=-228mm]current page.north west)
+    {\normalsize Année universitaire : \anneeuniversitaire};
+\end{tikzpicture}
+\end{titlepage}
+\restoregeometry

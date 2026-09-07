@@ -1,0 +1,42 @@
+% =============================================================
+% abstract.tex — Résumé en anglais, équivalent strict de resume.tex
+% Composé à la suite du résumé, sur la même page (norme ESPRIT §H) :
+% pas de \chapter*, qui provoquerait un saut de page ; le titre reprend
+% le corps et la graisse des titres de chapitre.
+% =============================================================
+\addcontentsline{toc}{chapter}{Abstract}
+\selectlanguage{english}
+
+\vspace{10pt}
+\noindent\hspace*{0.2cm}{\normalfont\bfseries\fontsize{18}{22}\selectfont Abstract}
+\nopagebreak\par
+\vspace{10pt}
+
+{\footnotesize
+
+This thesis presents the design, implementation, and evaluation of a secure Google Cloud hosting
+foundation for MENAL-SARL. The starting point is a pilot application on a single server, without
+full reproducibility or a security detection pipeline. The approach combines technical audit,
+risk analysis, twenty verifiable requirements, a Zero Trust architecture, infrastructure as code
+and blocking DevSecOps gates. The resulting foundation separates service identities, deploys
+without permanent keys and runs seven detection rules over filtered log collection; a
+domain-specific model maps alerts to MITRE ATT\&CK techniques, outside the incident score. On
+19 August 2026, thirteen malicious requests from an end-to-end scenario were all blocked with
+HTTP~403, found in the logs and aggregated by rule R2 fifteen minutes later. On 24 August 2026,
+an unauthorised outbound connection and a cross-tenant connection were both refused and logged,
+with matching timestamps on either side; the tenant data-isolation control passed all six
+checks. Database restoration was measured at 32~min~45~s, with no data loss. The main
+limitations are the ungoverned network egress of two workloads detached from the subnet, one
+partially filtered path traversal pattern, the database instance still shared across tenants,
+and incomplete cost and semantic quality measurements. The foundation is reproducible and
+operable in the staging environment; its main contribution is not a new component but a method:
+every control is paired with the test that demonstrates its effectiveness, and the report
+publishes the controls that hold as well as those that do not hold yet.
+
+\par\vspace{4pt}
+\noindent\textbf{Keywords:} Zero Trust, DevSecOps, Google Cloud, infrastructure as code, SIEM,
+MITRE ATT\&CK, multi-tenant security.
+
+}
+
+\selectlanguage{french}

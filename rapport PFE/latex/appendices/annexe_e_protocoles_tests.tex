@@ -1,0 +1,296 @@
+% =============================================================
+% Annexe E — Protocoles et preuves de validation
+% Alimentée depuis Ch.6 (§6.1, §6.2).
+% Absorbe, depuis l'ancienne annexe H démontée :
+%   - H.1 « preuves complémentaires disponibles » (2 mesures datées),
+%   - H.3 « règles de production » resserrées en note de méthode.
+% Aucun appel \capture : aucune image n'existe dans latex/figures/.
+% Condensation vague 3 : le tableau des conditions de mesure, le tableau des
+% mesures complémentaires et la section de synthèse finale sont supprimés
+% (redites du ch.6) ; l'analyse de T1, T8 et T11 reste au corps, l'annexe n'en
+% garde que le protocole, le critère et la portée de la preuve.
+% =============================================================
+\chapter{Protocoles et preuves de validation}
+\label{ann:protocoles-tests}
+
+Cette annexe est la base de reproduction de la campagne de vingt protocoles dont le
+\cref{ch:validation} publie les résultats : un tiers disposant du même environnement peut
+rejouer chacun d'eux, son critère d'acceptation étant formulé avant exécution et publié ici. Elle
+donne les conditions de mesure, le modèle de fiche appliqué à chaque protocole, et les vingt
+protocoles avec leur critère, leur résultat et sa date. Deux relevés de recette les complètent sans
+en fonder aucun --- antériorité du dernier rattachement sémantique sur l'attaque du 19/08/2026,
+durées de retour arrière applicatif du 07/08/2026 --- et sont publiés avec leur date en
+\cref{sec:eval-enrichissement,sec:performance}.
+
+\medskip
+\noindent\textbf{Conditions de mesure et modèle de fiche.} La campagne est exécutée sur l'environnement de recette, de topologie identique à la cible
+(\cref{sec:env-travail}) ; les preuves ponctuelles sont datées jusqu'au 25/08/2026, les preuves
+automatisées sont rejouées à chaque livraison et n'ont pas de date unique de relevé. Deux
+paramètres ne sont pas épinglés, et le sont dits : la version du référentiel de configuration
+d'infrastructure n'est pas consignée, et la matrice de techniques d'attaque non plus ---
+l'instantané employé est identifié par l'empreinte publiée en \cref{sec:eval-detection}. Aucun taux
+de conformité ni de couverture n'en est tiré.
+
+Chaque protocole suit le même modèle : un identifiant \textbf{Ti} renvoyant à l'exigence
+\textbf{EXi} et à la menace qu'il vérifie ; un \textbf{protocole} décrivant l'action tentée ; un
+\textbf{critère d'acceptation} formulé avant l'exécution et non révisé après coup ; un
+\textbf{résultat} selon la convention à quatre valeurs de \cref{sec:strategie} ; et la
+\textbf{preuve} qui le fonde, avec sa date ou son mode d'exécution. Les six protocoles rattachés au
+plan de validation continue portaient en outre un \textbf{attendu} --- ce que la preuve devrait
+rendre visible, énoncé \emph{avant} l'exécution --- reproduit ci-dessous sans révision, à côté du
+relevé qui l'a confronté : l'écart est nul pour T17 et T20, partiel pour T12, T15 et T19,
+défavorable pour T14.
+
+Une règle de méthode gouverne enfin la production de ces preuves : \textbf{la sortie brute
+d'exécution est conservée, horodatée dans le cadre même où elle est produite}, et c'est elle qui
+fait preuve --- une date portée par une légende est une affirmation de l'auteur, une date lisible
+dans la sortie est une propriété de la preuve. Les valeurs sensibles qu'elle porte y sont masquées
+par rectangle opaque et jamais par floutage, un flou étant réversible par traitement d'image.
+
+\medskip
+\noindent\textbf{Protocoles détaillés.}
+
+\textbf{T1 --- Filtrage des attaques applicatives} (EX1, SO1). Envoyer, depuis l'extérieur, des
+charges d'attaque correspondant aux cinq familles de règles activées au périmètre.
+\emph{Critère} : toutes les requêtes sont rejetées avant d'atteindre la charge de travail, verdict
+journalisé. \emph{Résultat} : \textbf{non conforme}. \emph{Preuve} : le 23/08/2026, les charges
+d'injection SQL, de script inter-sites et d'inclusion de fichier local ont été refusées en~403,
+mais une forme brute de traversée de chemin a reçu une redirection~302 --- le quantificateur du
+critère n'est pas tenu ; mécanisme et correctif en \cref{sec:non-conformite-t1}.
+
+\textbf{T2 --- Limitation des tentatives d'authentification} (EX2, SO2/SO3). Générer des échecs
+d'authentification répétés depuis une adresse unique jusqu'au franchissement du seuil.
+\emph{Critère} : blocage temporaire déclenché, trace présente dans l'entrepôt. \emph{Résultat} :
+conforme. \emph{Preuve} : le 19/08/2026, onze requêtes ont produit dix réponses~422 puis une
+réponse~429.
+
+\textbf{T3 --- Comportement sous charge et traçabilité du balayage} (EX3, SO4/SO5). Générer une
+charge supérieure au seuil global puis un balayage de la surface exposée. \emph{Critère} : le
+service reste disponible, les deux activités apparaissent dans les journaux. \emph{Résultat} :
+partiellement conforme. \emph{Preuve} : le balayage est tracé, les journaux du répartiteur étant
+collectés sans filtre de statut ni de sévérité. \emph{Réserve} : l'essai de charge au-delà du seuil
+global n'est pas documenté.
+
+\textbf{T4 --- Inaccessibilité des données depuis Internet} (EX4, SO6). Depuis un hôte externe,
+tenter une connexion directe à la base de données ; vérifier par inventaire qu'aucune adresse
+publique n'est attribuée. \emph{Critère} : aucune adresse publique, connexion en échec.
+\emph{Résultat} : partiellement conforme. \emph{Preuve} : l'inventaire de l'instance montre
+l'attribution d'adresse publique désactivée, un raccordement par accès privé aux services et un
+mode de transport strictement chiffré. \emph{Réserve} : l'échec de connexion est \emph{déduit} de
+l'absence de route, non relevé depuis un hôte externe --- c'est la déduction, non la mesure, qui
+borne ce résultat.
+
+\textbf{T5 --- Cloisonnement des identités applicatives} (EX5, SO7). Avec l'identité d'une
+application hébergée, tenter une lecture de l'entrepôt de supervision. \emph{Critère} : refus
+d'autorisation. \emph{Résultat} : conforme. \emph{Preuve} : deux rôles exactement attribués et usurpation refusée
+en direct le 23/08/2026 ; l'identité du composant d'encodage est dépourvue de tout rôle sur
+l'entrepôt, vérifié le 19/08/2026. Un test automatisé rejoue à chaque livraison la lecture
+interdite du secret de base applicative sous l'identité d'enrichissement et exige le refus.
+
+\textbf{T6 --- Authentification des appels entre services} (EX6, SO8). Appeler le service
+d'encodage sans jeton d'identité. \emph{Critère} : refus --- être « à côté » ne doit rien
+accorder. \emph{Résultat} : partiellement conforme. \emph{Preuve} : un test automatisé, en porte bloquante à
+chaque livraison, émet l'appel sans jeton et vérifie le refus ; l'entrée du service est restreinte
+aux appels internes et le droit d'invocation à la seule identité d'enrichissement.
+\emph{Réserve} : l'appel du test vient de l'extérieur du réseau privé, et le refus atteste donc le
+contrôle de périmètre ; l'appel depuis l'intérieur sans jeton, formulation exacte du critère, reste
+porté par la configuration.
+
+\textbf{T7 --- Absence de clés de longue durée} (EX7, SO9). Inventorier les clés existantes pour
+toutes les identités de service ; tenter d'en créer une. \emph{Critère} : inventaire vide et
+absence de clé exportée dans la chaîne. \emph{Résultat} : conforme. \emph{Preuve} : le critère est
+un inventaire, et l'inventaire est vide --- recherche exhaustive sur le dépôt et l'infrastructure,
+aucune ressource de clé de compte de service, aucun fichier d'identifiants, aucune variable de
+justificatifs ; la fédération d'identité, contrainte à la fois sur le dépôt et sur la branche, rend
+la clé inutile. \emph{Qualification} : la garantie est \emph{vérifiée} par inventaire reproductible
+et non \emph{préventive}, l'interdiction structurelle de créer une clé relevant d'une politique
+d'organisation hors du périmètre administratif disponible (écart É7). La distinction qualifie le
+résultat sans l'annuler : le critère ne porte pas sur l'existence d'un contrôle préventif.
+
+\textbf{T8 --- Blocage d'un artefact vulnérable} (EX8, SO10). Soumettre à la chaîne une image
+contenant une vulnérabilité critique connue. \emph{Critère} : arrêt à l'étape d'analyse de
+vulnérabilité \cite{slsa_framework}. \emph{Résultat} : conforme, sur un refus réellement survenu et
+sans mise en scène. \emph{Preuve} et \emph{réserve} --- vulnérabilité de \texttt{node-tar} 6.2.1,
+correctif retenu, ordre publication/analyse à réaligner --- en \cref{sec:preuve-t11}.
+
+\textbf{T9 --- Registre de confiance unique} (EX9, SO11). Tenter un déploiement depuis une source
+d'images externe, puis par référence mutable au lieu d'une empreinte. \emph{Critère} : les deux
+tentatives échouent \cite{slsa_framework} --- une étiquette contenant une empreinte de commit ne
+constitue pas une empreinte d'image immuable. \emph{Résultat} : partiellement conforme.
+\emph{Preuve} : un registre unique, une résolution par empreinte d'image sur le chemin de
+description en code, une étiquette par empreinte de commit sur le chemin de livraison --- immuable
+en pratique, mutable en théorie. \emph{Réserve} : aucun contrôle n'oppose de refus, ni étiquettes
+immuables ni admission d'image n'étant déclarées, et l'application hébergée est déployée par
+étiquette flottante (écart É8). La propriété tient par construction, non par imposition : c'est la
+borne exacte de ce résultat.
+
+\textbf{T10 --- Blocage d'un secret versionné} (EX10, SO12). Soumettre un secret factice de format
+reconnaissable ; vérifier séparément qu'aucun secret du système n'est dérivé d'un autre.
+\emph{Critère} : arrêt à la première étape, indépendance confirmée par inventaire.
+\emph{Résultat} : partiellement conforme. \emph{Preuve} : la porte de détection de secrets est
+bloquante à chaque livraison comme à chaque demande de fusion, sur l'historique complet du dépôt,
+une profondeur de clone complète lui étant explicitement accordée ; l'indépendance est établie par
+inventaire, chaque secret étant engendré par un tirage aléatoire indépendant, stocké séparément et
+injecté par référence, aucun mot de passe ne transitant par une variable de configuration.
+\emph{Réserve} : aucun refus n'a été observé sur un secret factice, et le cas de la porte déclarée
+bloquante mais inerte (\cref{subsec:incidents}) est la raison pour laquelle une porte non éprouvée
+n'est pas comptée conforme.
+
+\textbf{T11 --- Intégrité de la chaîne de preuve} (EX11, SO13/SO16) --- \emph{test le plus
+discriminant de la campagne}. Avec l'identité de la tâche d'enrichissement, tenter une écriture
+puis une suppression dans les tables de journaux bruts et de détections. \emph{Critère} : refus
+sur ces tables, écriture restant possible sur la seule table d'enrichissement. \emph{Résultat} :
+conforme. \emph{Preuve} : un test de bout en bout automatisé, rejoué à chaque livraison, tente
+réellement l'insertion interdite sous l'identité usurpée et n'est vert que si elle est refusée ; la
+vérification des droits table par table du 19/08/2026 couvre en outre la table des journaux bruts et
+le cas de la suppression. Le mécanisme, l'histoire de ce test et sa \emph{réserve} --- tâche non
+bloquante, abstention explicite lorsque l'identité courante n'a pas le droit d'usurpation --- sont
+analysés en \cref{sec:preuve-t11}.
+
+\textbf{T12 --- Détection d'une interruption de collecte} (EX12, SO14). Interrompre volontairement
+la collecte au-delà du seuil d'alerte. \emph{Critère} : une alerte est émise. \emph{Attendu, écrit
+avant exécution} : la notification effectivement reçue sur le canal déclaré, avec l'heure
+d'interruption, l'heure de déclenchement et le délai qui les sépare. \emph{Résultat} :
+partiellement conforme. \emph{Preuve} : le 22/08/2026, le générateur de trafic de recette a été arrêté à \hms{10:35:00} ;
+la politique d'absence de signal s'est ouverte à \hms{11:10:44} et la notification a été reçue à
+\hms{11:11:19}, soit 36~min~19~s après l'interruption --- 30~min de durée de condition, 300~s de
+période d'alignement, puis évaluation et acheminement. \emph{Réserve} : exécutée d'abord sur
+l'autre panne que recouvre le protocole, l'interruption de l'acheminement des journaux, la mesure
+est défavorable --- l'acheminement coupé de \hms{09:12} à \hms{10:20} n'a ouvert aucune alerte,
+1\,148 requêtes comptées par la métrique d'exécution n'ont produit aucune ligne dans l'entrepôt, et
+le rétablissement n'a rien rejoué : la politique porte sur la production des journaux, jamais sur
+leur acheminement ni sur la fraîcheur de la table qui les reçoit.
+
+\textbf{T13 --- Attribution des actions privilégiées} (EX13, SO15). Exécuter une action
+privilégiée identifiable, la retrouver dans les journaux d'audit avec son auteur. \emph{Critère} :
+action retrouvée, auteur identifié, horodatage cohérent. \emph{Résultat} : partiellement conforme.
+\emph{Preuve} : la journalisation d'audit des accès aux données est activée en lecture \emph{et} en
+écriture sur les quatre services porteurs de données --- entrepôt, gestionnaire de clés,
+gestionnaire de secrets, base relationnelle --- et le journal d'activité d'administration est
+produit par construction, sans désactivation possible. \emph{Réserve} : ces journaux ne sont
+acheminés vers aucune destination dédiée, demeurent dans un espace à rétention de trente jours
+modifiable, et aucune règle ne les exploite. L'attribution est possible, elle n'est pas rendue
+incontestable.
+
+\textbf{T14 --- Sortie du composant d'inférence} (EX14, SO17). Depuis le composant d'encodage,
+tenter une connexion sortante vers une destination externe. \emph{Critère} : échec de connexion.
+\emph{Attendu, écrit avant exécution} : l'échec horodaté d'une connexion sortante émise depuis le
+composant lui-même, et la trace de refus correspondante. \emph{Résultat} : \textbf{non conforme}.
+\emph{Preuve} : le 25/08/2026, deux sondes ne différant que par leur chemin de sortie ont été
+exécutées sous l'identité du composant. La sonde A, placée dans le sous-réseau plateforme avec
+l'étiquette du composant et la sortie directe, a été refusée deux fois --- à \hms{10:04:14} vers
+\texttt{203.0.113.10:443} et à \hms{10:04:26} vers \texttt{198.51.100.7:443} --- par la règle de
+refus par défaut en sortie, chaque refus portant sa ligne de journal dans l'entrepôt et son code 28
+côté client 10,3~s plus tard. La sonde B, portant la configuration réseau exacte de la révision
+déployée --- sortie managée par la plateforme d'exécution, sans accès au réseau privé --- a reçu un
+code~204 en 412~ms à \hms{10:12:38} ; la lecture de la révision à \hms{10:18} confirme l'absence de
+bloc d'accès au réseau. Sur le chemin réellement emprunté par le composant, la connexion aboutit et
+aucune règle de pare-feu ne s'applique. Le correctif, son coût et sa portée --- il vaut identiquement pour l'interface web de l'application
+hébergée --- sont analysés en \cref{sec:non-conformite-t1}. \emph{Réserve} : le relevé porte sur la
+capacité de sortie, non sur son usage --- la sonde B partage l'identité et le chemin réseau de la
+révision déployée, non son binaire, et l'absence d'appel sortant dans l'image n'est établie que par
+lecture du code, preuve de rang 4 qui ne peut fonder aucun verdict de conformité.
+
+\textbf{T15 --- Comportement de la chaîne d'enrichissement sous charge} (EX15, SO18). Injecter un
+volume de détections nettement supérieur au volume nominal. \emph{Critère} : la tâche se termine
+sans perte, coût et durée mesurés. \emph{Attendu, écrit avant exécution} : le volume injecté, le
+nombre de détections traitées, la durée de la tâche et l'égalité entre entrées et sorties, relevés
+sur une même exécution. \emph{Résultat} : partiellement conforme. \emph{Preuve} : le 22/08/2026,
+500 détections --- environ dix-sept fois le volume nominal --- ont été injectées à \hms{14:00:00} ;
+sept exécutions successives, de \hms{14:15} à \hms{15:45}, ont lu 350 détections et écrit
+350 lignes dans la table d'enrichissement, entrées égales aux sorties sur chaque exécution, aucune
+en échec et aucune reprise. La durée maximale est de 96~s, dont 31~s de démarrage à froid du
+service d'encodage, pour un délai d'expiration de 600~s ; la durée cumulée est de 519~s et le coût
+marginal reste inférieur à 0,05~euro, dominé par le minimum forfaitaire de balayage par table et
+non par le volume. \emph{Réserve} : le critère est tenu au niveau de la tâche, non de la chaîne ---
+150 des 500 détections injectées sont sorties de la fenêtre glissante de deux heures avant d'avoir
+été lues, sans erreur, sans code de retour non nul et sans trace. Le débit plafond mesuré est de 50 détections par quart d'heure, soit 200 par heure et une capacité
+d'absorption de 400 détections en attente ; la politique « Enrichissement en retard » s'est ouverte
+à \hms{14:35:47} et refermée à \hms{16:05:12}, non parce que le retard était résorbé mais parce que
+les lignes en attente étaient sorties de la fenêtre --- l'alerte se referme à l'instant où la perte
+devient définitive. Le trafic de recette ayant été suspendu pendant la mesure, ce débit est une
+borne supérieure que le flux nominal, partageant le même lot de 50, abaisse.
+
+\textbf{T16 --- Détection de dérive} (EX16, SO20). Modifier hors code un attribut réversible d'une
+ressource déjà gérée dans l'état, puis exécuter une planification avec rafraîchissement.
+\emph{Critère} : la planification signale la différence et les journaux d'audit identifient
+l'auteur \cite{hashicorp_drift} ; une ressource nouvelle absente de l'état exige un contrôle
+d'inventaire séparé. \emph{Résultat} : partiellement conforme. \emph{Preuve} : mécanisme sollicité en conditions réelles
+lors de l'incident de chiffrement du 08/08/2026, planification sans différence obtenue le
+19/08/2026, contrôle quotidien de dérive de l'isolation entre locataires doté de sa propre
+politique d'alerte. \emph{Réserve} : aucune détection de dérive n'est planifiée sur l'infrastructure
+décrite en code, la chaîne de provisionnement (F7) ne comportant ni planification ni application
+automatisées, et une ressource créée hors état échapperait à la seule planification.
+
+\textbf{T17 --- Protection de l'état de l'infrastructure} (EX17, SO21). Tenter un accès en lecture
+à l'état avec une identité non autorisée. \emph{Critère} : refus. \emph{Attendu, écrit avant
+exécution} : le refus d'autorisation horodaté, avec l'identité employée et le droit manquant nommé.
+\emph{Résultat} : conforme. \emph{Preuve} : le 20/08/2026, quatre refus ont été opposés aux trois
+identités de service susceptibles d'atteindre l'emplacement de l'état --- lecture refusée à
+\hms{08:41:07} sous l'identité d'API, à \hms{08:42:15} sous celle de la tâche d'enrichissement et à
+\hms{08:43:02} sous celle du tableau de bord, chacune en erreur~403 nommant le droit
+\texttt{storage.objects.get} manquant, puis énumération du préfixe refusée à \hms{08:43:44} sur
+\texttt{storage.objects.list}. Un contrôle positif à \hms{08:45:20}, sous l'identité de la chaîne
+de livraison, énumère l'objet d'état : sans lui, quatre échecs ne distingueraient pas un refus d'un
+chemin erroné. Preuve de rang 3, vérification en direct datée. \emph{Réserve} : l'emplacement de l'état est
+provisionné hors description en code --- ni son versionnement, ni son mode d'accès uniforme, ni sa
+politique de conservation ne sont déclarés, de sorte qu'une modification de ces propriétés ne serait
+signalée par aucun contrôle de dérive ; le refus établit un état à un instant, non sa persistance,
+d'où la cadence de rejeu et le déclencheur sur tout changement d'emplacement ou de droits inscrits
+au plan. Le verrouillage concurrent est natif à l'emplacement retenu ; son versionnement n'a jamais
+été éprouvé en reprise.
+
+\textbf{T18 --- Revue avant modification de droits} (EX18, SO22). Soumettre une modification
+élargissant les droits d'une identité. \emph{Critère} : blocage en attente d'approbation, aucune
+application sans validation humaine. \emph{Résultat} : partiellement conforme. \emph{Preuve} : la revue de demande de fusion est en
+place et l'infrastructure est appliquée manuellement par l'administrateur, ce qui interpose de fait
+une validation humaine. \emph{Réserve} : cette validation n'est pas outillée --- aucun environnement
+protégé n'est déclaré sur les six tâches de la chaîne de livraison, donc aucune approbation n'est
+\emph{exigée} par un mécanisme. Le contrôle tient par la procédure, non par la porte.
+
+\textbf{T19 --- Détection d'une consommation anormale} (EX19, SO23). Provoquer une consommation de
+ressources nettement supérieure au profil habituel. \emph{Critère} : alerte émise.
+\emph{Attendu, écrit avant exécution} : la notification reçue, le seuil franchi et le poste de
+consommation qui l'a provoqué. \emph{Résultat} : partiellement conforme. \emph{Preuve} : le prérequis a été levé le 20/08/2026 par la déclaration, dans le code
+d'infrastructure, d'un budget mensuel de 50,00~euros à seuils de 50\,\%, 90\,\% et 100\,\% de la
+dépense réelle, acheminé vers les deux canaux déjà déclarés. Le 21/08/2026, le budget a été ramené
+à 6,50~euros --- la dépense du mois s'élevant alors à 6,42~euros, soit 98,8\,\% --- puis une charge
+de 2~h~30 a porté le générateur de trafic à vingt fois son débit et rejoué 150 fois chacune des
+douze requêtes planifiées, soit 1\,800 exécutions et environ 41~Go balayés. La dépense de fin de
+journée atteint 6,63~euros, 102,0\,\% du budget temporaire, pour 0,21~euro de consommation
+additionnelle ; les notifications des seuils 90\,\% et 100\,\% ont été reçues à \hms{12:47} et
+\hms{17:38}. Le critère « alerte émise » est tenu : deux notifications reçues sur le canal déclaré, pour deux
+seuils distincts, avec leur horodatage. \emph{Réserve} : les deux autres éléments de l'attendu ne le
+sont pas. Le délai entre franchissement et notification est un \emph{intervalle} compris entre
+5~h~48 et 8~h~18 --- l'instant du franchissement n'étant connu qu'à l'heure près --- et il n'est
+borné par aucun engagement ; la notification porte le nom du budget, le montant et le pourcentage,
+jamais le poste de consommation, reconstitué après coup depuis la ventilation de coût. Le
+dispositif est un signal de coût, non un signal de sécurité : un détournement de ressources
+fonctionne plusieurs heures avant le départ de la première notification.
+
+\textbf{T20 --- Restriction des sorties réseau} (EX20, SO24). Depuis une charge de travail
+applicative, tenter une connexion sortante vers une destination non autorisée. \emph{Critère} :
+échec de connexion et trace de refus exploitable. \emph{Attendu, écrit avant exécution} : l'échec
+de la connexion sortante côté charge de travail, et la ligne de refus correspondante retrouvée dans
+l'entrepôt de supervision, les deux horodatages se recoupant. \emph{Résultat} : conforme.
+\emph{Preuve} : la condition de recevabilité était acquise --- journalisation des refus réseau
+activée et vérifiée depuis le 19/08/2026, ce qui clôt l'écart É1. Le 24/08/2026, après la pose du
+refus par défaut en sortie du 23/08 et avant le démontage de l'ancien chemin de traduction
+d'adresses, une tâche déployée avec l'identité de service, l'étiquette, le sous-réseau et le mode
+de sortie d'un locataire réel a émis trois tentatives, toutes refusées : à \hms{09:12:33} vers une
+adresse externe non autorisée, par la règle de refus par défaut en sortie ; à \hms{09:13:49} vers
+le sous-réseau de la plateforme, par la règle de refus croisé entre locataires ; à \hms{09:15:02}
+vers l'adresse privée de l'instance de base sur le port 5432, par la règle nommée qui l'interdit.
+Les trois lignes de refus ont été retrouvées dans l'entrepôt avec la règle, la source, la
+destination et le port, interrogeables à \hms{09:18}, de 2~min~55~s à 4~min~12~s après l'événement,
+chacune précédant l'échec client de 10,2 à 10,3~s --- le délai d'expiration demandé plus
+l'acheminement. Un contrôle positif à \hms{09:16:41}, la même sonde portant l'étiquette de la tâche
+d'enrichissement, atteint la destination autorisée par sa règle et reçoit un code~200 : sans lui,
+trois échecs ne distingueraient pas un refus du pare-feu d'une sortie réseau en panne. Preuve de
+rang 3, adossée à une configuration déclarée en code. \emph{Réserves} : elles bornent la portée, non la couverture du critère. L'étiquette se pose dans
+la définition de la révision, de sorte que la frontière est opposable à une charge compromise mais
+non à un opérateur capable de déployer ; seuls les refus sont journalisés, par décision de coût ;
+l'exfiltration par les interfaces du fournisseur reste ouverte, l'autorisation qui rend l'entrepôt
+joignable rendant joignable tout entrepôt du même fournisseur ; et deux charges ne sont pas
+derrière ces règles --- le composant d'encodage et l'interface web de l'application hébergée ---
+ce dont T14 est la conséquence directe.

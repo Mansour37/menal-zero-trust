@@ -1,0 +1,80 @@
+---
+title: "Figure 7 — Vue de déploiement : composants GCP et flux"
+---
+graph TB
+    %% Top: Users
+    USERS["👤 Utilisateurs / Administrateur / Analyste"]
+
+    %% GCP Project
+    subgraph GCP["Projet GCP — menal-prod"]
+        direction TB
+
+        subgraph L1["L1 — EDGE"]
+            L1C["Cloud DNS · Global ALB (HTTPS)\nCloud Armor (WAF, rate limiting)"]
+        end
+
+        subgraph L3["L3 — Charges de travail (Cloud Run)"]
+            direction LR
+            APP["Application ELSON\nCloud Run"]
+            API["API FastAPI + Dashboard Next.js\nCloud Run"]
+        end
+
+        subgraph L4["L4 — Réseau privé (VPC)"]
+            L4C["Sous-réseaux privés · PSA\nCloud NAT · refus par défaut"]
+        end
+
+        subgraph L6["L6 — ML / Enrichissement Sémantique"]
+            direction LR
+            ML["ml-embed\nCloud Run · ATTACK-BERT\negress : AUCUN"]
+            EJ["enrich-job\nCloud Run Job\nCloud Scheduler /5 min"]
+        end
+
+        subgraph L5["L5 — Données"]
+            direction LR
+            SQL["Cloud SQL PostgreSQL\nprivé · HA · PITR"]
+            BQ["BigQuery\nevenements / détections"]
+        end
+
+        subgraph L7["L7 — Observabilité"]
+            L7C["Cloud Logging · Monitoring\nalertes / SLOs · uptime checks"]
+        end
+    end
+
+    %% L2 - Identity (transversal)
+    subgraph L2["L2 — Identité et sécurité (transversal)"]
+        L2C["IAM · Comptes de service\nSecret Manager · Cloud KMS · WIF"]
+    end
+
+    %% Pipelines
+    subgraph PIPE["Pipeline DevSecOps"]
+        PIPEC["GitHub Actions (WIF)\nSemgrep → Trivy\nArtifact Registry → Cloud Run"]
+    end
+
+    subgraph TERRA["Pipeline infrastructure"]
+        TERRAC["Terraform fmt/validate/plan\nscan IaC → approbation\n→ apply (état distant GCS)"]
+    end
+
+    %% Main flow
+    USERS --> L1
+    L1 -->|"trafic filtré"| L3
+    L3 -->|"accès privé"| L4
+    L4 -->|"interne uniquement"| L6
+    EJ --> ML
+    L6 --> L5
+    L5 -->|"sink de journaux"| L7
+
+    %% L2 and pipelines
+    L2 -.->|"déploiement"| L3
+    PIPE -.->|"deploy"| L3
+    TERRA -.->|"terraform apply"| L4
+
+    %% Styling
+    classDef mainLayer fill:#E3F2FD,stroke:#1565C0,color:#0D47A1,stroke-width:2px
+    classDef sideLayer fill:#FFF3E0,stroke:#E65100,color:#BF360C,stroke-width:2px
+    classDef pipeline fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20,stroke-width:2px
+    classDef user fill:#F3E5F5,stroke:#6A1B9A,color:#4A148C,stroke-width:2px
+
+    class USERS user
+    class L1,L3,L4,L5,L6,L7 mainLayer
+    class L2 sideLayer
+    class PIPE,TERRA pipeline

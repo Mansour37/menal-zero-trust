@@ -1,0 +1,52 @@
+% =============================================================
+% formulaire_depot.tex — Formulaire de dépôt / validation du rapport
+% Fond officiel extrait du modèle ESPRIT (même source que cover.tex).
+% Le modèle indique explicitement : « Ce formulaire doit être
+% introduit après la page de garde » — inséré ici juste après.
+% Formulaire à faire signer physiquement puis scanner avant dépôt
+% final (cf. note en bas de page, reprise du modèle officiel).
+% =============================================================
+\newgeometry{margin=0cm}
+\clearpage
+\thispagestyle{empty}
+\begin{tikzpicture}[remember picture, overlay]
+  % --- Fond officiel ESPRIT (pleine page A4) ---
+  \node[anchor=north west, inner sep=0pt] at (current page.north west)
+    {\includegraphics[width=\paperwidth,height=\paperheight]{figures/formulaire_depot_fond.png}};
+
+  % --- Intitulé bilingue ---
+  \node[anchor=north, align=center, text width=155mm] at ([xshift=105mm,yshift=-118mm]current page.north west)
+    {\normalsize Je valide le dépôt du rapport PFE relatif à l'étudiant nommé ci-dessous \\
+     \textit{I validate the submission of the student's report:}};
+
+  \node[anchor=north west] at ([xshift=25mm,yshift=-138mm]current page.north west)
+    {\normalsize Nom \& Prénom \textit{/ Name \& Surname} : \textbf{\etudiantnom}};
+
+  % --- Encadrant entreprise ---
+  \node[anchor=north west] at ([xshift=25mm,yshift=-158mm]current page.north west)
+    {\normalsize\bfseries Encadrant Entreprise \textit{/ Business site Supervisor}};
+  \node[anchor=north west] at ([xshift=25mm,yshift=-167mm]current page.north west)
+    {\normalsize Nom \& Prénom \textit{/ Name \& Surname} : \textbf{\encadrantentreprise}};
+  \node[anchor=north west] at ([xshift=25mm,yshift=-176mm]current page.north west)
+    {\normalsize Cachet \& Signature \textit{/ Stamp \& Signature} :};
+  \draw[gray, thick] ([xshift=95mm,yshift=-175mm]current page.north west)
+    rectangle ([xshift=155mm,yshift=-192mm]current page.north west);
+
+  % --- Encadrant académique ---
+  \node[anchor=north west] at ([xshift=25mm,yshift=-200mm]current page.north west)
+    {\normalsize\bfseries Encadrant Académique \textit{/ Academic Supervisor}};
+  \node[anchor=north west] at ([xshift=25mm,yshift=-209mm]current page.north west)
+    {\normalsize Nom \& Prénom \textit{/ Name \& Surname} : \textbf{\encadrantacademique}};
+  \node[anchor=north west] at ([xshift=25mm,yshift=-218mm]current page.north west)
+    {\normalsize Signature \textit{/ Signature} :};
+  \draw[gray, thick] ([xshift=95mm,yshift=-217mm]current page.north west)
+    rectangle ([xshift=155mm,yshift=-234mm]current page.north west);
+
+  % --- Note officielle du modèle (bilingue, reprise telle quelle) ---
+  \node[anchor=north, align=center, text width=160mm] at ([xshift=105mm,yshift=-245mm]current page.north west)
+    {\footnotesize\itshape
+     Ce formulaire doit être rempli, signé et scanné \\
+     \textit{This form must be completed, signed and scanned.}};
+\end{tikzpicture}
+\clearpage
+\restoregeometry

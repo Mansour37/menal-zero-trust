@@ -1,0 +1,203 @@
+% =============================================================
+% commands.tex — Commandes et environnements personnalisés
+% =============================================================
+
+% --- Deux sorties depuis les mêmes sources ---
+% `main.tex` compile par défaut la version de remise. Le petit point
+% d'entrée `main_brouillon.tex` définit \menalbrouillon avant de charger
+% `main.tex`, ce qui rend alors visibles les informations encore ouvertes.
+\newif\ifbrouillon
+\ifdefined\menalbrouillon
+  \brouillontrue
+\else
+  \brouillonfalse
+\fi
+
+% --- Colonne de tableau en drapeau (non justifiée), utilisée pour toutes
+%     les colonnes p{...} : évite les "Underfull \hbox" massifs dans les
+%     colonnes étroites et les ruptures de page problématiques en fin de
+%     longtable ("Infinite glue shrinkage") causées par la justification
+%     forcée sur peu de mots par ligne ---
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+% --- Marqueur visible pour tout contenu manquant ---
+% Usage : \todo{ce qui manque et pourquoi}
+\newcommand{\todo}[1]{%
+  \ifbrouillon
+    \textcolor{red!70!black}{\textbf{[À COMPLÉTER --- #1]}}%
+  \fi
+}
+
+% --- Encadré pour les sections bloquées par un document source
+%     manquant (cf. 00_SOMMAIRE_PFE_MENAL.md §5) ---
+\newtcolorbox{attentedoc}[1][]{
+  colback=red!5, colframe=red!60!black,
+  colbacktitle=red!60!black, coltitle=white,
+  fonttitle=\bfseries,
+  title={En attente de document source},
+  breakable, #1
+}
+
+% --- Encadré "principe clé" / point à retenir ---
+\newtcolorbox{keybox}[1][]{
+  colback=blue!5, colframe=blue!40!black,
+  colbacktitle=blue!40!black, coltitle=white,
+  fonttitle=\bfseries,
+  breakable, #1
+}
+
+% --- Encadré d'alerte / point de vigilance ---
+\newtcolorbox{alertbox}[1][]{
+  colback=orange!8, colframe=orange!70!black,
+  colbacktitle=orange!70!black, coltitle=white,
+  fonttitle=\bfseries,
+  title={Point de vigilance},
+  breakable, #1
+}
+
+% --- Encadré "extrait de configuration" (courts extraits encadrés,
+%     jamais de fichier de code complet dans le corps du rapport) ---
+\newtcolorbox{extraitconf}[1][]{
+  colback=gray!5, colframe=gray!50!black,
+  fonttitle=\bfseries\ttfamily\small, coltitle=black,
+  fontupper=\ttfamily\scriptsize,
+  breakable, #1
+}
+
+% --- Renvoi rapide vers le sommaire de travail (usage interne,
+%     à retirer avant impression finale) ---
+\newcommand{\refsommaire}[1]{\textit{(cf. sommaire de travail, #1)}}
+
+% --- Emplacement d'une capture d'écran ou d'un schéma pas encore
+%     produit, à l'intérieur d'un environnement figure/table/graphique.
+%     Usage : \figureaproduire{ce qui doit apparaître, et ce qui doit
+%     être masqué -- cf. PLAN_DES_FIGURES_ET_CAPTURES.md §1} ---
+\newcommand{\figureaproduire}[1]{%
+  \ifbrouillon
+    \fbox{\parbox{0.92\linewidth}{\centering\vspace{1.4cm}\todo{#1}\vspace{1.4cm}}}%
+  \fi
+}
+
+% --- Citation dont la clé .bib n'existe pas encore (bibliographie en
+%     cours de consolidation, cf. bibliography/references.bib). Usage :
+%     \citetodo{Auteurs, Titre, année} --- à remplacer par \cite{clé}
+%     une fois la référence ajoutée au fichier .bib. ---
+\newcommand{\citetodo}[1]{%
+  \ifbrouillon
+    \textcolor{red!70!black}{[réf. à ajouter --- #1]}%
+  \fi
+}
+
+% --- Date de référence unique du rapport ---
+% Tous les statuts sont exprimés « à la date de \dateref ».
+\newcommand{\dateref}{25/08/2026}
+
+% --- Marqueur de contenu à compléter par l'auteur ---
+% Visible en mode brouillon, invisible en mode final.
+\newcommand{\acompleter}[1]{%
+  \ifbrouillon
+    \textcolor{red!70!black}{\textbf{[À COMPLÉTER --- #1]}}%
+  \else
+    % En mode final, le placeholder est invisible
+  \fi
+}
+
+% --- Marqueur de contenu en attente d'une décision ---
+\newcommand{\attente}[1]{%
+  \ifbrouillon
+    \textcolor{orange!80!black}{\textit{[En attente --- #1]}}%
+  \fi
+}
+
+% --- Capture d'écran : emplacement réservé (norme ESPRIT §14) ---
+% Usage : \capture{ID}{légende}{consigne de masquage}
+%         \capture[7cm]{ID}{légende}{consigne de masquage}
+% Si le fichier figures/<ID>.png existe, il est inséré ; sinon un cadre
+% de hauteur réservée tient la place, avec l'identifiant en petit gris
+% en version de remise et la consigne de masquage en version de travail.
+\newcommand{\captureheightdefault}{6cm}
+\newcommand{\capture}[4][\captureheightdefault]{%
+  \begin{figure}[htbp]
+    \centering
+    \IfFileExists{figures/#2.png}{%
+      \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+      \fcolorbox{black!30}{white}{\includegraphics[width=0.80\linewidth]{figures/#2.png}}%
+    }{%
+      \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+      \fcolorbox{black!30}{white}{%
+        \parbox[c][#1][c]{0.88\linewidth}{%
+          \centering
+          \ifbrouillon
+            \footnotesize\color{red!70!black}%
+            \textbf{[CAPTURE #2 --- À PRODUIRE]}\par\vspace{2pt}%
+            \begin{minipage}{0.90\linewidth}\centering\itshape #4\end{minipage}%
+          \else
+            \scriptsize\color{black!45}\textsf{Capture #2}%
+          \fi
+        }%
+      }%
+    }%
+    \caption{#3}
+    \label{fig:capture-#2}
+  \end{figure}%
+}
+
+% --- Capture double a/b : deux preuves d'un même test ---
+% \capturedouble{IDa}{IDb}{légende globale}{sous-lég. a}{sous-lég. b}{consigne}
+\newcommand{\capturedouble}[6]{%
+  \begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{0.48\linewidth}\centering
+      \IfFileExists{figures/#1.png}%
+        {\fbox{\includegraphics[width=0.94\linewidth]{figures/#1.png}}}%
+        {\fcolorbox{black!30}{white}{\parbox[c][3.4cm][c]{0.92\linewidth}{\centering
+           \ifbrouillon\footnotesize\color{red!70!black}\textbf{[CAPTURE #1]}%
+           \else\scriptsize\color{black!45}\textsf{Capture #1}\fi}}}%
+      \caption{#4}\label{fig:capture-#1}
+    \end{subfigure}\hfill
+    \begin{subfigure}[b]{0.48\linewidth}\centering
+      \IfFileExists{figures/#2.png}%
+        {\fbox{\includegraphics[width=0.94\linewidth]{figures/#2.png}}}%
+        {\fcolorbox{black!30}{white}{\parbox[c][3.4cm][c]{0.92\linewidth}{\centering
+           \ifbrouillon\footnotesize\color{red!70!black}\textbf{[CAPTURE #2]}%
+           \else\scriptsize\color{black!45}\textsf{Capture #2}\fi}}}%
+      \caption{#5}\label{fig:capture-#2}
+    \end{subfigure}
+    \caption{#3}
+    \label{fig:capture-#1#2}
+    \ifbrouillon\par\vspace{2pt}{\footnotesize\color{red!70!black}\itshape Masquage : #6}\fi
+  \end{figure}%
+}
+
+% --- Horodatage : neutralise l'espace fine française avant les deux-points ---
+% Usage : \hms{16:41:05}
+\DeclareRobustCommand{\hms}[1]{{\NoAutoSpaceBeforeFDP #1}}
+
+% --- Pictogrammes de couverture (cercle plein / mi-plein / vide) ---
+%     Employes au chapitre 1 et dans l'annexe A. Dessines en TikZ plutot
+%     qu'en glyphes Unicode, dont la couverture est incertaine en Times.
+\DeclareRobustCommand{\pictoPleinAudit}{\tikz[baseline=-0.5ex]{\fill[black] (0,0) circle (0.07cm);}}
+\DeclareRobustCommand{\pictoPartielAudit}{\tikz[baseline=-0.5ex]{\fill[black] (0,0) -- ++(90:0.07cm) arc (90:270:0.07cm) -- cycle; \draw[black] (0,0) circle (0.07cm);}}
+\DeclareRobustCommand{\pictoVideAudit}{\tikz[baseline=-0.5ex]{\draw[black] (0,0) circle (0.07cm);}}
+
+
+% --- Encadré « Résultat mesuré » ---
+% Réservé aux valeurs RÉELLEMENT relevées et datées. Une dizaine dans tout
+% le mémoire, pas davantage : c'est ce qui les rend repérables au feuilletage.
+% Usage : \begin{mesurebox}{titre court} ... \end{mesurebox}
+\newtcolorbox{mesurebox}[1]{
+  colback=green!4, colframe=green!35!black,
+  colbacktitle=green!35!black, coltitle=white,
+  fonttitle=\bfseries,
+  title={Résultat mesuré --- #1},
+  breakable
+}
+
+
+% --- Symbole euro ---
+% XeLaTeX avec une police système : le glyphe est disponible directement.
+% Défini ici plutôt que chargé par un paquet, pour ne pas ajouter de dépendance.
+\providecommand{\euro}{€}
+
+% --- Convention graphique unique (styles TikZ partages par toutes les figures) ---
+\input{config/convention_graphique}

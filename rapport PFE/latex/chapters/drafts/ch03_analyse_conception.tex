@@ -1,0 +1,276 @@
+% =============================================================
+% Chapitre 3 — Analyse des besoins et conception de l'architecture
+% cible (~13 pages). Contenu dérivé du HLD/LLD réels du projet.
+% =============================================================
+\chapter{Analyse des besoins et conception de l'architecture cible}
+\label{ch:conception}
+
+\begin{attentedoc}
+Ce chapitre décrit la \textbf{cible} de conception telle que fixée dans le document
+d'architecture (HLD) du projet. Il doit être relu et amendé à la lumière de
+\texttt{06\_ECARTS\_IMPLEMENTATION.md} avant validation finale, pour signaler clairement
+tout élément qui aurait changé entre la conception et la mise en œuvre --- celle-ci étant
+traitée au chapitre~\ref{ch:mise-en-oeuvre}.
+\end{attentedoc}
+
+\section{Cadrage et hypothèses structurantes}
+
+Le cadrage retenu au démarrage du projet repose sur trois hypothèses assumées, énoncées
+explicitement plutôt que découvertes après coup :
+
+\begin{enumerate}
+  \item trois environnements applicatifs (développement, recette, production) correspondant
+        chacun à un projet GCP distinct, dans une seule région, complétés par un projet
+        d'amorçage ne contenant aucun service applicatif (état Terraform, fédération
+        d'identité, registre d'images) ;
+  \item la montée en charge n'est pas un objectif du projet --- les limites de ce choix sont
+        documentées plutôt que contournées par une architecture surdimensionnée ;
+  \item la simplicité est traitée comme un critère d'architecture à part entière : tout
+        composant proposé doit justifier son existence, et tout composant non justifié est
+        retiré.
+\end{enumerate}
+
+\section{Notions clés}
+
+Avant de détailler les besoins puis l'architecture, il est utile de fixer le sens de quelques
+termes employés tout au long de ce chapitre, pour un lecteur qui ne serait pas nécessairement
+spécialiste du cloud ou de la cybersécurité.
+
+\textbf{Zero Trust} désigne un modèle de sécurité dans lequel aucune entité ne bénéficie d'une
+confiance implicite du seul fait de sa position réseau : chaque accès est vérifié explicitement,
+quelle que soit son origine (cf. chapitre~\ref{ch:etat-art}).
+
+\textbf{DevSecOps} désigne l'intégration des contrôles de sécurité directement dans le pipeline
+de livraison logicielle, sous forme de portes automatisées, plutôt que sous forme de revues
+manuelles réalisées après coup.
+
+\textbf{Infrastructure as Code (IaC)} désigne la description de l'infrastructure sous forme de
+code déclaratif versionné, permettant de reproduire, revoir et faire évoluer un environnement
+de la même manière qu'un programme.
+
+\textbf{Micro-segmentation par identité} désigne, dans le contexte de ce projet, une approche
+où le contrôle des communications entre composants ne repose pas sur un découpage réseau
+(VLAN, sous-réseaux), mais sur l'identité vérifiée de chaque composant --- un compte de service
+distinct par élément de l'architecture, avec des droits strictement délimités.
+
+\textbf{Embedding sémantique} désigne la transformation d'un texte (ici, un événement de
+sécurité) en un vecteur numérique, de telle sorte que deux événements proches en sens le
+soient également dans l'espace vectoriel --- ce qui permet de rapprocher un événement d'une
+technique d'attaque connue même sans correspondance exacte de motif.
+
+\section{Expression des besoins}
+
+\begin{table}[htbp]
+\centering
+\caption{Exigences non fonctionnelles retenues pour le socle}
+\label{tab:exigences-nf}
+\begin{tabular}{@{}P{3cm}P{6cm}P{5.5cm}@{}}
+\toprule
+\textbf{Exigence} & \textbf{Cible} & \textbf{Remarque} \\
+\midrule
+Disponibilité & Objectifs de niveau de service instrumentés sur les services critiques &
+Mesuré en continu, pas de simple \og best effort \fg{} \\
+Scalabilité & Volontairement limitée (cadrage projet) & Limites connues et documentées \\
+Sécurité & Conformité Zero Trust (NIST SP~800-207) ; DevSecOps avec portes bloquantes &
+Cœur du projet \\
+Coût & Maîtrisé (paliers gratuits / faible coût mensuel) & Poste dominant : ingestion de
+journaux \\
+Auditabilité & Chaque décision automatisée journalisée (hachage, score, version) &
+Prérequis de la valeur \og SIEM \fg{} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Sur le plan fonctionnel, l'architecture doit répondre à quatre besoins directement issus de
+la problématique du chapitre~\ref{ch:contexte} : centraliser la gestion des identités et des
+autorisations plutôt que de les dupliquer par application ; contrôler les communications
+entre composants au niveau de l'identité plutôt qu'au niveau du réseau ; bloquer
+automatiquement toute livraison logicielle ne respectant pas un ensemble de règles de
+sécurité définies ; et rattacher les événements de sécurité observés aux techniques
+d'attaque connues, y compris lorsqu'aucune règle statique ne les couvre.
+
+\section{Vue d'ensemble de l'architecture cible}
+
+L'architecture cible est organisée en sept couches, complétées par un plan de livraison
+transversal (figure~\ref{fig:archi-globale}) :
+
+\begin{table}[htbp]
+\centering
+\caption{Couches de l'architecture cible}
+\label{tab:couches-archi}
+\begin{tabular}{@{}P{1.2cm}P{3.3cm}P{9cm}@{}}
+\toprule
+\textbf{Couche} & \textbf{Nom} & \textbf{Rôle} \\
+\midrule
+L1 & Edge & Point d'entrée unique : résolution de nom, répartition de charge, pare-feu
+applicatif et limitation de débit \\
+L2 & Identité \& sécurité & Plan transversal : comptes de service, gestion des secrets,
+chiffrement, autorisation applicative \\
+L3 & Workloads & Services exécutés à la demande (sans serveur à administrer) \\
+L4 & Réseau & Réseau privé, accès privé aux services de données, sorties contrôlées \\
+L5 & Données & Base de données applicative et entrepôt de détection (SIEM) \\
+L6 & ML / enrichissement sémantique & Encodage vectoriel et rattachement aux techniques
+d'attaque connues \\
+L7 & Observabilité & Plan transversal : journalisation, alerte, tableaux de bord \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{attentedoc}
+Insérer ici le schéma d'architecture détaillé (figure~\ref{fig:archi-globale}), exporté
+depuis le document source du projet.
+\end{attentedoc}
+
+% PLACEHOLDER — à remplacer par le schéma réel dès disponible :
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=\linewidth]{figures/archi_globale.pdf}
+%   \caption{Architecture cible (7 couches + plan de livraison transversal)}
+%   \label{fig:archi-globale}
+% \end{figure}
+\begin{figure}[htbp]
+  \centering
+  \fbox{\begin{minipage}[c][6cm][c]{0.9\linewidth}
+    \centering
+    \textcolor{red!60!black}{\textbf{[Schéma en attente --- voir encadré ci-dessus]}}
+  \end{minipage}}
+  \caption{Architecture cible --- placeholder, à remplacer par le schéma source}
+  \label{fig:archi-globale}
+\end{figure}
+
+\section{Application des principes Zero Trust}
+
+\begin{table}[htbp]
+\centering
+\caption{Traduction des principes Zero Trust dans l'architecture MENAL}
+\label{tab:zt-principes}
+\begin{tabular}{@{}P{4.2cm}P{9cm}@{}}
+\toprule
+\textbf{Principe (NIST 800-207)} & \textbf{Traduction dans l'architecture} \\
+\midrule
+Ne jamais faire confiance au réseau & Aucune ressource de données n'est joignable
+publiquement ; être \og à l'intérieur \fg{} ne donne aucun droit \\
+Vérifier explicitement à chaque requête & Chaque appel entre services porte une identité
+vérifiée ; aucun appel anonyme entre composants internes \\
+Moindre privilège & Un compte de service distinct par composant, avec des droits limités
+au strict nécessaire \\
+Présomption de compromission & Toute action est journalisée ; un composant d'analyse ne
+peut jamais modifier les preuves qu'il traite \\
+Micro-segmentation & Séparation par identité plutôt que par segment réseau \\
+Surveillance continue & Journalisation et alerte sur l'ensemble des couches, y compris la
+couche d'enrichissement \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conception de la stratégie d'identité, de réseau et du pipeline}
+
+Un compte de service distinct est attribué à chaque composant, sans clé d'accès exportée :
+l'authentification du pipeline de livraison auprès de la plateforme cloud repose sur une
+fédération d'identité plutôt que sur un secret statique stocké dans le système
+d'intégration continue --- un choix directement lié au constat du
+chapitre~\ref{ch:etat-art} sur les risques de la chaîne de livraison.
+
+\begin{alertbox}
+Un principe de conception est appliqué strictement au niveau des droits d'accès : le
+composant chargé de l'enrichissement sémantique (couche~L6) peut \emph{lire} les événements
+de détection, mais ne dispose d'\emph{aucun} droit d'écriture sur les journaux bruts ni sur
+les détections elles-mêmes --- seulement sur la table dédiée à ses propres résultats. Un
+moteur de détection ne doit jamais pouvoir modifier les preuves qu'il analyse.
+\end{alertbox}
+
+\todo{Détailler ici la matrice complète des comptes de service et de leurs rôles --- la
+version complète est reportée en annexe~D pour respecter la contrainte de concision du
+corps du rapport ; n'en garder ici qu'un tableau réduit aux 4--5 comptes les plus
+illustratifs.}
+
+\section{Conception de la couche d'enrichissement sémantique}
+
+La couche d'enrichissement (L6) répond au besoin identifié au chapitre~\ref{ch:etat-art} :
+rattacher un événement de sécurité à une technique d'attaque connue même en l'absence de
+règle statique correspondante. Le choix retenu privilégie un modèle d'embedding
+\emph{non génératif}, dont la sortie est un vecteur déterministe comparé par similarité aux
+techniques du référentiel MITRE ATT\&CK, plutôt qu'un modèle de langage génératif dont la
+sortie serait non déterministe et potentiellement influençable par le contenu même des
+journaux analysés --- une propriété jugée incompatible avec une chaîne de preuve.
+
+Ce composant est positionné pour n'être joignable que depuis l'intérieur du réseau privé, et
+son résultat (technique rattachée, score de similarité, version du modèle) est systématiquement
+journalisé, ce qui permet d'auditer une décision d'enrichissement a posteriori.
+
+\section{Registre des décisions d'architecture}
+
+Chaque choix de conception a été examiné puis classé selon un statut explicite plutôt
+qu'accumulé sans justification --- une pratique directement héritée de la revue
+d'architecture menée en amont du projet.
+
+\begin{table}[htbp]
+\centering
+\caption{Extrait du registre de décisions d'architecture (ADR)}
+\label{tab:adr-extrait}
+\begin{tabular}{@{}P{1.5cm}P{5cm}P{1.8cm}P{5.5cm}@{}}
+\toprule
+\textbf{Réf.} & \textbf{Décision} & \textbf{Statut} & \textbf{Justification} \\
+\midrule
+ADR-01 & Exécution serverless comme unique plateforme d'exécution & Validé & Pas de système
+d'exploitation à durcir, montée à zéro possible, identité native par révision \\
+ADR-04 & Entrepôt de données comme moteur du SIEM (plutôt qu'une solution commerciale) &
+Validé & Le SIEM est construit, pas acheté --- c'est la valeur pédagogique du projet \\
+ADR-05 & Modèle d'embedding non génératif pour l'enrichissement & Validé & Sortie
+déterministe = preuve auditable ; pas de surface d'injection \\
+ADR-08 & Fédération d'identité pour l'authentification du pipeline & Ajouté & Supprime la
+classe de risque \og clé statique exportée \fg{} \\
+ADR-12 & Infrastructure entièrement décrite en code, revue avant application & Validé
+(renforcé) & Répond directement à un besoin de reproductibilité \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{attentedoc}
+Compléter ce tableau avec l'ensemble des décisions du registre projet (annexe possible si la
+liste complète dépasse une page) --- vérifier qu'aucune décision listée ici n'a été révisée
+depuis la rédaction du document source.
+\end{attentedoc}
+
+Trois décisions structurantes gagnent à être présentées sous forme d'alternative comparée
+plutôt que de simple affirmation, pour rendre l'arbitrage lisible :
+
+\begin{table}[htbp]
+\centering
+\caption{Alternatives comparées pour trois décisions structurantes}
+\label{tab:alternatives-comparees}
+\begin{tabular}{@{}P{3.3cm}P{4.7cm}P{4.7cm}@{}}
+\toprule
+\textbf{Décision} & \textbf{Option retenue} & \textbf{Option écartée} \\
+\midrule
+Plateforme d'exécution & Serverless (ADR-01) : pas de système à durcir, montée à zéro &
+Cluster orchestré (Kubernetes managé) : flexibilité supérieure, mais un plan de contrôle
+entier à opérer pour un périmètre qui n'en a pas besoin \\
+Moteur du SIEM & Entrepôt de données existant, requêtes de détection en langage
+déclaratif (ADR-04) & Solution SIEM commerciale ou open source dédiée : plus de
+fonctionnalités prêtes à l'emploi, mais masque la valeur pédagogique --- le SIEM est ici
+\emph{construit}, pas acheté \\
+Enrichissement des alertes & Modèle d'embedding non génératif (ADR-05) & Modèle de langage
+génératif : plus \og impressionnant \fg{} en démonstration, mais sortie non déterministe et
+non auditable --- incompatible avec une chaîne de preuve \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Éléments volontairement écartés}
+
+Certains composants examinés puis écartés méritent d'être mentionnés, car documenter un
+refus motivé est aussi révélateur d'une démarche d'architecte que documenter un choix
+retenu :
+
+\begin{itemize}
+  \item un périmètre de contrôle des flux sortants à l'échelle de l'organisation, jugé
+        disproportionné pour un projet mono-projet de démonstration ;
+  \item un maillage de services avec chiffrement mutuel dédié, la plateforme d'exécution
+        retenue fournissant déjà un chiffrement en transit et une identité par service ;
+  \item un cache distribué, nécessaire uniquement pour une exigence de montée en charge
+        explicitement hors objectif ;
+  \item un modèle de langage génératif pour l'analyse des incidents, écarté par principe
+        (cf. \S\ref{sec:zero-trust-nist} et raisonnement du \S\ref{ch:conception} ci-dessus
+        sur la non-reproductibilité) plutôt que par contrainte technique.
+\end{itemize}

@@ -1,0 +1,2131 @@
+% =============================================================
+% Chapitre 4 : Conception de l'architecture Zero Trust
+% Source : ../../CH4_Conception_de_l_architecture.md
+% =============================================================
+% -- Resserrement typographique local au chapitre 4 (valeurs restaurées en fin de fichier).
+\setlength{\textfloatsep}{10pt plus 2pt minus 3pt}
+\setlength{\floatsep}{8pt plus 2pt minus 2pt}
+\setlength{\intextsep}{8pt plus 2pt minus 2pt}
+\setlength{\abovecaptionskip}{4pt}
+\setlength{\belowcaptionskip}{2pt}
+% -- Placement des flottants : le chapitre porte onze figures et neuf tableaux ;
+% les valeurs par defaut de LaTeX reservent une page entiere des qu'un flottant
+% depasse la moitie de la justification, ce qui laissait ici du blanc autour de
+% cinq figures. Valeurs restaurees en fin de fichier.
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.75}
+\renewcommand{\textfraction}{0.08}
+\renewcommand{\floatpagefraction}{0.88}
+\setcounter{topnumber}{3}
+\setcounter{totalnumber}{4}
+
+\chapter{Conception de l'architecture}
+\label{ch:conception}
+\soustitrechapitre{Vues d'architecture, plan d'identité et registre des décisions}
+
+Ce chapitre présente l'architecture qui réalise les vingt exigences du \cref{ch:besoins-menaces}, chaque
+affirmation étant adossée à une vue qui la rend vérifiable : une architecture qui ne documente que
+ce qu'elle contient laisse penser que ce qui n'y figure pas a été oublié.
+
+\section{Principes directeurs de conception}
+
+Quatre principes ont guidé l'ensemble des décisions ; ils rendent chaque choix contestable.
+
+\textbf{PR1 --- tout composant doit justifier son existence.} Un composant ajouté est à configurer,
+mettre à jour, surveiller et payer : exploité par une seule personne, il dégrade la sécurité réelle
+même s'il améliore la sécurité théorique. Règle appliquée : \textbf{un composant n'est retenu que
+s'il couvre une menace du \cref{ch:besoins-menaces} qu'aucun composant existant ne couvre déjà} --- sept ont été
+écartés (\cref{tab:composants-ecartes}).
+
+\textbf{PR2 --- l'identité est le plan de contrôle, pas une couche.} Le modèle périmétrique segmente
+par le réseau ; le modèle retenu segmente par l'identité, chaque charge de travail ayant la sienne.
+La représenter comme une couche latérale reviendrait à admettre des chemins où elle n'est pas
+consultée, soit la confiance implicite même (\cref{subsec:plans-transversaux}).
+
+\textbf{PR3 --- un moteur de détection ne modifie jamais les preuves qu'il analyse.} Traduction de
+la valeur métier VM5 et de l'exigence EX11, étendue au tableau de bord ; seule exception explicite,
+l'enregistrement du verdict humain, donnée nouvelle et non modification.
+
+\textbf{PR4 --- rien n'existe dans l'infrastructure qui n'existe d'abord dans le code.} Réponse à
+la carence C2 et au point bloquant B5 de l'audit du \cref{ch:cadre-existant}, pour trois effets :
+reproductibilité, contrôle avant existence, détection de dérive. Les commandes interactives restent
+réservées à l'exploitation ponctuelle.
+
+\section{Vues d'architecture}
+\label{sec:vues-archi}
+
+Cinq vues statiques décrivent le socle, le réseau étant donné dans ses deux états, avant et après
+la refonte. Aucune ne peut afficher un composant qui n'est pas déclaré en code.
+
+\subsection{Vue de contexte}
+
+La \cref{fig:contexte} fixe la frontière du système et nomme ce dont le socle dépend sans le
+maîtriser : six systèmes tiers, dont trois imports de données qui portent le risque de chaîne
+d'approvisionnement --- dépendance ou image de base compromise, acteur A10 du \cref{ch:besoins-menaces}. Ces trois
+imports sont différés, hors du chemin de la requête : une indisponibilité y dégrade
+l'enrichissement ou la priorisation, jamais le service rendu. Le sixième, la zone de noms de
+domaine tenue chez le bureau d'enregistrement, figure en dépendance externe et non en composant de
+la couche de périmètre --- écart É10 : elle est consultée \emph{avant} tout contact avec le socle,
+de sorte qu'une dérive y rend le socle injoignable sans qu'aucun contrôle interne ne s'en aperçoive.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  sys/.style={draw, very thick, rounded corners=3pt, fill=black!12, text width=4.6cm,
+    align=center, font=\footnotesize, inner sep=5pt, minimum height=1.9cm},
+  act/.style={draw, thick, rounded corners=2pt, fill=white, text width=2.8cm,
+    align=center, font=\footnotesize, inner sep=3pt, minimum height=1.1cm},
+  extr/.style={act, text width=3.1cm},
+  sync/.style={fluxdonnee},
+  asyn/.style={fluxevenement},
+  etq/.style={font=\scriptsize, fill=white, inner sep=1pt, align=center}
+]
+\node[sys] (socle) at (7.4,3.4)
+  {\textbf{Socle MENAL}\\ hébergement, supervision et chaîne de livraison\\
+   {\scriptsize\color{black!55} deux projets cloud}};
+\node[act]  (users) at (1.6,6.1) {Utilisateurs de l'application hébergée};
+\node[act]  (soc)   at (1.6,3.4) {Analyste et administrateur};
+\node[act]  (dev)   at (1.6,0.7) {Élève-ingénieur, exploitant unique};
+\node[extr] (dns)   at (1.6,8.4) {Bureau d'enregistrement du domaine (zone de noms)};
+\node[extr] (git)   at (13.2,6.1) {Dépôt de code et chaîne de livraison};
+\node[extr] (mitre) at (13.2,3.4) {Référentiel de techniques d'attaque};
+\node[extr] (cve)   at (13.2,0.7) {Catalogues de vulnérabilités exploitées};
+\node[extr] (model) at (7.4,6.5)  {Dépôt public de modèles};
+\node[extr] (totp)  at (7.4,0.3)  {Application d'authentification};
+\draw[sync] (users.north) -- (dns.south) node[etq, midway, right=1pt] {résolution de noms};
+\draw[sync] (users.east) -| (socle.north west) node[etq, pos=0.28] {HTTPS};
+\draw[sync] (soc.east)   -- (socle.west);
+\draw[sync] (dev.east)   -| (socle.south west) node[etq, pos=0.28] {exploitation};
+\draw[sync] (git.west)   -| (socle.north east) node[etq, pos=0.28] {identité fédérée};
+\draw[asyn] (mitre.west) -- (socle.east) node[etq, midway] {catalogue};
+\draw[asyn] (cve.west)   -| (socle.south east) node[etq, pos=0.28] {gravité réelle};
+\draw[sync] (totp)  -- (socle.south) node[etq, midway, right] {second facteur};
+\draw[asyn] (model) -- (socle.north) node[etq, midway, right] {poids figés au \emph{build}};
+\node[legendecadre, anchor=north west, font=\scriptsize] at (-0.3,-0.5)
+  {\legendetrait{fluxdonnee}{échange synchrone, chemin de la requête}\quad
+   \legendetrait{fluxevenement}{import différé, hors du chemin de la requête}};
+\end{tikzpicture}
+\caption[Vue de contexte : le socle, ses acteurs et les systèmes extérieurs]{Vue de contexte :
+le socle, ses acteurs et les six systèmes extérieurs dont il dépend --- trois imports différés
+portent le risque de chaîne d'approvisionnement, la zone de noms échappe seule à la description en
+code (É10)}
+\label{fig:contexte}
+\end{figure}
+
+\subsection{Modèle en couches et justification des deux plans transversaux}
+\label{subsec:plans-transversaux}
+
+L'architecture s'organise en sept niveaux numérotés (\cref{fig:modele-couches}), dont deux plans
+transversaux plutôt que des couches ordinaires, suivant l'approche recommandée pour les
+architectures cloud sécurisées~\cite{gcp_architecture_framework}. La conception initiale
+comportait deux couches de même numéro et omettait l'enrichissement (L6) : la numérotation a été
+révisée, un modèle en couches n'ayant de valeur que si documentation, code et tests désignent la
+même chose.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  couche/.style={draw, very thick, rounded corners=1pt, fill=black!4, align=center,
+    font=\footnotesize, text width=8.4cm, inner sep=3pt, minimum height=0.95cm},
+  demi/.style={couche, text width=3.9cm},
+  plan/.style={draw, very thick, dashed, rounded corners=1pt, fill=black!10, align=center,
+    font=\footnotesize},
+  fleche/.style={fluxdonnee},
+  col/.style={fluxevenement},
+  idl/.style={fluxcontrole}
+]
+\node[couche] (l1) at (4.9,7.98) {\textbf{L1 --- Périmètre d'entrée}\\ répartiteur HTTPS, filtrage applicatif, limitation de débit\\{\scriptsize\color{black!55} Cloud Load Balancing · Cloud Armor}};
+\node[demi] (l3a) at (2.55,6.20) {\textbf{L3 --- Application hébergée}\\{\scriptsize\color{black!55} Cloud Run}};
+\node[demi] (l3b) at (7.25,6.20) {\textbf{L3 --- API de supervision et tableau de bord}\\{\scriptsize\color{black!55} Cloud Run}};
+\node[couche] (l4) at (4.9,4.6) {\textbf{L4 --- Réseau}\\ refus par défaut, accès privé, sortie contrôlée\\{\scriptsize\color{black!55} VPC · sortie réseau directe · règles de pare-feu}};
+\node[demi] (l5a) at (2.55,3.2) {\textbf{L5 --- Base de données applicative}\\{\scriptsize\color{black!55} Cloud SQL for PostgreSQL}};
+\node[demi] (l5b) at (7.25,3.2) {\textbf{L5 --- Entrepôt de supervision}\\{\scriptsize\color{black!55} BigQuery}};
+\node[couche] (l6) at (4.9,1.8) {\textbf{L6 --- Enrichissement sémantique} (service d'encodage, sans sortie réseau)\\{\scriptsize\color{black!55} Cloud Run (interne)}};
+\node[plan, text width=8.4cm, inner sep=3pt, minimum height=0.95cm] (l7) at (4.9,0.4)
+  {\textbf{L7 --- OBSERVABILITÉ} (plan transversal) : collecte depuis toutes les couches\\{\scriptsize\color{black!55} Cloud Logging · Cloud Monitoring}};
+\node[plan, minimum width=1.75cm, minimum height=9.20cm] (l2) at (10.6,4.28)
+  {\rotatebox{90}{\parbox{7.6cm}{\centering\textbf{L2 --- IDENTITÉ ET SÉCURITÉ} (plan transversal) : vérifiée à chaque saut\\{\footnotesize\color{menaltrait} Cloud IAM · Secret Manager · Cloud KMS · Workload Identity Federation}}}};
+\draw[fleche] (l1) -- (l3a);
+\draw[fleche] (l1) -- (l3b);
+\draw[fleche] (l3a) -- (l4);
+\draw[fleche] (l3b) -- (l4);
+\draw[fleche] (l4) -- (l5a);
+\draw[fleche] (l4) -- (l5b);
+\draw[fleche] (l4) -- (l6);
+\draw[col] (-0.4,7.98) -- (-0.4,0.4);
+\foreach \n in {l1,l3a,l4,l5a,l6}{\draw[col] (\n.west) -- (\n.west -| -0.4,0);}
+\draw[col,-{Latex[length=1.8mm]}] (-0.4,0.4) -- (l7.west);
+\draw[col,-{Latex[length=1.8mm]}] (l7.east) -- ++(0.35,0) |- (l5b.south east);
+\node[font=\scriptsize, fill=white, inner sep=1pt] at (-0.4,5.3) {F4};
+\foreach \n in {l1,l3b,l4,l5b,l6}{\draw[idl] (\n.east -| l2.west) -- (\n.east);}
+\node[legendecadre, anchor=north west, font=\scriptsize] at (-0.65,-0.30)
+  {\legendetrait{fluxdonnee}{traversée d'un saut}\quad
+   \legendetrait{fluxevenement}{collecte des journaux (F4)}\quad
+   \legendetrait{fluxcontrole}{vérification d'identité (L2)}};
+\end{tikzpicture}
+\caption[Modèle en couches : cinq couches empilées et deux plans transversaux]{Modèle en couches :
+cinq couches empilées (L1, L3, L4, L5, L6) et deux plans transversaux (L2, L7), dont la bordure en
+tirets marque la portée. La résolution de noms ne figure pas en L1 : elle est une dépendance
+externe (\cref{fig:contexte}).}
+\label{fig:modele-couches}
+\end{figure}
+
+\textbf{L2 est un plan} parce que l'identité est vérifiée à \emph{chaque} saut --- du périmètre
+aux charges de travail, de celles-ci aux données, de la chaîne de livraison au
+registre~\cite{nist800207} --- portée dont un bloc latéral ne rendrait pas compte ; \textbf{L7 en
+est un} parce que la collecte part de \emph{toutes} les couches pour alimenter l'entrepôt de
+supervision (L5), sans source de données autrement.
+
+\subsection{Vue de déploiement et chemins réseau effectifs}
+
+La \cref{fig:deploiement} situe les mêmes éléments comme composants réels reliés par des liens
+réseau, dont le \emph{style} porte l'information la plus contre-intuitive du socle : tous les
+chemins internes ne traversent pas le réseau privé, l'accès à l'entrepôt empruntant le chemin
+managé du fournisseur, autorisé par l'identité seule et non par une règle réseau (É11). Le tableau
+de bord, lui, ne rejoint pas l'API par un lien direct : son appel ressort par le répartiteur et
+subit un \textbf{second passage du filtrage applicatif}, ce qui explique le comportement observé de
+la limitation de débit sur les chemins d'authentification (\cref{subsec:incidents}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  acteur/.style={draw, thick, rounded corners=3pt, fill=white, align=center,
+    font=\footnotesize, text width=2.3cm, inner sep=3pt},
+  noeud/.style={draw, thick, rounded corners=1pt, fill=black!4, align=center,
+    font=\footnotesize, text width=2.3cm, inner sep=3pt},
+  large/.style={noeud, text width=8.4cm},
+  pub/.style={fluxdonnee},
+  priv/.style={fluxdonnee, line width=1.3pt},
+  man/.style={fluxcontrole},
+  jour/.style={fluxevenement},
+  fx/.style={font=\scriptsize\bfseries, fill=white, inner sep=1pt},
+  etq/.style={font=\scriptsize, fill=white, inner sep=1pt}
+]
+\node[acteur] (users)   at (1.0,9.7) {Utilisateurs};
+\node[acteur] (analyst) at (4.9,9.7) {Analyste / Admin};
+\node[acteur] (repo)    at (13.0,9.7) {Dépôt de code};
+\node[large] (perim) at (4.9,8.0) {\textbf{Périmètre (L1)} --- répartiteur HTTPS, filtrage applicatif, limitation de débit\\{\scriptsize\color{black!55} Cloud Load Balancing · Cloud Armor}};
+\node[noeud, text width=3.4cm] (ci) at (13.0,8.0) {\textbf{Chaîne de livraison} fédérée, sans clé\\{\scriptsize\color{black!55} GitHub Actions · Workload Identity Federation}};
+\node[noeud] (app)  at (1.0,6.2) {Application hébergée\\{\scriptsize\color{black!55} Cloud Run}};
+\node[noeud] (api)  at (4.9,6.2) {API de supervision\\{\scriptsize\color{black!55} Cloud Run}};
+\node[noeud] (dash) at (8.8,6.2) {Tableau de bord\\{\scriptsize\color{black!55} Cloud Run}};
+\node[noeud, text width=2.6cm] (reg) at (13.0,6.2) {Registre d'images\\{\scriptsize\color{black!55} Artifact Registry}};
+\node[large] (net) at (4.9,4.4) {\textbf{Réseau privé (L4)} --- refus par défaut, accès privé, sortie réseau directe\\{\scriptsize\color{black!55} VPC · sortie réseau directe · règles de pare-feu}};
+\node[noeud] (db)    at (1.0,2.6) {Base de données\\{\scriptsize\color{black!55} Cloud SQL}};
+\node[noeud, text width=2.6cm] (dw) at (5.4,2.6) {Entrepôt de supervision (SIEM)\\{\scriptsize\color{black!55} BigQuery}};
+\node[noeud, text width=2.6cm] (sched) at (9.4,2.6) {Tâche planifiée\\d'enrichissement\\{\scriptsize\color{black!55} Cloud Scheduler · Cloud Run Job}};
+\node[noeud, text width=2.6cm] (enc) at (13.0,2.6) {Service d'encodage (interne)\\{\scriptsize\color{black!55} Cloud Run (interne)}};
+\node[large] (col) at (4.9,0.8) {\textbf{Collecte journalisée (L7)} --- quatre exports, filtrés à la source pour trois d'entre eux\\{\scriptsize\color{black!55} Cloud Logging}};
+\draw[pub] (users) -- (users |- perim.north) node[fx, pos=0.6] {F1};
+\draw[pub] (analyst) -- (analyst |- perim.north);
+\draw[pub] (perim.south -| app) -- (app.north);
+\draw[pub] (perim.south -| api) -- (api.north);
+% Le tableau de bord ne joint pas l'API directement : son appel ressort par le repartiteur
+% (deuxieme passage du filtrage applicatif). Le lien direct de la version anterieure
+% contredisait le tableau des chemins reseau. Deux coordonnees nommees plutot qu'un
+% « -| » decale : la forme (A |- B) n'accepte pas de modificateur de position.
+\coordinate (dashdn) at ([xshift=-5mm]dash.north);
+\coordinate (dashup) at ([xshift=3mm]dash.north);
+\draw[pub] (dashdn |- perim.south) -- (dashdn);
+\draw[pub] (dashup) -- (dashup |- perim.south)
+  node[etq, midway, right=1pt, align=left] {JWT ;\\ 2\textsuperscript{e} passage};
+\draw[priv] (app.south) -- (app.south |- net.north) node[fx, pos=0.85] {F2};
+\draw[priv] (api.south) -- (api.south |- net.north);
+\draw[priv] (net.south -| db) -- (db.north) node[fx, pos=0.5] {F2};
+% Canal horizontal remonte de 5,05 a 5,20 : a 5,05 le trait longeait le bord
+% superieur de la boite « Reseau prive » et son etiquette recouvrait le texte.
+% L'etiquette est deportee sur le segment vertical (x=9,6), dans la zone libre
+% a droite de la boite, ou rien ne la concurrence.
+\draw[man] ([xshift=4mm]api.south) |- (9.6,5.2) -- (9.6,3.55) -- (5.4,3.55)
+  -- (dw.north);
+\node[etq, anchor=west] at (9.75,4.35) {identité seule (É11)};
+\draw[pub] (repo) -- (ci) node[etq, midway, right] {OIDC};
+\draw[pub] (ci) -- (reg) node[fx, pos=0.5] {F3};
+% Canal remonte a 5,50 : les deux canaux horizontaux de cette bande (E11 a 5,20
+% et celui-ci) sont ainsi separes de 0,30 et ne se croisent plus.
+\draw[man] (reg.south) -- (13.0,5.5) -- (8.8,5.5) -- (dash.south);
+\node[etq] at (10.7,5.5) {étiquette SHA (F3)};
+\draw[jour] (perim.west) -- (-0.9,8.0);
+\draw[jour] (app.west)   -- (-0.9,6.2);
+\draw[jour] (net.west)   -- (-0.9,4.4);
+\draw[jour] (db.west)    -- (-0.9,2.6);
+\draw[jour] (-0.9,8.0) -- (-0.9,0.8) -- (col.west);
+\draw[jour] (col.north -| dw) -- (dw.south) node[fx, pos=0.5] {F4};
+\draw[priv, {Latex[length=1.8mm]}-{Latex[length=1.8mm]}] (dw) -- (sched) node[fx, pos=0.5] {F5};
+% L'ecart entre les deux boites (1 cm) est plus etroit que le mot « connecteur » :
+% l'etiquette est donc descendue sous la rangee plutot que placee dans l'entre-deux.
+\draw[priv] (sched) -- (enc) node[fx, pos=0.5] {F5};
+% --- separation des plans : bandes de fond, calque « backgrounds », sans surcout de hauteur
+\begin{scope}[on background layer]
+  \node[bandecontrole,    fit=(perim)]                 {};
+  \node[bandedonnee,      fit=(app)(api)(dash)(reg)]   {};
+  \node[bandecontrole,    fit=(net)]                   {};
+  \node[bandedonnee,      fit=(db)(dw)(sched)(enc)]    {};
+  \node[bandeobservation, fit=(col)]                   {};
+\end{scope}
+\node[legendecadre, anchor=north west, font=\scriptsize, text width=15.0cm] at (-0.95,-0.10)
+  {\legendetrait{fluxdonnee}{chemin public}\quad
+   \legendetrait{{fluxdonnee, line width=1.3pt}}{chemin réseau privé}\quad
+   \legendetrait{fluxevenement}{journal (F4)}\quad
+   \legendetrait{fluxcontrole}{chemin managé, identité seule (É11)}\\[2pt]
+   Fond des bandes : clair = plan de données, moyen = plan de contrôle,
+   sombre = plan d'observation};
+\node[etq, align=center] at (11.2,1.45) {par l'interface de sortie};
+\end{tikzpicture}
+\caption[Vue de déploiement : composants, liens réseau et flux F1 à F5]{Vue de déploiement :
+composants, liens réseau et flux F1 à F5. Le tableau de bord n'atteint les données que par l'API,
+et son appel ressort par le répartiteur : il subit un second passage du filtrage applicatif.}
+\label{fig:deploiement}
+\end{figure}
+
+\subsection{Topologie réseau : l'état antérieur et la cible en service}
+\label{subsec:reseau-etat-cible}
+
+\noindent\textbf{L'état antérieur, dossier d'instruction de D15.}
+
+Les deux vues précédentes nomment le réseau sans le décrire ; la \cref{fig:topologie-reseau} le
+décrit plage par plage et règle par règle, tel qu'il se lisait dans le dépôt \textbf{avant la
+refonte du 11 au 25/08/2026} --- chaque affirmation reste recoupable avec le code de cette période.
+Cette vue n'est pas un état des lieux mais le dossier d'instruction de D15. Une question le
+résumait : \emph{par où sortait le trafic de la tâche d'enrichissement ?} Il sortait
+\emph{intégralement} par le connecteur, y compris vers les interfaces publiques du fournisseur ---
+seul réglage permettant à l'appel d'atteindre un service à entrée interne ; le refus général en
+entrée, journalisé à la priorité la plus basse, alimentait la détection de mouvement latéral.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm, font=\scriptsize,
+  proc/.style={draw=black!70, rounded corners=3pt, fill=black!4,
+               align=center, inner sep=2.5pt, minimum height=0.62cm},
+  mag/.style={draw=black!70, double, double distance=0.7pt, fill=white,
+              align=center, inner sep=2.5pt, minimum height=0.58cm},
+  ext/.style={draw=black!70, fill=black!10, align=center,
+              inner sep=2.5pt, minimum height=0.58cm},
+  vide/.style={draw=black!70, densely dashed, fill=white, align=center,
+               inner sep=2.5pt, minimum height=0.58cm},
+  cadre/.style={draw=black!45, densely dotted, rounded corners=4pt, line width=0.8pt},
+  note/.style={draw=black!45, rounded corners=2pt, fill=black!2, align=left, inner sep=4pt},
+  regle/.style={note, fill=menalplanB},
+  a/.style={fluxdonnee},
+  ae/.style={fluxdonnee, line width=1.3pt},
+  ai/.style={lienstructure, densely dashed},
+  et/.style={font=\scriptsize, text=black, fill=white, inner sep=1pt, align=center},
+  etg/.style={font=\scriptsize, text=black, fill=white, inner sep=1pt, align=left}]
+
+% ===================== cadre : le reseau virtuel =============================
+\draw[cadre] (0,7.40) rectangle (11.40,13.90);
+\node[et, text width=5.4cm, anchor=north, align=center,
+      font=\scriptsize\itshape, inner sep=2pt] at (5.85,13.80)
+   {Réseau virtuel en mode personnalisé\\ un seul, partagé par tous les locataires};
+
+% ===================== hors cadre, en haut : les charges L3 ==================
+\node[ext, text width=4.0cm] (l3a) at (2.40,16.00)
+   {\textbf{Cinq services et trois tâches (L3)}};
+\node[ext, text width=4.0cm] (l3b) at (9.40,16.00)
+   {dont la \textbf{tâche planifiée\\ d'enrichissement}};
+
+% ===================== interieur du cadre ====================================
+\node[proc, text width=10.6cm] (conn) at (5.70,12.50)
+   {\textbf{Connecteur d'accès sans serveur} \quad \texttt{10.0.3.0/28} --- 2 à 10 instances\\
+    \textbf{seul occupant réel} : point de passage unique de sept charges de travail
+    --- sa perte les coupe simultanément};
+
+\node[vide, text width=4.2cm] (pub) at (2.50,10.20)
+   {Sous-réseau public \texttt{10.0.1.0/24}\\ \textbf{vide} \quad (É2)};
+\node[vide, text width=4.2cm] (priv) at (2.50,8.40)
+   {Sous-réseau privé \texttt{10.0.2.0/24}\\ \textbf{vide}, accès privé actif,\\
+    journaux de flux 0,5 \quad (É2)};
+
+\node[proc, text width=3.8cm] (app) at (8.50,10.20)
+   {Plage d'appairage de services privés\\ allouée automatiquement};
+\node[mag, text width=3.8cm] (bdd) at (8.50,8.40)
+   {Base de données\\ adresse privée exclusive};
+
+% ===================== hors cadre, en bas ====================================
+\node[proc, text width=4.2cm] (pass) at (2.50,6.00)
+   {Passerelle de sortie et routeur\\ rattachée au \textbf{seul sous-réseau privé}\\
+    journalisation limitée aux erreurs};
+\node[mag, text width=5.0cm] (four) at (8.70,6.00)
+   {Interfaces du fournisseur\\ (entrepôt, secrets, service d'encodage)};
+
+% ===================== a droite : les regles =================================
+\node[regle, text width=3.5cm] at (13.65,11.35)
+   {\textbf{Règles de filtrage en entrée}\\[2pt]
+    \texttt{800} sondes de disponibilité (étiquette cible jamais attribuée)\\[2pt]
+    \texttt{900} autorisation interne \texttt{10.0.1.0/24} $\leftrightarrow$
+    \texttt{10.0.2.0/24}, tous ports TCP et UDP, ICMP\\[2pt]
+    \texttt{1000} HTTPS \texttt{0.0.0.0/0} (étiquette cible jamais attribuée)\\[2pt]
+    \texttt{65534} refus général, journalisé};
+\node[regle, text width=3.5cm] at (13.65,8.10)
+   {\textbf{Règles de sortie}\\[2pt] \textbf{aucune} --- rien, dans le réseau,
+    ne borne ce qui sort};
+
+% ===================== arcs ==================================================
+% 1 : quatre services sur cinq
+\draw[a] (2.00,15.55) -- (2.00,13.30);
+\node[etg, text width=2.7cm, anchor=west] at (2.15,14.85)
+   {sortie limitée aux plages privées (quatre services sur cinq)};
+% 2 : la tache d'enrichissement, sortie integrale
+\draw[ae] (9.60,15.55) -- (9.60,13.30);
+\node[etg, text width=3.4cm, anchor=east] at (9.45,14.85)
+   {\textbf{sortie intégrale} --- seul réglage permettant d'atteindre un service à entrée interne};
+% 3 : connecteur -> appairage -> base
+\draw[a] (8.50,11.70) -- (app.north);
+\draw[a] (app.south) -- node[et, pos=0.5, xshift=6.5mm] {TCP privé} (bdd.north);
+% 4 : connecteur -> interfaces du fournisseur, par l'acces prive
+\draw[ae] (10.90,11.70) -- (10.90,6.65);
+\node[et, anchor=west] at (11.05,7.05) {par l'accès privé};
+% 5 : le sous-reseau prive est le seul desservi par la passerelle
+\draw[a] (2.00,7.65) -- (2.00,6.65);
+% 6 : chemin non atteste --- le connecteur n'est pas desservi
+\draw[ai] (5.50,11.70) -- (5.50,5.00) -- node[croixrefus]{} (2.50,5.00) -- (2.50,5.32);
+
+% ===================== cartouches =============================================
+\node[et, text width=6.4cm, anchor=north, align=left] at (4.00,4.60)
+   {le connecteur n'est pas dans la liste des sous-réseaux servis :
+    \textbf{chemin non attesté par le code}};
+
+\node[legendecadre, anchor=north east, font=\scriptsize, text width=6.4cm] at (15.60,4.95)
+   {\legendetrait{fluxdonnee}{flux réseau}\quad
+    \legendetrait{{fluxdonnee, line width=1.3pt}}{sortie effective}\\[2pt]
+    \legendecroix{arc absent : chemin que le code n'atteste pas}};
+
+\end{tikzpicture}
+\caption[Topologie réseau avant la refonte]{Topologie réseau \textbf{avant la refonte} --- état du
+dépôt jusqu'au 11/08/2026. La sortie des charges de travail n'y était pas gouvernée par le réseau
+mais par le paramètre de la plateforme d'exécution : la passerelle ne desservait que le sous-réseau
+privé, lequel était vide, et la plage qui portait la totalité de la sortie ne lui était pas
+rattachée. Aucune règle de sortie n'existait : c'est le diagnostic qui a motivé D15.}
+\label{fig:topologie-reseau}
+\end{figure}
+
+\medskip
+\noindent\textbf{La refonte appliquée (D15).}
+\label{subsec:reseau-cible}
+La topologie qui précède décrit l'état antérieur ; celle qui suit décrit la refonte qui l'a
+remplacé --- décision D15, conduite en douze étapes \textbf{du 11 au 25/08/2026}. La date de référence du
+mémoire lui étant postérieure, \textbf{le réseau décrit ici est celui qui est en service à
+\dateref}.
+
+\medskip
+\noindent\textbf{Le verrou que la refonte a levé.}
+Six des sept charges desservies par le connecteur portaient le réglage de sortie \emph{plages
+privées seulement} : seul le trafic destiné aux plages privées normalisées entrait dans le réseau
+virtuel. Tout le reste --- appels aux interfaces du fournisseur, appel du tableau de bord vers le
+répartiteur --- empruntait le chemin managé de la plateforme d'exécution, \textbf{hors du réseau
+virtuel, donc hors de portée de toute règle de pare-feu}. Poser alors un refus par défaut en sortie
+n'aurait rien bloqué : \textbf{le défaut n'était pas l'absence d'une règle, c'était que le trafic
+ne passait pas là où elle se serait appliquée} --- ce qui explique aussi que la passerelle de
+traduction d'adresses ne manquait à personne. La migration a donc d'abord déplacé le trafic, et
+seulement ensuite l'a contrôlé.
+
+La \emph{sortie réseau directe}, disponible en version générale sur la plateforme retenue, fait les
+deux : elle place les interfaces de sortie des charges de travail \emph{dans} un sous-réseau, ce
+qui rend le pare-feu applicable à elles, et elle supprime le connecteur d'accès sans serveur ---
+son coût plancher permanent et le point de défaillance unique qu'il constituait pour les sept
+charges qu'il desservait. Le schéma du fournisseur d'infrastructure, dans la version verrouillée
+par le dépôt, expose le mécanisme sur le service comme sur la tâche : relevé du 29/08/2026.
+
+\medskip
+\noindent\textbf{Principe directeur et plan d'adressage.}
+Le principe est la traduction directe du principe d'identité (PR2) au plan réseau :
+\textbf{l'identité, plan de contrôle du socle, devient le sélecteur du pare-feu lui-même}. Le
+critère d'acceptation qui en découle est vérifiable en une commande : \emph{aucune règle
+d'autorisation ne comporte de plage source}. Le plan d'adressage qui en résulte --- quatre
+sous-réseaux d'un préfixe \texttt{/26} dans un même bloc \texttt{/24}, un par locataire, le
+troisième créé vide et réservé --- est publié avec la justification de chaque longueur de préfixe
+au \cref{tab:adressage-cible} : un préfixe posé sans raison est une dette d'adressage.
+
+
+\medskip
+\noindent\textbf{Les règles de pare-feu en service.}
+Douze règles --- \textbf{cinq autorisations et sept refus} --- ont remplacé les quatre antérieures,
+dont une ouvrait tous les ports TCP et UDP ainsi qu'ICMP entre deux plages, sans aucune cible.
+Elles ont été posées du 22 au 23/08/2026, autorisations d'abord, refus nommés ensuite, refus par
+défaut en dernier ; \textbf{chaque autorisation porte une identité nommée et un port nommé}. La
+journalisation suit la convention du projet --- \emph{les refus sont journalisés, les autorisations
+ne le sont pas} --- pour ne pas payer un volume d'ingestion sans valeur de détection (BNF3) ; chaque
+refus journalisé alimente l'export existant vers l'entrepôt, sans modifier la chaîne de détection.
+Le \cref{tab:regles-cibles} les donne règle par règle --- référence, sens, identité ciblée,
+destination, ports et action.
+
+
+Trois lectures méritent la soutenance. \textbf{Les refus nommés E3, E7, E8, I1 et I2 ne changent
+aucun verdict} --- E9 les rendrait redondants : ils existent pour \emph{produire un signal}, une
+tentative du tableau de bord vers la base étant alors journalisée sous un nom de règle qui dit
+exactement ce qui s'est passé, directement exploitable par la chaîne de détection. \textbf{Aucune
+autorisation en entrée ne subsiste} : le pare-feu est à états, rien n'initie de connexion vers une
+charge de travail par le réseau, et les trois règles antérieures ont été supprimées le 24/08/2026
+sans successeur --- l'inventaire des instances de calcul, vide, établit qu'elles ne protégeaient
+rien. Enfin \textbf{la règle E5 borne le tableau de bord à une seule adresse au monde}, celle du
+répartiteur : le réseau referme un écart que le plan d'identité laisse ouvert (É9).
+
+La \cref{fig:topologie-cible} rassemble le plan d'adressage et ces règles en une vue unique, à
+mettre en regard de la \cref{fig:topologie-reseau} : les charges de travail y figurent
+\emph{à l'intérieur} des sous-réseaux, et le bloc des règles ne comporte plus une seule plage
+source.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm, font=\scriptsize,
+  sn/.style={draw=black!70, rounded corners=3pt, fill=black!4, align=left,
+             inner sep=4pt, text width=4.0cm},
+  snvide/.style={draw=black!70, densely dashed, fill=white, align=left,
+                 inner sep=4pt, text width=2.2cm},
+  mag/.style={draw=black!70, double, double distance=0.7pt, fill=white,
+              align=center, inner sep=3pt, text width=3.4cm},
+  ext/.style={draw=black!70, fill=black!10, align=center, inner sep=3pt,
+              text width=2.8cm},
+  vpc/.style={draw=black!55, rounded corners=5pt, densely dotted},
+  bloc/.style={draw=black!60, rounded corners=2pt, fill=white, align=left,
+               inner sep=4pt, text width=4.4cm, font=\scriptsize},
+  note/.style={draw=black!45, rounded corners=2pt, fill=black!2, align=left,
+               inner sep=4pt, font=\scriptsize},
+  a/.style={fluxdonnee},
+  et/.style={font=\scriptsize, fill=white, inner sep=1pt, text=black}]
+
+% ============ cadre du reseau virtuel =========================================
+\node[vpc, minimum width=10.05cm, minimum height=7.95cm] (rv) at (5.05,6.75) {};
+% Fond blanc obligatoire : sans lui, la bordure haute du cadre barrait le titre.
+% C'est l'idiome deja employe par la figure precedente (style « et »).
+\node[anchor=north west, font=\scriptsize\itshape, black!60,
+      fill=white, inner sep=2pt] at (1.35,10.50)
+     {Réseau virtuel en mode personnalisé --- mode de routage régional \emph{déclaré}};
+
+% ============ les deux sous-reseaux de locataire ==============================
+\node[sn] (mn) at (2.55,9.40)
+     {\textbf{Locataire plateforme} --- \texttt{10.0.8.0/26}\\[1pt]
+      API de supervision · tableau de bord · tâche d'enrichissement};
+\node[sn] (el) at (7.55,9.40)
+     {\textbf{Locataire hébergé} --- \texttt{10.0.8.64/26}\\[1pt]
+      application hébergée · migration · contrôle d'isolation};
+
+% refus croise entre locataires, journalise
+\draw[fluxrefuse] (mn.east) -- node[croixrefus]{} (el.west);
+\node[et, anchor=north, align=center] at (5.05,9.05)
+     {\textbf{E7--E8}\\ \textbf{I1--I2}};
+
+% ============ le troisieme locataire, deja adresse ============================
+\node[snvide] (t3) at (1.45,7.05)
+     {\textbf{Troisième}\\ \texttt{10.0.8.128/26}\\ \emph{déjà adressé}};
+\node[snvide] (rs) at (8.65,7.05)
+     {\textbf{Réserve}\\ \texttt{10.0.8.192/26}\\ \emph{ferme le \texttt{/24}}};
+
+% ============ appairage et base ===============================================
+\node[mag] (psa) at (5.05,4.95) {Appairage de services privés --- \texttt{/20}};
+\node[mag] (bd)  at (5.05,3.65) {Base de données --- adresse privée exclusive};
+\draw[a] (psa) -- (bd);
+
+% ============ hors du reseau virtuel ==========================================
+\node[ext] (api) at (13.05,10.55) {Interfaces privées du fournisseur};
+\node[ext] (lb)  at (13.05,8.95)  {Répartiteur\\ \emph{une seule adresse}};
+
+% ============ arcs vers la base, par les couloirs libres =======================
+\draw[a] (3.90,8.98) -- node[et, pos=0.62] {\textbf{E1} --- 5432} (3.90,5.42);
+\draw[a] (6.20,8.98) -- node[et, pos=0.62] {\textbf{E2} --- 5432} (6.20,5.42);
+
+% ============ arcs sortants ===================================================
+\draw[a] (el.east) -- node[et, pos=0.52] {\textbf{E4} --- 443} (api.west);
+% routage orthogonal au-dessus du cadre : l'arc ne croise ni le titre ni un noeud
+\draw[a] (0.40,9.92) -- (0.40,11.10)
+         -- node[et, pos=0.5] {\textbf{E5} --- 443 (tableau de bord seul)} (11.30,11.10)
+         -- (11.30,8.95) -- (lb.west);
+
+% ============ bloc des regles =================================================
+\node[bloc, anchor=north west, fill=menalplanB] (rg) at (10.75,7.55)
+     {\textbf{Règles --- sortie}\\[1pt]
+      \texttt{1000} base de données, par identité\\
+      \texttt{1200} interfaces du fournisseur\\
+      \texttt{1250} répartiteur, une seule adresse\\
+      \texttt{1400} refus croisé, \emph{journalisé}\\
+      \texttt{65534} \textbf{refus par défaut}, \emph{journalisé}\\[3pt]
+      \textbf{Règles --- entrée}\\[1pt]
+      \texttt{1400} refus croisé, \emph{journalisé}\\
+      \texttt{65534} refus général, \emph{journalisé}\\
+      \emph{aucune autorisation en entrée}};
+
+% ============ ce qui disparait, et ce que la figure demontre ===================
+\node[note, anchor=north west, text width=9.75cm] at (0.20,2.55)
+     {\textbf{Supprimés} --- le connecteur d'accès sans serveur et sa plage
+      \texttt{10.0.3.0/28}, la passerelle de traduction d'adresses et son routeur, les deux
+      sous-réseaux vides \texttt{10.0.1.0/24} et \texttt{10.0.2.0/24}, et les trois règles
+      d'entrée qui ciblaient une étiquette que rien ne porte.};
+
+\node[legendecadre, anchor=north west, text width=4.4cm, font=\scriptsize] at (10.75,2.55)
+     {\legendetrait{fluxdonnee}{flux autorisé, par identité}\\[2pt]
+      \legendecroix{refus opposé par le pare-feu}};
+
+\end{tikzpicture}
+\caption[Topologie réseau après la refonte appliquée]{Topologie réseau \textbf{après la refonte
+appliquée du 11 au 25/08/2026} --- le réseau en service à \dateref, à comparer à la
+\cref{fig:topologie-reseau}. Les charges de travail émettent \emph{depuis} un sous-réseau : le
+pare-feu leur est applicable, et aucune autorisation ne comporte de plage source.}
+\label{fig:topologie-cible}
+\end{figure}
+
+\begin{alertbox}[title={Une limite du mécanisme, dite avant qu'un jury la trouve}]
+Le sélecteur par compte de service est une fonctionnalité réelle du pare-feu du fournisseur, mais
+\textbf{son application aux interfaces de sortie directe n'est pas établie} : à \dateref, le schéma
+du fournisseur d'infrastructure n'expose que les étiquettes à ce niveau. La refonte applique donc
+une convention --- \emph{une étiquette par compte de service, l'une et l'autre déclarées dans le
+même bloc} --- et un commutateur qui bascule vers le sélecteur par identité une fois la
+vérification passée : la propriété revendiquée ne change pas, c'est le mécanisme qui l'exprime qui
+attend sa preuve. La conséquence porte sur la ségrégation entre locataires et vaut pour le réseau
+en service : une étiquette se pose dans la définition de la révision, de sorte que \textbf{la
+frontière entre locataires est opposable à une charge de travail compromise, mais non à un
+opérateur capable de déployer} --- lequel poserait l'étiquette de l'autre locataire. Ce second cas
+relève du resserrement du droit de déploiement (\cref{subsec:delegation}). La vérification qui lève
+la réserve est la première du protocole et tient en une règle de test et un appel.
+\end{alertbox}
+
+\medskip
+\noindent\textbf{Ce que la refonte a fermé, ce qu'elle coûte, et dans quel ordre.}
+Trois défauts sont tombés ensemble parce que \textbf{la passerelle de traduction d'adresses n'a pas
+été mieux configurée : elle est devenue sans objet} au sens de PR1
+(\cref{sec:trente-trois-briques}). Sa suppression, le 24/08/2026, a emporté son rattachement au
+mauvais sous-réseau, sa journalisation limitée aux erreurs --- qui laissait toute connexion
+sortante réussie sans signal --- et son allocation d'adresses automatique, qui interdisait toute
+liste d'autorisation chez un tiers.
+
+\textbf{Les montants qui suivent sont des ordres de grandeur de tarification publique, non des
+montants relevés sur facture.} La suppression du connecteur, facturé au plancher de deux instances
+permanentes, libère de l'ordre de \textbf{onze à treize euros par mois} ; sous-réseaux, routes et
+règles ne sont pas facturés ; seuls les journaux de flux deviennent un poste de un à deux euros. S'y
+ajoute un coût évité qui ne figure dans aucun tableau, la montée en charge du connecteur, qui
+disparaît \emph{en tant que risque}. La conséquence est structurante : \textbf{le coût marginal
+réseau d'un locataire supplémentaire passe d'une douzaine d'euros par mois à zéro} --- un
+sous-réseau et deux règles de refus croisé ne sont pas facturés, et le troisième sous-réseau est
+déjà créé --- de sorte que \textbf{la ségrégation réseau entre locataires a cessé d'être un
+arbitrage entre coût et sécurité} et que le troisième seuil du \cref{ch:validation} devient
+franchissable sans renégocier le budget. \emph{Le rapprochement de ces ordres de grandeur avec la
+facture appartient au mois suivant la migration, sur les postes d'accès réseau, de traduction
+d'adresses et de télémétrie.}
+
+Les douze étapes ont obéi à une règle unique --- \emph{on n'interdit jamais avant d'avoir observé,
+et on n'observe qu'après avoir fait passer le trafic par l'endroit où on l'observe} --- qui commande
+le calendrier du 11 au 25/08/2026 ; la conduite de l'opération, la fenêtre d'observation de sept
+jours et le traitement de la seule étape réellement dangereuse, le refus par défaut en sortie, sont
+rapportés en \cref{subsec:migration-reseau}. Deux propriétés sont ici établies par contrôle
+direct --- l'exposition de la sortie réseau directe dans la version verrouillée du fournisseur,
+relevée le 29/08/2026, et le fait que les trois règles d'entrée supprimées ne protégeaient rien,
+l'inventaire des instances de calcul étant vide ; les deux autres, applicabilité du sélecteur par
+identité et démonstration que le tableau de bord ne joint plus qu'une adresse, portent leur commande
+et leur critère au plan de validation continue (\cref{sec:plan-validation}). Enfin, une
+architecture de pare-feu à douze règles exploitée par une seule personne se dégrade au premier
+incident où une autorisation large débloque une urgence : le critère d'acceptation ---
+\emph{aucune règle d'autorisation ne comporte de plage source} --- est donc porté en porte
+bloquante par l'analyse de configuration de la chaîne de provisionnement (\cref{ch:realisation}).
+\textbf{L'architecture refuse elle-même sa propre dégradation.}
+
+\medskip
+\noindent\textbf{Ce que la refonte ne ferme pas.}
+Cinq limites sont assumées. La plage d'appairage de services privés est immuable sur l'instance
+existante : la cible \texttt{/20} ne vaut que pour un provisionnement neuf. La base de données et
+l'entrepôt restent partagés --- \textbf{la ségrégation réseau n'empêche pas deux identités
+d'atteindre le même serveur}, elle empêche l'une d'atteindre l'\emph{interface} de l'autre. Le
+refus par défaut en sortie supprime le canal de commande vers un hôte arbitraire mais \textbf{non
+l'exfiltration par les interfaces du fournisseur lui-même} : l'autorisation qui rend l'entrepôt
+joignable rend joignable tout entrepôt du même fournisseur, et fermer ce chemin exigerait un
+périmètre de service, donc une organisation cloud dont le projet ne dispose pas. Le détachement des
+deux charges qui n'ont aucune dépendance privée leur laisse une \textbf{sortie managée non
+gouvernée}, arbitrage dont le prix est mesuré par T14. Enfin la conception ne tient pas au-delà de
+trois ou quatre locataires, le nombre de refus croisés croissant comme le carré de leur nombre :
+au-delà, la réponse est \textbf{un projet cloud par locataire}, qui règle du même coup la base et
+l'entrepôt partagés.
+
+\subsection{Isolation des données entre locataires (D16)}
+\label{subsec:isolation-donnees}
+
+La ségrégation réseau appliquée en \cref{subsec:reseau-cible} empêche une charge de travail
+d'atteindre l'interface d'une autre ; elle ne peut rien sur le fait que les deux atteignent
+\emph{le même serveur} de base de données. La frontière de donnée reste donc portée par les droits
+du moteur, appliqués à l'exécution : cette sous-section établit contre qui elle tient, puis expose
+la conception qui la remplacerait --- décision D16, arrêtée le 29/08/2026 et \textbf{non
+appliquée}. Ce statut est un choix : \textbf{deux migrations d'infrastructure dans la même
+quinzaine, conduites par un opérateur unique, ne seraient pas soutenables} --- la contrainte
+humaine du \cref{ch:cadre-existant} appliquée à l'ordonnancement du projet lui-même.
+
+\medskip
+\noindent\textbf{Ce que la frontière actuelle garantit, et contre qui elle cède.}
+Dix ordres, dont six révocations, retirent aux comptes applicatifs l'appartenance au rôle
+privilégié de l'instance et referment les connexions croisées. Le \cref{tab:adversaires-donnees}
+confronte cette frontière à chaque adversaire plutôt qu'à une échelle de maturité : c'est la seule
+façon de dire ce qu'elle vaut.
+
+{\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|P{5.4cm}|P{2.5cm}|P{7.1cm}|}
+\caption[Ce que la frontière d'isolation des données arrête, et ce qu'elle n'arrête pas]{Ce que
+la frontière d'isolation des données arrête, et ce qu'elle n'arrête pas. Les trois défaillances
+sont des \emph{circonstances d'exploitation}, non des attaques --- c'est précisément pourquoi une
+frontière portée par un geste ne suffit pas.}
+\label{tab:adversaires-donnees} \\
+\hline
+\textbf{Adversaire} & \textbf{La frontière tient-elle ?} & \textbf{Ce qui la tient réellement} \\
+\hline
+\endfirsthead
+\caption[]{Ce que la frontière d'isolation des données arrête (suite)} \\
+\hline
+\textbf{Adversaire} & \textbf{La frontière tient-elle ?} & \textbf{Ce qui la tient réellement} \\
+\hline
+\endhead
+Charge applicative compromise, dans l'un ou l'autre sens & \textbf{Oui} --- établi le 19/08/2026
+par six vérifications sur six, par tentative de connexion réelle et non par lecture de
+configuration & Le retrait de l'appartenance privilégiée et la révocation de connexion. Rien d'autre
+\\ \hline
+Fuite du mot de passe applicatif & \textbf{Oui} & La même révocation : le mot de passe n'ouvre que
+sa propre base \\ \hline
+Identité de la chaîne de livraison compromise & \textbf{Partiellement} : elle déploie sous
+l'identité d'un locataire et lit ses secrets, jamais ceux de l'autre & \textbf{La liaison secret par
+secret du coffre --- la frontière la plus solide du socle est dans le plan d'identité, non dans le
+moteur de base} \\ \hline
+Opérateur détenteur d'un rôle d'administration de l'instance & \textbf{Non, et aucune conception de
+droits ne peut y répondre} : l'export lit n'importe quelle base sans traverser le moteur
+d'autorisation & Rien. \emph{Un octroi n'est pas une défense contre le plan de contrôle qui
+l'héberge} \\ \hline
+Réconciliation de l'infrastructure après un clonage & \textbf{Non, et sans borne temporelle} : le
+clone porte un nom neuf, la déclaration des comptes y est ancrée, l'application suivante les recrée
+privilégiés & Rien \\ \hline
+Accueil d'un nouveau locataire & \textbf{Non, et sans aucune détection} : le contrôle quotidien ne
+connaît que deux comptes écrits en dur & Rien \\ \hline
+Restauration d'un locataire & \textbf{Sans objet --- et c'est le problème} : l'unité de reprise
+est l'instance, restaurer l'un fait reculer l'autre & Rien. Défaut de rayon d'action, non de
+droits \\
+\hline
+\end{longtable}}
+
+Deux enseignements commandent la conception. La frontière \textbf{cède dans trois circonstances
+d'exploitation nommées} --- l'accueil d'un locataire, la réconciliation d'une infrastructure
+décrite avec une infrastructure restaurée, et sa propre disparition silencieuse : ce ne sont pas
+des attaques. Et elle est \textbf{asymétrique} : franchie depuis le locataire hébergé, elle livre
+des empreintes de mots de passe et un secret de second facteur chiffré ; franchie depuis la
+plateforme, elle livre \textbf{un identifiant national en clair}. La direction qui coûte part donc
+de l'hébergeur, et l'actif qu'elle protège ne l'est par rien d'autre que la révocation.
+
+\medskip
+\noindent\textbf{La conception retenue : une isolation proportionnée à la sensibilité.}
+Quatre niveaux ont été évalués --- durcissement logique remis sous code, séparation par schéma,
+instance dédiée par locataire, projet cloud dédié par locataire. D16 retient le troisième
+\emph{pour le seul locataire qui porte une donnée irréparable} et le premier partout ailleurs,
+pour deux raisons. \textbf{La frontière doit d'abord changer de nature, pas de qualité} : remettre
+les dix ordres sous contrôle du code les rend versionnés, rejoués et surveillés, mais ils restent
+un geste --- à la question « que se passe-t-il si quelqu'un accorde le rôle privilégié ? », la
+réponse demeure \emph{on le voit sous vingt-quatre heures}, quand avec une instance dédiée la
+question n'a plus de sens. \textbf{La sensibilité commande ensuite la proportion, non l'égalité de
+traitement} : le \cref{ch:cadre-existant} fonde le niveau d'exigence du socle sur la biométrie
+vocale et l'identifiant national, et traiter les deux locataires à l'identique reviendrait à
+surpayer pour la plateforme ou à sous-protéger l'application hébergée.
+
+Le \textbf{test d'admission d'un locataire} énonce cette proportion en critère opposable, en trois
+questions : \textbf{(i)} la donnée traitée est-elle \textbf{irréversible} en cas de fuite ---
+identifiant officiel, biométrie, donnée de santé, moyen de paiement ? \textbf{(ii)} l'éditeur
+est-il un \textbf{tiers} de l'exploitant du socle ? \textbf{(iii)} un engagement
+\textbf{contractuel} d'hébergement est-il pris ? \textbf{Une seule réponse affirmative impose une
+instance dédiée} ; aucune, une base dédiée sur l'instance mutualisée, derrière la tâche de
+durcissement idempotente. L'application hébergée répond oui à la première ; un troisième locataire
+répondrait très probablement oui à la deuxième.
+
+\medskip
+\noindent\textbf{Le coût, et l'avertissement qui va avec.}
+Une instance dédiée zonale, sauvegardes et restauration à un instant donné identiques, coûte de
+l'ordre de dix à douze euros par mois, quand la refonte réseau en a libéré onze à treize --- deux
+ordres de grandeur de tarification publique, le second attendant son rapprochement avec la facture.
+\textbf{L'économie du réseau finance exactement l'isolation des données, et une seule fois} : le
+solde commun des deux décisions est proche de zéro, et c'est cette neutralité qui rend D16 tenable
+sous la contrainte économique du \cref{ch:cadre-existant}. Le prix payé doit être dit : le
+locataire hébergé perdrait la bascule régionale automatique, acquise le 08/08/2026 et
+\textbf{jamais éprouvée par un test} --- la seule reprise mesurée du projet est un clonage, qui
+fonctionne identiquement sur une instance zonale --- et \textbf{la mesure de 32~min~45~s ne se
+transporte pas}, ayant été relevée sur une instance donnée. En contrepartie, la nouvelle instance
+naîtrait avec le chiffrement par clé gérée, à coût nul : possibilité que l'instance existante a
+perdue définitivement, le champ n'étant modifiable qu'à la création.
+
+\medskip
+\noindent\textbf{Le piège de la reprise, et pourquoi le contrôle ne doit pas réparer.}
+Puisque la frontière ne survit pas à la réconciliation qui suit un clonage, elle doit être déplacée
+dans la définition même de \emph{reprise terminée} : le mode opératoire de restauration ne s'achève
+pas au retour du service, mais au rejeu de la tâche de durcissement puis du contrôle d'isolation
+--- motif déjà éprouvé par la tâche de migration du locataire. S'y ajoutent une alerte de
+fraîcheur, l'absence du contrôle étant aujourd'hui silencieuse, et l'énumération des comptes plutôt
+que leur inscription en dur. Une réparation automatique est en revanche \textbf{écartée par un
+argument dirimant} : réparer exige précisément les privilèges que la frontière retire, et un
+réparateur permanent supposerait de \textbf{créer une identité inter-bases à demeure pour défendre
+une frontière inter-bases}. La remise sous code passe pour la même raison par une tâche idempotente
+et non par un fournisseur de description supplémentaire, l'instance n'ayant aucune adresse publique
+et la chaîne de provisionnement ne contenant ni planification ni application. Son gain réel n'est
+d'ailleurs pas l'écriture des ordres, c'est que \textbf{la source de vérité qui crée la base
+devienne celle qui en referme la porte}.
+
+\medskip
+\noindent\textbf{Ce que la conception ne couvre pas.}
+Elle ne prétend rien contre le plan de contrôle du fournisseur : un opérateur détenteur d'un rôle
+d'administration exporte n'importe quelle base sans traverser le moteur d'autorisation, et seule
+une séparation de projets y répondrait --- réponse terminale déjà nommée en
+\cref{subsec:reseau-cible}. Elle ne referme pas le chiffrement applicatif de l'identifiant
+national, chantier propre à l'éditeur. Enfin elle suppose établie une propriété qui ne l'est pas :
+la version de moteur en service autorise un compte portant le droit de création de rôles à
+s'accorder lui-même n'importe quelle appartenance, comportement durci seulement à la version
+suivante. \textbf{Tant que l'énumération des attributs de rôle n'a pas été relevée, la garantie
+établie le 19/08/2026 porte une réserve} --- et c'est la première vérification du protocole, celle
+qui conditionne les autres.
+
+\medskip
+\noindent\textbf{Critères de validation de l'état final.}
+Une vue d'architecture ne vaut que si un tiers peut dire à quoi elle sert et comment il en prononce
+la recette. Le \cref{tab:recette-vues} le fait pour les \textbf{six vues qui portent une décision
+opposable} : les quatre de cette section, le plan d'identité (\cref{sec:plan-identite}) et les
+frontières de confiance du \cref{ch:besoins-menaces}. Les autres figures du mémoire n'y sont pas inscrites, et le
+motif est toujours le même : on ne prononce pas la recette d'un état qu'on a supprimé
+(\cref{fig:topologie-reseau}) ; une vue de latence ou de schéma se valide par une mesure ou par une
+propriété du schéma, non par une revue d'architecture (\cref{fig:cycle-donnee},
+\cref{fig:modele-donnees}) ; les vues de comportement illustrent un protocole sans le remplacer
+(\cref{fig:seq-refus}, \cref{fig:seq-mfa}) ; et la chaîne de délégation
+(\cref{fig:delegation-identite}) \textbf{n'est pas recettable par construction}, puisqu'elle décrit
+ce qui serait atteignable et non ce qui est vérifié --- sa réserve est son objet entier.
+
+\begin{table}[htbp]
+\caption[Critères de recette des vues d'architecture]{Critères de recette des vues d'architecture :
+le point de vue servi, les critères datés avec leur protocole, et la réserve de chaque vue.}
+\label{tab:recette-vues}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{|P{2.15cm}|P{3.20cm}|P{5.35cm}|P{4.00cm}|}
+\hline
+\textbf{Vue} & \textbf{Point de vue --- décision servie} & \textbf{Critères de recette, datés, et
+protocole} & \textbf{Réserve --- ce que la vue ne démontre pas} \\
+\hline
+Contexte & Architecte --- arbitre les dépendances non maîtrisées & Les trois imports différés ne
+sont sur aucun chemin de requête (conception, \dateref) ; la zone de noms reste hors code ---
+écart É10 & Ni volumétrie, ni disponibilité des tiers \\ \hline
+Couches & Architecte --- vérifie qu'aucune couche n'est traversée sans identité & L2 vérifiée à
+chaque saut : \textbf{T5} conforme 23/08/2026 ; \textbf{T6} partiel au \dateref & Ne montre pas les
+chemins réseau ; voir la vue de déploiement \\ \hline
+Déploiement & Exploitant --- décide si le chemin privé est le seul chemin de données & Sorties
+refusées : \textbf{T20} conforme 24/08/2026 ; données inaccessibles depuis Internet : \textbf{T4}
+partiel & Ni volumes, ni latences, ni perte du connecteur (\textbf{T15}, validation continue) \\
+\hline
+Topologie cible & Architecte réseau --- prononce la recette de la refonte & Émission depuis un
+sous-réseau, pare-feu applicable : \textbf{T20} conforme 24/08/2026 ; isolation : \textbf{T5}
+conforme 23/08/2026 & Ne couvre pas le trafic entrant ; \textbf{T1} reste non conforme \\ \hline
+Plan d'identité & Responsable sécurité --- décide si une identité peut altérer une preuve &
+Inventaire de clés vide : \textbf{T7} conforme 19/08/2026 ; intégrité de la preuve : \textbf{T11}
+conforme, test automatisé & Décrit les droits déclarés, non leur composition (voir la vue de
+délégation) \\ \hline
+Frontières de confiance & Analyste de la menace --- décide où poser un contrôle & TB1--TB4
+franchies par le réseau, TB5 par l'identité seule : \textbf{T5} et \textbf{T11} conformes ;
+\textbf{T14} non conforme au \dateref & Ne hiérarchise pas les scénarios ; la gravité est portée
+par l'annexe~\ref{ann:modele-menaces} \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Vue dynamique : les sept flux et le cycle de la donnée}
+
+La vue en couches décrit ce qui existe ; la vue en flux décrit ce qui se passe. Les sept flux F1
+à F7 forment le vocabulaire commun du projet, employé pour l'analyse de menace du \cref{ch:besoins-menaces}, la
+réalisation et les tests (\cref{tab:flux}).
+
+\begin{table}[htbp]
+\caption{Les sept flux de l'architecture.}
+\label{tab:flux}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{|P{1.1cm}|P{10.2cm}|P{3.8cm}|}
+\hline
+Flux & Chemin & Exigences \\
+\hline
+F1 & Utilisateur $\to$ périmètre $\to$ filtrage $\to$ charge de travail & EX1--EX3 \\ \hline
+F2 & Charge de travail $\to$ réseau privé $\to$ base de données & EX4--EX6 \\ \hline
+F3 & Dépôt $\to$ chaîne de livraison $\to$ registre $\to$ déploiement & EX7--EX10 \\ \hline
+F4 & Toutes les couches $\to$ collecte $\to$ entrepôt de supervision & EX11--EX13 \\ \hline
+F5 & Planificateur $\to$ enrichissement $\to$ modèle $\to$ recherche vectorielle & EX11, EX14, EX15 \\ \hline
+F6 & Vulnérabilités de livraison $\to$ encodage $\to$ rapprochement $\to$ priorisation & apport, aucune exigence \\ \hline
+F7 & Dépôt $\to$ plan $\to$ contrôle $\to$ approbation $\to$ application & EX16--EX18 \\
+\hline
+\end{tabular}
+\end{table}
+
+
+\textbf{Le flux F6 est l'hypothèse d'apport de l'architecture.} Il relie deux ensembles
+habituellement disjoints : la chaîne de livraison, qui classe les vulnérabilités par gravité
+théorique, et la chaîne de détection, qui observe les techniques réellement dirigées contre le
+système. Le rapprochement réordonne les correctifs --- une vulnérabilité moyenne liée à une
+technique observée cette semaine passe devant une vulnérabilité élevée sans rapport avec l'activité
+constatée. F6 ne couvre aucune exigence et ne réduit aucun risque par lui-même : c'est une
+\emph{hypothèse}, publiée avec le protocole qui permettrait de la réfuter --- la comparaison des
+ordres de correction obtenus avec et sans rapprochement. Ce protocole ne figure pas parmi les six du
+plan de validation continue ; il est écrit pour qu'un tiers l'exécute et contredise l'hypothèse.
+
+\subsection{Cycle de vie de la donnée de sécurité}
+
+Les flux disent qui parle à qui, non ce que devient la donnée. Six étapes séparent l'événement de
+son affichage, et ce sont les \emph{cadences portées sur les transitions} qu'il faut lire dans la
+\cref{fig:cycle-donnee} : cinq minutes pour la normalisation, cinq pour la détection, quinze pour
+l'enrichissement sont des attentes d'ordonnanceur et non des temps de traitement, qui s'additionnent
+avec la position de l'événement dans la fenêtre et bornent le délai bien plus sûrement que la
+puissance de calcul. Deux propriétés s'y lisent aussi : le score est recalculé à chaque consultation
+et jamais persisté ; et la branche d'enrichissement est \emph{informationnelle}, la
+\cref{fig:modele-donnees} en donnant la raison, de modèle de données et non d'algorithme.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm, font=\scriptsize,
+  proc/.style={draw=black!70, rounded corners=3pt, fill=black!4,
+               align=center, inner sep=3pt, minimum height=0.62cm},
+  lat/.style={draw=black!70, rounded corners=3pt, fill=white,
+              align=center, inner sep=3pt, minimum height=0.62cm},
+  num/.style={circle, draw=black!70, fill=white, inner sep=0.8pt,
+              minimum size=0.42cm, font=\scriptsize\bfseries},
+  note/.style={draw=black!45, rounded corners=2pt, fill=black!2, align=left, inner sep=4pt},
+  a/.style={fluxdonnee},
+  ad/.style={fluxevenement},
+  nul/.style={lienstructure, densely dashed},
+  et/.style={font=\scriptsize, text=black, fill=white, inner sep=1.5pt, align=center},
+  etg/.style={font=\scriptsize, text=black, fill=white, inner sep=1.5pt, align=left}]
+
+% ===================== chaine principale, verticale ==========================
+\node[proc, text width=5.8cm] (b1) at (4.00,14.60)
+   {\textbf{Ingestion} --- quatre exports : charges de travail,\\
+    verdicts du filtrage applicatif, refus du pare-feu,\\ base de données};
+\node[proc, text width=5.8cm] (b2) at (4.00,12.20)
+   {\textbf{Normalisation} --- cinq requêtes planifiées,\\
+    fenêtre glissante 15~min, fusion anti-doublon};
+\node[proc, text width=5.8cm] (b3) at (4.00,9.70)
+   {\textbf{Détection} --- sept requêtes planifiées R1--R7,\\
+    fenêtre 15~min, insertion conditionnelle};
+\node[proc, text width=5.8cm] (b5) at (4.00,6.20)
+   {\textbf{Scoring} --- recalculé à la lecture, \textbf{jamais persisté} ;\\
+    poids par gravité et prime de chaîne d'attaque\\[1pt]
+    \emph{le score n'existe qu'en mémoire :\\ l'ordre d'hier n'est pas reconstituable}};
+\node[proc, text width=5.8cm] (b6) at (4.00,3.30)
+   {\textbf{Affichage} --- API de supervision,\\ rendu serveur, navigateur};
+
+% ===================== derivation laterale ===================================
+\node[lat, text width=5.0cm] (b4) at (11.80,9.70)
+   {\textbf{Enrichissement} --- encodage puis recherche vectorielle,\\
+    trois candidats, seuil 0,60\\[1pt]
+    \emph{branche informationnelle}};
+
+% ===================== pastilles de numerotation =============================
+\node[num, anchor=east] at ([xshift=-2.5pt]b1.west) {1};
+\node[num, anchor=east] at ([xshift=-2.5pt]b2.west) {2};
+\node[num, anchor=east] at ([xshift=-2.5pt]b3.west) {3};
+\node[num, anchor=south east] at ([shift={(-2.5pt,1.5pt)}]b4.north west) {4};
+\node[num, anchor=east] at ([xshift=-2.5pt]b5.west) {5};
+\node[num, anchor=east] at ([xshift=-2.5pt]b6.west) {6};
+
+% ===================== horodatage relatif ====================================
+% Repris de l'ancienne chronologie de l'incident : l'origine t0 est le refus
+% oppose au perimetre, avant toute charge de travail.
+\node[etg, anchor=west] at (7.10,14.60) {$t_0$ + qq.~s};
+\node[etg, anchor=west] at (7.10,12.20) {$t_0$ + 0 à 5~min};
+\node[etg, anchor=west] at (7.10,10.35) {$t_0 + \approx 15$~min};
+\node[etg, anchor=west] at (7.10,6.20)  {à la consultation};
+\node[etg, anchor=west] at (7.10,3.30)  {+ 0 à 10~s};
+
+% ===================== arcs : les cadences sont sur les fleches ==============
+\draw[a] (b1.south) -- node[et, pos=0.5] {\textbf{quasi temps réel}} (b2.north);
+\draw[a] (b2.south) -- node[et, pos=0.5] {\textbf{5~min} (cadence)} (b3.north);
+\draw[ad] (b3.east) -- node[et, pos=0.5] {\textbf{15~min}} (b4.west);
+\draw[a] (b3.south) -- node[et, pos=0.35] {\textbf{à la requête}} (b5.north);
+\draw[a] (b5.south) -- node[et, pos=0.5] {\textbf{10~s} (rafraîchissement)} (b6.north);
+
+% ===================== l'arc qui n'existe pas ================================
+\draw[nul] (b4.south) -- node[croixrefus]{} (b5.east);
+\node[etg, anchor=north west] at (10.10,7.10)
+   {\textbf{arc absent} --- pas de clé d'entité :\\ jointure impossible\\
+    (voir le modèle de données)};
+
+% ===================== legende interne ========================================
+\node[legendecadre, anchor=north west, text width=14.9cm, font=\scriptsize] at (0.60,2.35)
+   {\legendetrait{fluxdonnee}{passage d'étape}\quad
+    \legendetrait{fluxevenement}{branche d'enrichissement}\quad
+    \legendecroix{arc absent}\\[2pt]
+    Origine $t_0$ : le refus opposé au périmètre (L1), avant toute charge de travail.
+    Les horodatages relatifs décrivent la \emph{configuration} ; seuls les repères de
+    détection ont été mesurés (\cref{sec:bout-en-bout}).};
+
+\end{tikzpicture}
+\caption[Cycle de vie de la donnée de sécurité]{Cycle de vie de la donnée de sécurité : six
+étapes, le budget de latence porté par les cadences et l'horodatage relatif de chaque étape. Le
+délai entre l'événement et son affichage est fait d'\emph{attentes d'ordonnanceur} et non de temps
+de traitement : trois attentes s'additionnent (5 + 5 + 15~min), et aucune puissance de calcul ne
+les réduirait. La branche d'enrichissement n'alimente pas le calcul de score --- impasse
+fonctionnelle assumée.}
+\label{fig:cycle-donnee}
+\end{figure}
+
+\subsection{Modèle de données des deux systèmes de stockage}
+
+Le socle stocke dans deux systèmes de nature opposée : une base relationnelle pour l'exploitation
+du tableau de bord, un entrepôt analytique pour les preuves de sécurité. Dans le modèle
+entité-association de la \cref{fig:modele-donnees}, deux absences comptent plus que les présences.
+La table d'enrichissement porte l'identifiant de la détection dont elle est issue, mais pas
+l'entité que cette détection désigne, or le score d'incident regroupe les détections \emph{par
+entité} : la jointure du rattachement sémantique au score est structurellement impossible,
+conséquence du schéma et non choix d'algorithme. Et aucun lien n'existe entre les deux systèmes,
+la chaîne de preuve étant cloisonnée de la base des comptes --- propriété voulue dont le prix est
+qu'un verdict ne se résout pas en un nom sans franchir volontairement ce cloisonnement. Le détail
+des dix tables, avec leur écrivain unique, figure au \cref{ch:realisation}
+(\cref{tab:modele-donnees}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm, font=\scriptsize,
+  eh/.style={draw=black!70, fill=white, align=left, inner sep=3pt, anchor=north,
+             font=\scriptsize\ttfamily\bfseries},
+  eb/.style={draw=black!70, fill=white, align=left, inner sep=3pt, anchor=north},
+  ehg/.style={draw=black!70, fill=black!10, align=left, inner sep=3pt, anchor=north,
+              font=\scriptsize\ttfamily\bfseries},
+  ebg/.style={draw=black!70, fill=black!10, align=left, inner sep=3pt, anchor=north},
+  trait/.style={draw=black!70, rounded corners=3pt, fill=black!4, align=center,
+                inner sep=3pt, anchor=north},
+  cadre/.style={draw=black!45, densely dotted, rounded corners=4pt, line width=0.8pt},
+  note/.style={draw=black!45, rounded corners=2pt, fill=black!2, align=left, inner sep=4pt},
+  rel/.style={black!70, line width=0.7pt},
+  relg/.style={black!55, line width=0.7pt},
+  a/.style={fluxdonnee},
+  et/.style={font=\scriptsize, text=black, fill=white, inner sep=1.5pt, align=center},
+  etg/.style={font=\scriptsize, text=black, fill=white, inner sep=1.5pt, align=left},
+  pics/patte/.style={code={\draw (0,0) -- (0.30,0.17); \draw (0,0) -- (0.30,0);
+                           \draw (0,0) -- (0.30,-0.17);}},
+  pics/un/.style={code={\draw (0,-0.15) -- (0,0.15);}}]
+
+% ============================ legende de notation ============================
+\node[anchor=north west, align=left, text width=15.4cm, inner sep=0pt,
+      font=\scriptsize] at (0.00,18.40)
+  {\textbf{Notation patte-d'oie} \quad
+   \tikz[baseline=-0.5ex]{\draw[rel](0,0)--(0.55,0);\draw[rel](0.40,-0.15)--(0.40,0.15);}\;un
+   \quad
+   \tikz[baseline=-0.5ex]{\draw[rel](0,0)--(0.35,0);\draw[rel](0.35,0)--(0.65,0.17);
+     \draw[rel](0.35,0)--(0.65,0);\draw[rel](0.35,0)--(0.65,-0.17);}\;plusieurs
+   \quad
+   \tikz[baseline=-0.5ex]{\draw[rel,densely dashed](0,0)--(0.9,0);}\;rattachement sans clé
+   \quad
+   \tikz[baseline=-0.5ex]{\draw[relg,densely dashed](0,0)--(1.0,0)
+     node[croixrefus, pos=0.5]{};}\;jointure impossible\\
+   \tikz[baseline=-0.5ex]{\node[ehg,anchor=center,minimum width=0.55cm,
+     minimum height=0.24cm,inner sep=1pt]{};}\;table grisée : \emph{déclarée, jamais
+   utilisée} --- le grisé est toujours doublé par l'étiquette écrite dans la table};
+
+% ================================ CADRE A ====================================
+\draw[cadre] (0,12.95) rectangle (15.40,17.20);
+\node[anchor=north west, font=\scriptsize\bfseries] at (0.15,17.14)
+  {Cadre A --- base relationnelle de l'application de supervision};
+
+\node[eh, text width=2.4cm] (roh) at (1.55,16.15) {roles};
+\node[eb, text width=2.4cm] (rob) at (roh.south)
+  {\texttt{id} \textbf{PK} \,\textperiodcentered\, \texttt{name} \textbf{UNIQUE}};
+
+\node[eh, text width=4.2cm] (ush) at (5.90,16.50) {users};
+\node[eb, text width=4.2cm] (usb) at (ush.south)
+  {\texttt{id} \textbf{PK} \,\textperiodcentered\, \texttt{email} \textbf{UNIQUE}
+   \,\textperiodcentered\, \texttt{role\_id} \textbf{FK}\\
+   mot de passe haché \,\textperiodcentered\, secret du second facteur \emph{chiffré}};
+
+\node[eh, text width=3.8cm] (auh) at (11.60,16.50) {audit\_logs};
+\node[eb, text width=3.8cm] (aub) at (auh.south)
+  {\texttt{id} \textbf{PK} \,\textperiodcentered\, \texttt{user\_id} \textbf{FK} \emph{nullable}\\
+   action \,\textperiodcentered\, ressource \,\textperiodcentered\, adresse
+   \,\textperiodcentered\, statut \,\textperiodcentered\, horodatage \emph{indexé}};
+
+\node[ehg, text width=6.6cm] (aph) at (5.90,14.15) {api\_keys};
+\node[ebg, text width=6.6cm] (apb) at (aph.south)
+  {empreinte de clé \textbf{UNIQUE} \,\textperiodcentered\, \texttt{user\_id} \textbf{FK}
+   \,\textperiodcentered\, \textbf{déclarée, inerte} : aucun mécanisme d'authentification par clé};
+
+% ---- relations du cadre A ----
+\draw[rel] (2.806,15.45) -- (3.744,15.45);
+  \pic[rel] at (2.956,15.45) {un};
+  \pic[rel] at (3.444,15.45) {patte};
+\draw[rel] (8.056,15.45) -- (9.644,15.45);
+  \pic[rel] at (8.206,15.45) {un};
+  \pic[rel] at (9.344,15.45) {patte};
+  \node[et] at (8.85,15.75) {0..N};
+\draw[relg] (usb.south) -- (aph.north);
+  \pic[relg, rotate=90]  at ($(usb.south)!0.30!(aph.north)$) {un};
+  \pic[relg, rotate=-90] at ($(aph.north)!0.30!(usb.south)$) {patte};
+
+% ================== bande de separation : aucune relation ====================
+\node[note, text width=14.8cm] at (7.70,12.10)
+  {\textbf{Aucune relation entre les deux cadres --- aucun arc ne franchit cette
+   séparation.} L'identifiant d'analyste porté par les verdicts est l'identifiant
+   technique du jeton, jamais l'adresse : le plan de supervision n'ouvre aucun accès
+   à la base des comptes.};
+
+% ================================ CADRE B ====================================
+\draw[cadre] (0,5.00) rectangle (15.40,11.30);
+\node[anchor=north west, font=\scriptsize\bfseries] at (0.15,11.24)
+  {Cadre B --- entrepôt de supervision};
+\node[anchor=north west, align=left, text width=15.10cm, font=\scriptsize] at (0.15,10.86)
+  {\textbf{Aucune contrainte d'intégrité référentielle} : les relations ci-dessous sont des
+   conventions de requête. \textbf{Six tables ne portent aucun arc} et ne figurent pas ici ---
+   \texttt{raw\_logs}, \texttt{access\_logs}, \texttt{security\_events}, \texttt{api\_metrics}
+   et \texttt{cve\_findings}, partitionnées par jour, et \texttt{pending\_embeddings},
+   \emph{déclarée, jamais écrite ni lue} (détail : \cref{tab:modele-donnees}).};
+
+% ---- coeur de la demonstration ----
+\node[eh, text width=3.8cm] (deh) at (5.60,9.55) {detections};
+\node[eb, text width=3.8cm] (deb) at (deh.south)
+  {\texttt{id} \,\textperiodcentered\, horodatage \,\textperiodcentered\, \texttt{rule\_id}\\
+   \texttt{\textbf{entity}}\\
+   \texttt{service} = clé de locataire\\
+   tactique \,\textperiodcentered\, technique};
+
+\node[eh, text width=3.4cm] (emh) at (13.20,9.55) {attack\_embeddings};
+\node[eb, text width=3.4cm] (emb) at (emh.south)
+  {\texttt{technique} \textbf{PK}\\ vecteur à 768 dimensions};
+
+\node[eh, text width=4.8cm] (enh) at (3.00,6.75) {alert\_enrichment};
+\node[eb, text width=4.8cm] (enb) at (enh.south)
+  {\texttt{detection\_id} \,\textperiodcentered\, technique \,\textperiodcentered\, tactique\\
+   similarité \,\textperiodcentered\, version du modèle\\
+   candidats de rang 2 et 3\\
+   \textbf{aucune colonne \texttt{entity}}};
+
+\node[eh, text width=4.4cm] (veh) at (12.40,6.75) {analyst\_verdicts};
+\node[eb, text width=4.4cm] (veb) at (veh.south)
+  {\texttt{\textbf{entity}}\\
+   identifiant technique de l'analyste\\
+   verdict \,\textperiodcentered\, \emph{ajout seul}};
+
+% ---- traitement, hors cadre B ----
+\node[trait, text width=5.8cm] (sco) at (6.90,4.30)
+  {\textbf{Calcul du score d'incident}\\
+   regroupement par \texttt{entity}, à la lecture};
+
+% ---- relations du cadre B ----
+% detections 1--N alert_enrichment
+\draw[rel] (4.60,7.451) coordinate (q1) -- (3.60,6.75) coordinate (q2);
+  \pic[rel, rotate=229] at ($(q1)!0.15cm!(q2)$) {un};
+  \pic[rel, rotate=229] at ($(q2)!0.30cm!(q1)$) {patte};
+  \node[etg, anchor=west] at (4.78,7.10) {par \texttt{detection\_id}};
+% detections N--1 attack_embeddings, en tirete : rattachement sans cle
+\draw[rel, densely dashed] (7.606,8.55) -- (11.394,8.55);
+  \pic[rel, rotate=180] at (7.906,8.55) {patte};
+  \pic[rel] at (11.244,8.55) {un};
+  \node[et, text width=2.0cm] at (9.50,8.55)
+    {rattachement par similarité,\\ non par clé};
+% detections |><| analyst_verdicts, sur entity
+\draw[rel] (7.606,8.00) -- (10.80,6.75);
+  \node[et, text width=2.9cm] at (9.20,7.38)
+    {$\bowtie$ \textbf{jointure du score}\\ sur \texttt{entity}};
+% detections -> calcul du score
+\draw[a] (7.15,7.451) -- (7.15,4.34);
+  \node[etg, text width=2.7cm, anchor=west] at (7.30,5.45)
+    {regroupement par \texttt{entity} : le score se calcule à la lecture};
+% alert_enrichment ->< calcul du score : l'arc que le schema interdit
+\draw[relg, densely dashed] (3.00,4.651) -- node[croixrefus]{} (3.00,3.60) -- (3.894,3.60);
+  \node[etg, anchor=north west] at (0.10,3.40)
+    {\textbf{jointure au score structurellement impossible} ---\\
+     \texttt{alert\_enrichment} ne porte aucune colonne \texttt{entity}};
+
+\end{tikzpicture}
+\caption[Modèle de données des deux systèmes de stockage]{Modèle de données des deux systèmes de
+stockage : ce que les clés permettent, et la jointure que leur absence interdit. L'impossibilité de
+corréler le rattachement sémantique au score d'incident est une propriété \emph{du schéma} et non
+un choix d'algorithme --- une colonne manquante suffit à l'expliquer --- et les deux systèmes de
+stockage sont volontairement disjoints.}
+\label{fig:modele-donnees}
+\end{figure}
+
+\section{De l'attaque à l'incident : fonctionnement de bout en bout}
+\label{sec:bout-en-bout}
+
+Entre la requête malveillante qui atteint le périmètre et l'incident qualifié que voit l'analyste,
+deux registres se partagent le récit sans se recouvrir : la \cref{fig:seq-refus} dit \emph{qui}
+agit et \emph{par quelle règle}, la \cref{fig:cycle-donnee} dit \emph{quand}, sa colonne
+d'horodatage relatif situant chaque étape par rapport au refus opposé au périmètre.
+
+La séquence porte une propriété du périmètre qu'aucune autre vue ne rend : l'évaluation de la
+politique de filtrage est \textbf{premier-match-gagne} --- les règles sont ordonnées par priorité,
+la première qui correspond décide, les suivantes ne sont pas évaluées. L'ordre est donc une
+propriété de sécurité et non un détail de configuration : une règle de régulation de débit placée
+avant les règles applicatives les rend inertes, puisqu'elle laisse passer de manière terminale le
+trafic conforme au seuil --- c'est l'incident corrigé pendant la réalisation
+(\cref{subsec:incidents}), et la raison pour laquelle la restriction géographique est écrite comme
+un refus dont les exemptions d'administration sont repliées à l'intérieur.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm, font=\scriptsize,
+  part/.style={draw=black!70, fill=black!4, align=center,
+               inner sep=2.5pt, minimum height=1.05cm},
+  lif/.style={draw=black!70, densely dashed, line width=0.45pt},
+  act/.style={draw=black!70, fill=black!10, line width=0.45pt},
+  msg/.style={fluxdonnee},
+  rep/.style={fluxreponse},
+  asy/.style={fluxevenement},
+  et/.style={font=\scriptsize, fill=white, inner sep=1pt, align=center},
+  num/.style={circle, draw=black!70, fill=white, line width=0.4pt,
+              inner sep=0.5pt, minimum size=3.4mm, font=\scriptsize},
+  note/.style={draw=black!70, fill=black!4, align=left, inner sep=3.5pt,
+               font=\scriptsize},
+  lead/.style={draw=black!55, densely dotted, line width=0.4pt},
+  brk/.style={draw=black!55, line width=0.4pt},
+  cart/.style={draw=black!45, rounded corners=2pt, fill=black!2, align=left,
+               inner sep=4pt, font=\scriptsize}]
+
+% ===================== bandes de plan, calque de fond =========================
+\begin{scope}[on background layer]
+  \fill[menalplanA] (1.62,0.10) rectangle (5.20,-12.80);
+  \fill[menalplanC] (5.30,0.10) rectangle (9.00,-12.80);
+  \fill[menalplanB] (9.10,0.10) rectangle (15.02,-12.80);
+\end{scope}
+
+% ===================== participants ==========================================
+\node[part, text width=1.00cm] (cl) at (2.30,-0.55) {Client};
+\node[part, text width=1.45cm] (pe) at (4.28,-0.55) {Périmètre\\filtrage\\applicatif};
+\node[part, text width=1.62cm] (jo) at (6.26,-0.55) {Journalisation};
+\node[part, text width=1.25cm] (en) at (8.24,-0.55) {Entrepôt\\(journaux\\bruts)};
+\node[part, text width=1.62cm] (no) at (10.22,-0.55) {Requête planifiée\\de normalisation};
+\node[part, text width=1.55cm] (de) at (12.20,-0.55) {Requêtes planifiées\\de détection\\(R1--R7)};
+\node[part, text width=1.62cm] (ap) at (14.05,-0.55) {API de supervision\\et tableau de bord};
+
+% ===================== lignes de vie =========================================
+\draw[lif] (2.30,-1.10)  -- (2.30,-12.55);
+\draw[lif] (4.28,-1.10)  -- (4.28,-12.55);
+\draw[lif] (6.26,-1.10)  -- (6.26,-12.55);
+\draw[lif] (8.24,-1.10)  -- (8.24,-12.55);
+\draw[lif] (10.22,-1.10) -- (10.22,-12.55);
+\draw[lif] (12.20,-1.10) -- (12.20,-12.55);
+\draw[lif] (14.05,-1.10) -- (14.05,-12.55);
+
+% ===================== fragment ordonne (message 2) ==========================
+% dessine avant les barres d'activation : son fond opaque interrompt les lignes
+% de vie inactives de la Journalisation et de l'Entrepot sur cette plage.
+\fill[white] (4.28,-2.25) rectangle (10.05,-6.20);
+\draw[black!70, line width=0.5pt] (4.28,-2.25) rectangle (10.05,-6.20);
+% etiquette du fragment, en coin superieur gauche (pentagone UML)
+\fill[black!10] (4.28,-2.25) -- (7.45,-2.25) -- (7.45,-2.83)
+                -- (7.27,-3.05) -- (4.28,-3.05) -- cycle;
+\draw[black!70, line width=0.5pt] (4.28,-2.25) -- (7.45,-2.25) -- (7.45,-2.83)
+                -- (7.27,-3.05) -- (4.28,-3.05) -- cycle;
+\node[anchor=north west, align=left, inner sep=0pt] at (4.42,-2.34)
+      {2 : évaluation ordonnée\\ \textbf{premier-match-gagne}};
+% ordre d'evaluation, de haut en bas
+\draw[msg] (4.60,-3.28) -- (4.60,-4.28);
+\node[anchor=west, inner sep=0pt] at (4.82,-3.38) {410 \ restriction géographique};
+\node[anchor=west, inner sep=0pt] at (4.82,-3.73) {1000 \ XSS};
+\node[anchor=west, inner sep=0pt] at (4.82,-4.08)
+      {1100 \ injection SQL \ \
+       \tikz[baseline=-0.55ex]{\draw[black!70, line width=0.7pt]
+         (0,0.05) -- (0.07,-0.04) -- (0.19,0.14);}\;\textbf{correspond}};
+\draw[black!70, line width=0.4pt] (4.28,-4.38) -- (10.05,-4.38);
+\node[anchor=north west, text width=5.35cm, align=left, inner sep=0pt,
+      text=menalencre] at (4.48,-4.54)
+      {règles suivantes \textbf{non évaluées} : 1200 LFI, 1300 RCE, 1400 RFI,
+       1450 débit d'authentification, 1500 régulation globale, autorisation
+       par défaut};
+
+% ---- note rattachee au fragment (trait fin) ---------------------------------
+\node[note, text width=5.15cm, anchor=north west] (nt) at (10.35,-2.35)
+      {une règle de régulation de débit placée \emph{avant} les règles
+       applicatives est terminale et les rend inertes~; c'est la raison du
+       placement en priorité 1500.};
+\fill[white] (nt.north east) -- ++(-0.30,0) -- ++(0,-0.30) -- cycle;
+\draw[black!70, line width=0.5pt]
+      ([xshift=-0.30cm]nt.north east) -- ([yshift=-0.30cm]nt.north east);
+\draw[lead] (10.05,-3.10) -- (nt.west);
+
+% ===================== barres d'activation ===================================
+\draw[act] (2.19,-1.65)   rectangle (2.41,-6.65);
+\draw[act] (4.17,-1.72)   rectangle (4.39,-7.45);
+\draw[act] (6.15,-7.25)   rectangle (6.37,-8.20);
+\draw[act] (8.13,-7.90)   rectangle (8.35,-8.25);
+\draw[act] (8.13,-8.85)   rectangle (8.35,-9.20);
+\draw[act] (8.13,-9.90)   rectangle (8.35,-10.25);
+\draw[act] (8.13,-10.95)  rectangle (8.35,-11.30);
+\draw[act] (10.11,-8.85)  rectangle (10.33,-9.20);
+\draw[act] (12.09,-9.90)  rectangle (12.31,-10.25);
+\draw[act] (13.94,-10.95) rectangle (14.16,-12.15);
+
+% ===================== messages ==============================================
+% 1 -- requete malveillante
+\draw[msg] (2.41,-1.70) -- (4.17,-1.70);
+\node[num] at (2.72,-1.70) {1};
+\node[et] at (3.75,-1.34) {requête HTTPS malveillante (F1)};
+
+% 3 -- reponse 403 : c'est un REFUS, il porte le trait et la croix de refus
+\draw[fluxrefuse] (4.17,-6.55) -- node[croixrefus]{} (2.41,-6.55);
+\node[num] at (3.86,-6.55) {3};
+\node[et] at (3.20,-6.79) {\textbf{403}};
+
+% 4 -- verdict vers la journalisation (asynchrone)
+\draw[asy] (4.39,-7.30) -- (6.15,-7.30);
+\node[num] at (4.70,-7.30) {4};
+\node[et] at (6.05,-6.94) {verdict, échantillonnage intégral};
+
+% 5 -- journalisation vers entrepot (asynchrone)
+\draw[asy] (6.37,-8.00) -- (8.13,-8.00);
+\node[num] at (6.68,-8.00) {5};
+
+% 6 -- normalisation
+\draw[msg] (10.11,-9.00) -- (8.35,-9.00);
+\node[num] at (9.80,-9.00) {6};
+\node[et] at (9.05,-8.64) {fenêtre glissante 15~min};
+\node[et] at (9.15,-9.38) {\emph{cadence 5~min}};
+
+% 7 -- detection
+\draw[msg] (12.09,-10.05) -- (8.35,-10.05);
+\node[num] at (11.64,-10.05) {7};
+\node[et] at (10.10,-9.69) {R1--R7, insertion conditionnelle};
+\node[et] at (10.10,-10.43) {\emph{cadence 5~min, fenêtre 15~min}};
+
+% 8 -- lecture par l'API
+\draw[msg] (13.94,-11.10) -- (8.35,-11.10);
+\node[num] at (13.27,-11.10) {8};
+\node[et] at (11.00,-10.74) {regroupement par entité, score calculé à la lecture};
+
+% 9 -- restitution a l'analyste : message vers l'exterieur du diagramme
+\draw[msg] (14.16,-12.00) -- (15.30,-12.00);
+\fill[black!70] (15.33,-12.00) circle (1.3pt);
+\node[num] at (14.47,-12.00) {9};
+\node[et] at (11.90,-11.64) {incident affiché --- vers l'analyste};
+\node[et] at (12.60,-12.38) {\emph{rafraîchissement 10~s}};
+
+% ===================== colonne des delais ====================================
+\draw[brk] (1.98,-1.65) -- (1.80,-1.65) -- (1.80,-6.65) -- (1.98,-6.65);
+\node[text width=1.90cm, align=left, anchor=east, inner sep=0pt] at (1.72,-4.15)
+      {\textbf{1 à 3}\\ synchrone, fraction de seconde --- \emph{configuration,
+       non une latence mesurée}};
+\draw[brk] (1.98,-7.25) -- (1.80,-7.25) -- (1.80,-8.05) -- (1.98,-8.05);
+\node[text width=1.90cm, align=left, anchor=east, inner sep=0pt] at (1.72,-7.65)
+      {\textbf{4 et 5}\\ quelques secondes --- \emph{configuration, non
+       mesurée}};
+
+% ===================== notation ==============================================
+\node[anchor=north west, inner sep=0pt, align=left, text width=15.40cm]
+      at (-0.18,-12.95)
+  {\textbf{Notation}\;
+   \tikz[baseline=-0.55ex]{\draw[msg] (0,0) -- (0.62,0);}\,appel synchrone \quad
+   \tikz[baseline=-0.55ex]{\draw[rep] (0,0) -- (0.62,0);}\,réponse \quad
+   \legendecroix{refus} \quad
+   \tikz[baseline=-0.55ex]{\draw[asy] (0,0) -- (0.62,0);}\,message asynchrone \quad
+   \tikz[baseline=-0.55ex]{\draw[lead] (0,0) -- (0.62,0);}\,note \quad
+   \emph{italique} : cadence configurée \quad
+   fonds, de gauche à droite : plan de données, plan d'observation, plan de contrôle};
+
+\end{tikzpicture}
+\caption[Requête malveillante refusée au périmètre]{Requête malveillante refusée au périmètre :
+ordre d'évaluation des règles et trajet de la preuve jusqu'à l'analyste. L'ordre est une propriété
+de sécurité --- la première correspondance est terminale et les six règles suivantes ne sont jamais
+évaluées --- et la preuve du refus met beaucoup plus de temps à atteindre l'analyste que le refus
+lui-même à être prononcé.}
+\label{fig:seq-refus}
+\end{figure}
+
+
+Deux définitions commandent leur lecture : une \textbf{requête planifiée} est une requête
+enregistrée dans l'entrepôt et exécutée à intervalle fixe sans intervention humaine, et la
+\textbf{fenêtre glissante} est l'intervalle immédiatement passé sur lequel porte chaque exécution.
+S'y ajoute le \textbf{démarrage à froid}, mesuré au \cref{subsec:incidents}, dont dépend avec la
+cadence de quinze minutes le délai d'enrichissement (F5).
+
+\textbf{Deux mesures, et deux seulement, encadrent le délai de qualification.} Observation du
+19/08/2026 : 13 requêtes bloquées en 403 à 16~h~41 UTC, règle R2 déclenchée à 16~h~56~min~08~s UTC,
+comptage exact de 13 --- soit environ 15~min. Observation du 10/08/2026 : 6~min~15~s sur un
+scénario de force brute (R1). \textbf{Aucune des deux n'est un maximum garanti} ; toutes les autres
+valeurs portées par les figures décrivent la configuration, non une latence mesurée.
+
+\section{Conception détaillée par couche}
+\label{sec:conception-couches}
+
+Le \cref{tab:conception-couches-synthese} donne les sept niveaux, les composants qui les
+constituent et les exigences qu'ils couvrent --- les capacités restant le vocabulaire du rapport,
+les produits n'en étant que l'instanciation chez le fournisseur retenu par D00. Le
+\textbf{détail des contrôles apportés par chaque niveau} est publié en
+\cref{ann:conception-couches}, dans le même ordre. Le nombre d'exigences ne mesure pas la
+criticité d'une couche : L5 est la moins chargée et porte pourtant toute la chaîne de preuve, des
+journaux au score.
+
+\begingroup
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.0}
+\begin{longtable}{|P{2.0cm}|P{11.0cm}|P{1.9cm}|}
+\caption[Les sept niveaux : composants et exigences couvertes]{Les sept niveaux de la conception :
+composants employés, produits qui les réalisent et exigences couvertes. Les contrôles apportés par
+chaque niveau sont détaillés en \cref{ann:conception-couches}.}
+\label{tab:conception-couches-synthese} \\
+\hline
+\textbf{Niveau} & \textbf{Composants et produits employés} & \textbf{Exigences} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Niveau} & \textbf{Composants et produits employés} & \textbf{Exigences} \\
+\hline
+\endhead
+\textbf{L1}\newline Périmètre d'entrée &
+Répartiteur global HTTPS, trois certificats gérés, moteur de filtrage applicatif, limitation de
+débit, restriction géographique. \emph{Cloud Load Balancing}, \emph{Cloud Armor} --- politique
+unique attachée à tous les services publiés. La zone de noms est une dépendance externe (É10) &
+EX1, EX2, EX3 \\ \hline
+\textbf{L2}\newline Identité et sécurité \emph{(plan transversal)} &
+\emph{Cloud IAM} (sept identités de service), \emph{Secret Manager} (neuf secrets, dont huit
+chiffrés par une clé gérée par le projet), \emph{Cloud KMS} (deux trousseaux, deux clés, rotation
+de quatre-vingt-dix jours), \emph{Workload Identity Federation} &
+EX5, EX6, EX7, EX10, EX11 \\ \hline
+\textbf{L3}\newline Charges de travail &
+\textbf{Cinq services et trois tâches} : API de supervision, tableau de bord, service d'encodage,
+interface web et interface de programmation de l'application hébergée ; enrichissement, migration
+du schéma, vérification quotidienne de l'isolation des bases. \emph{Cloud Run}, \emph{Cloud
+Scheduler} pour deux déclencheurs, la chaîne de livraison pour le troisième &
+EX6, EX9 \\ \hline
+\textbf{L4}\newline Réseau &
+Un réseau virtuel en mode personnalisé, \textbf{un sous-réseau par locataire} dont un réservé au
+troisième, un appairage de services privés vers la base, et \textbf{douze règles de filtrage dont
+cinq autorisations}. \emph{VPC}, \emph{sortie réseau directe} et \emph{Private Service Access} &
+EX4, EX20 \\ \hline
+\textbf{L5}\newline Données &
+\textbf{Base applicative} (comptes, rôles, journal d'audit) et \textbf{entrepôt de supervision},
+c\oe ur du dispositif de détection (\cref{fig:cycle-donnee}, \cref{fig:modele-donnees}).
+\emph{Cloud SQL for PostgreSQL 15} (adresse privée seule, haute disponibilité régionale,
+restauration à un instant donné sur sept jours), \emph{BigQuery} (dix tables), \emph{Cloud
+Storage} (clé gérée, prévention d'accès public) &
+EX2, EX4, EX11 \\ \hline
+\textbf{L6}\newline Enrichissement sémantique &
+Un service d'encodage sans état, une tâche d'enrichissement par lots, un référentiel de techniques
+d'attaque vectorisé. \emph{Cloud Run} en entrée interne seule, modèle de représentation de phrases
+spécialisé en cybersécurité embarqué dans l'image et exécuté hors ligne, recherche vectorielle
+native de l'entrepôt --- ce qui supprime la base vectorielle séparée qu'imposerait un autre
+fournisseur (D05, D06) &
+EX14, EX15 \\ \hline
+\textbf{L7}\newline Observabilité \emph{(plan transversal)} &
+Quatre exports de journaux, politiques d'alerte, objectifs de service, sondes de disponibilité,
+lien entre une alerte affichée et sa procédure d'incident. \emph{Cloud Logging}, \emph{Cloud
+Monitoring} &
+EX12, EX13, EX19 \\
+\hline
+\end{longtable}
+\endgroup
+
+\textbf{Points de vigilance.} Chaque niveau nomme ce qu'il ne garantit pas lui-même, et quatre des
+sept --- L1, L3, L4 et L6 --- y désignent une \textbf{confiance résiduelle} : un contrôle qu'ils
+n'exercent pas et qu'un contrôle voisin doit reprendre. Les deux contrôles dynamiques qui les
+établissent en propre, T14 et T20, portent leur relevé daté et figurent au \textbf{plan de
+validation continue} (\cref{sec:plan-validation}).
+
+\textbf{L1} charge les règles préconfigurées à leur niveau de sensibilité le plus bas : arbitrage
+assumé entre un taux de faux positifs intenable pour un exploitant unique et la résistance aux
+techniques d'évasion, mesurée au \cref{ch:validation}.
+
+\textbf{L2} ne peut interdire structurellement la création d'une clé d'identité de longue durée ---
+cela relève d'une politique d'organisation, dont la pose exige un périmètre administratif dont le
+projet ne dispose pas (É7) : le contrôle est porté par la fédération, qui rend la clé inutile, et
+vérifié par inventaire. Seconde réserve, de conception : la clé qui chiffre les secrets du second
+facteur ne porte pas d'identifiant de version, de sorte qu'une rotation les rendrait illisibles d'un
+seul coup ; son versionnement est la première évolution prévue de ce plan.
+
+\textbf{L3} accorde le droit d'invocation à tous sur les services publiés : leur protection tient
+entièrement au paramètre d'entrée restreinte au répartiteur, contrôle unique dont une régression les
+exposerait publiquement. Le choix est assumé dans le code, faute d'un service d'authentification en
+amont disponible hors organisation cloud ; le contrôle compensatoire est la vérification de ce champ
+à chaque plan d'infrastructure, le seuil de bascule l'acquisition d'une organisation. La limite de
+requêtes simultanées par instance n'est déclarée nulle part : seule valeur du modèle d'exécution qui
+échappe à PR4.
+
+\textbf{L4} ne porte plus la réserve qu'enregistrait D11 : depuis la refonte appliquée du 11 au
+25/08/2026 (\cref{subsec:reseau-cible}), la sortie est gouvernée par le pare-feu et non par un
+paramètre de plateforme, la règle interne de priorité 900 a été supprimée le 24/08/2026 avec les
+deux sous-réseaux vides qu'elle reliait (É2), et le canal de détection des refus réseau n'est plus
+muet --- la journalisation des refus, acquise le 19/08/2026 (É1), a porté le 24/08/2026 trois refus
+de sortie réellement opposés et retrouvés dans l'entrepôt (T20). \textbf{La confiance résiduelle de
+la couche a changé de nature, et elle est mesurée} : le service d'encodage et l'interface web de
+l'application hébergée ont été détachés du sous-réseau au motif, exact, qu'ils n'ont aucune
+dépendance privée, de sorte que leur \textbf{sortie managée échappe au pare-feu}. Le 25/08/2026, une
+sonde portant la configuration réseau de la révision déployée du service d'encodage a atteint une
+destination externe en 412~ms : c'est la non-conformité T14, qui reste ouverte, le motif du
+détachement valant pour la sortie \emph{nécessaire} et non pour la sortie \emph{possible}.
+
+\textbf{L5} n'applique pas rétroactivement le chiffrement par clé gérée : deux tables seulement
+portent une configuration explicite, les tables de preuves antérieures restant chiffrées par la clé
+du fournisseur, et généraliser supposerait de les recréer donc d'interrompre la chaîne de preuve ---
+arbitrage tranché en faveur de la continuité. Point de méthode : abaisser le seuil de rattachement
+jusqu'à ce que toute alerte en reçoive un aurait produit un tableau de bord entièrement rempli et
+entièrement faux ; le choix inverse a été fait, afficher le taux d'alertes non rattachées comme
+indicateur de qualité.
+
+\textbf{L6} porte au premier chef la sortie non gouvernée du service d'encodage, énoncée en L4.
+Second point, dimensionnant : la recherche vectorielle s'exécute sans index déclaré, chaque
+appariement balayant l'intégralité du référentiel --- acceptable à la volumétrie d'ATT\&CK et à la
+cadence de quinze minutes, c'est la première limite qu'une montée en charge rencontrerait.
+
+\textbf{L7} laisse sans filtre le quatrième export, poste de coût dominant de l'entrepôt, parce que
+c'est lui qui rend la détection possible : les verdicts du filtrage applicatif n'existent que dans ce
+journal, et tout échantillonnage y créerait un angle mort statistique sur la source de preuve la plus
+dense. La condition de réévaluation est le franchissement du budget d'ingestion mensuel.
+
+\subsection{Couverture des exigences de sécurité}
+\label{sec:couverture-exigences}
+
+Les vingt exigences du \cref{ch:besoins-menaces} sont toutes prises en charge par au moins une couche ou un flux,
+le détail figurant en annexe~\ref{ann:conception-detaillee} ; cette prise en charge n'est pas une
+preuve de conformité, implémentation et niveau de test étant évalués au \cref{ch:validation}. Trois réserves,
+portant sur quatre exigences, sont nommées : \textbf{EX7}, politique d'organisation inapplicable
+faute d'organisation cloud (É7), compensée par les autorisations et l'infrastructure en code ;
+\textbf{EX9}, déploiement par étiquette égale au SHA du commit et non par empreinte d'image stricte
+(É8) ; \textbf{EX16 et EX18}, portée bornée aux ressources déjà décrites en code et revue
+d'approbation manuelle. La correspondance avec les sept principes Zero Trust du \cref{ch:etat-art} a été
+vérifiée point par point : l'identité comme plan de contrôle et la mesure continue de l'état y sont
+les mieux représentés.
+
+\section{Le plan d'identité : la segmentation réelle}
+\label{sec:plan-identite}
+
+Cette section traduit le principe d'identité (PR2) : ce qui, dans cette architecture, remplace les
+pare-feux internes.
+
+\subsection{Matrice des identités et des droits}
+
+Le \cref{tab:matrice-identites} recense les identités du socle et leurs droits ; la
+\cref{fig:plan-identite} en projette les cinq porteuses d'un droit direct sur une ressource,
+et rend visible ce qu'un tableau montre mal : les interdictions.
+
+\begin{table}[htbp]
+\caption{Matrice des identités et des droits.}
+\label{tab:matrice-identites}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{|P{3.4cm}|P{6.1cm}|P{5.6cm}|}
+\hline
+Identité & Droits accordés & Interdiction structurante \\
+\hline
+Identité applicative (une par application) & Accès à la base de données ; accès aux secrets de
+cette application uniquement & \textbf{Aucun accès à l'entrepôt de supervision} \\ \hline
+Identité de l'API de supervision & Lecture seule sur l'entrepôt ; accès à la base ; secrets de
+la plateforme & Aucune écriture sur les preuves --- exception unique : la table des verdicts
+d'analyste \\ \hline
+Identité du tableau de bord & Appel de l'API de supervision ; lecture du jeu de données de
+supervision & \textbf{Aucun accès à la base de données applicative} ; séparation vis-à-vis de
+l'entrepôt appliquée par le code et non par les autorisations (écart É9) \\ \hline
+Identité de la tâche d'enrichissement & Lecture des détections ; écriture \textbf{uniquement}
+sur la table d'enrichissement ; appel du service d'encodage & \textbf{Écriture interdite sur les
+journaux bruts et les détections} \\ \hline
+Identité de déploiement & Écriture dans le registre ; déploiement ; usurpation
+contrôlée des identités d'exécution & Aucune clé exportée ; portée limitée au projet de son
+environnement \\
+\hline
+\end{tabular}
+\end{table}
+
+La plus significative est celle de la tâche d'enrichissement : l'interdiction d'écriture sur les
+détections empêche un attaquant qui l'aurait compromise d'effacer la trace de son passage (scénario
+SO16, test T11 du \cref{ch:validation}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  iden/.style={draw, thick, rounded corners=3pt, fill=black!4, text width=3.1cm, align=center,
+    font=\footnotesize, inner sep=3pt, minimum height=0.75cm},
+  res/.style={draw, thick, fill=white, text width=3.1cm, align=center,
+    font=\footnotesize, inner sep=3pt, minimum height=0.75cm},
+  ok/.style={fluxdonnee},
+  ko/.style={fluxrefuse},
+  e9/.style={lienstructure, densely dashed, -{Latex[length=1.6mm]}},
+  etqa/.style={font=\scriptsize, above=1pt, fill=white, inner sep=1pt}
+]
+\node[font=\footnotesize\bfseries] at (0,6.3)   {Identités};
+\node[font=\footnotesize\bfseries] at (8.4,6.3) {Ressources};
+\node[iden] (e) at (0,5.40) {Tableau de bord};
+\node[iden] (a) at (0,4.05) {Application hébergée};
+\node[iden] (b) at (0,2.70) {API de supervision};
+\node[iden] (c) at (0,1.35) {Tâche\\d'enrichissement};
+\node[iden] (d) at (0,0.00) {Identité de déploiement};
+\node[res] (r5) at (8.4,5.40) {API de supervision};
+\node[res] (r1) at (8.4,4.05) {Base de données};
+\node[res] (r2) at (8.4,2.70) {Journaux bruts et détections};
+\node[res] (r3) at (8.4,1.35) {Table d'enrichissement};
+\node[res] (r4) at (8.4,0.00) {Registre d'images};
+% Ordre de trace volontaire : les diagonales d'abord, les liaisons horizontales
+% et leurs libelles ensuite. TikZ dessine dans l'ordre du source ; placees apres,
+% les diagonales rayaient le fond blanc des libelles deja poses.
+\draw[ko] (a) -- node[croixrefus]{} (r2);
+\draw[ko] (c) -- node[croixrefus]{} (r2);
+\draw[ko] (e) -- node[croixrefus]{} (r1);
+% pos 0.82 plutot que 0.70 : a 0.70 l'etiquette tombait exactement sur le
+% croisement de cette diagonale avec la liaison « lecture / ecriture ».
+% text=black : le trait reste gris, le libelle doit rester lisible.
+\draw[e9] (e) -- (r2)
+  node[etqa, text=black, pos=0.82] {non cloisonné (É9)};
+\draw[ok] (a) -- (r1) node[etqa, pos=0.28] {lecture / écriture};
+\draw[ok] (b) -- (r2) node[etqa, pos=0.3] {lecture seule};
+\draw[ok] (c) -- (r3) node[etqa, pos=0.3] {écriture};
+\draw[ok] (d) -- (r4) node[etqa, pos=0.3] {écriture};
+\draw[ok] (e) -- (r5) node[etqa, pos=0.3] {appel API};
+% --- separation des plans : les identites sont le plan de controle, les
+%     ressources le plan de donnees. Calque de fond, aucun surcout de hauteur.
+\begin{scope}[on background layer]
+  \node[bandecontrole, fit=(e)(a)(b)(c)(d)]           {};
+  \node[bandedonnee,   fit=(r5)(r1)(r2)(r3)(r4)]      {};
+\end{scope}
+\node[legendecadre, anchor=north west, font=\scriptsize, text width=12.0cm] at (-1.7,-0.75)
+  {\legendetrait{fluxdonnee}{droit accordé}\quad
+   \legendecroix{interdiction structurante}\quad
+   \legendetrait{e9}{séparation appliquée par le code (É9)}\\[2pt]
+   Fond des colonnes : à gauche le plan de contrôle (les identités), à droite le plan de données};
+\end{tikzpicture}
+\caption[Plan d'identité : droits accordés et interdictions structurantes]{Plan d'identité : droits
+accordés et interdictions structurantes (cinq identités). Ni l'application hébergée ni la tâche
+d'enrichissement ne peuvent écrire sur les preuves (scénario SO16, test T11) ; le tableau de bord
+passe par l'API de supervision, mais son identité conserve un droit de lecture sur l'entrepôt ---
+c'est l'écart É9.}%
+\label{fig:plan-identite}
+\end{figure}
+
+\subsection{Chaînes de délégation d'identité}
+\label{subsec:delegation}
+
+Une matrice de droits dit ce que chaque identité peut faire, non ce qu'un attaquant obtient en
+\emph{enchaînant} les délégations : c'est l'objet de la \cref{fig:delegation-identite}, dont il faut
+regarder le \emph{dernier} segment. \textbf{L'identité de déploiement porte un droit de déploiement
+à l'échelle du projet, et non ressource par ressource} : combinée à l'usurpation de l'identité de
+l'API de supervision --- qui accède à la clé de signature des jetons de session --- elle ouvre un
+chemin allant de la branche principale du dépôt à un jeton portant le rôle d'administration. Le code
+a fermé la porte adjacente, en refusant à cette identité d'API tout accès aux secrets à l'échelle du
+projet et en le limitant à trois secrets nommés ; la chaîne subsiste par le droit de déploiement. La
+réduction retenue --- restreindre ce droit aux seuls services réellement déployés par la chaîne,
+ressource par ressource --- est portée au plan de remédiation et conditionne l'accueil d'un
+troisième locataire. Ce chemin est nommé ici parce qu'un modèle de menace qui ne considère que les
+droits directs manque systématiquement les chemins composés.
+
+\begin{figure}[htbp]
+\centering
+% --- pastilles dessinees en TikZ : aucune dependance a un glyphe Unicode ------
+\providecommand{\pastilleOK}{\tikz[baseline=-0.55ex]{%
+  \draw[black!70, line width=0.30pt] (0,0) circle (0.130cm);
+  \draw[black!70, line width=0.60pt, line cap=round, line join=miter]
+       (-0.055cm,-0.005cm) -- (-0.020cm,-0.072cm) -- (0.085cm,0.095cm);}}
+\providecommand{\pastilleWarn}{\tikz[baseline=-0.55ex]{%
+  \draw[black!70, line width=0.40pt, line join=miter]
+       (0,0.125cm) -- (0.132cm,-0.105cm) -- (-0.132cm,-0.105cm) -- cycle;
+  \draw[black!70, line width=0.55pt, line cap=butt] (0,0.058cm) -- (0,-0.018cm);
+  \fill[black!70] (0,-0.058cm) circle (0.021cm);}}
+
+\begin{tikzpicture}[
+  x=1cm, y=1cm, font=\scriptsize,
+  etape/.style={draw=black!70, rounded corners=3pt, fill=black!4,
+                align=left, inner sep=3pt},
+  ident/.style={draw=black!70, fill=white, align=left, inner sep=3pt},
+  res/.style={draw=black!70, double, double distance=0.7pt, fill=white,
+              align=left, inner sep=3pt},
+  sec/.style={draw=black!55, fill=white, align=left, inner sep=2.5pt},
+  encart/.style={draw=black!45, densely dotted, rounded corners=2pt, fill=black!2,
+                 align=left, inner sep=3.5pt},
+  num/.style={draw=black!70, circle, inner sep=1pt, font=\scriptsize\bfseries},
+  a/.style={fluxdonnee},
+  af/.style={fluxcontrole},
+  trunk/.style={lienstructure, line width=0.9pt},
+  lead/.style={black!55, densely dotted},
+  synth/.style={fluxsynthese},
+  et/.style={font=\scriptsize, fill=white, inner sep=1.5pt}]
+
+% =============================================================================
+% COLONNES 1 A 5 -- lecture de gauche a droite
+% =============================================================================
+\node[etape, text width=2.30cm, minimum width=2.55cm] (c1) at (1.275,11.50)
+  {\textbf{1. Forge logicielle}\\[1.5pt]
+   exécution déclenchée par une poussée sur \texttt{main}};
+
+\node[etape, text width=2.30cm, minimum width=2.55cm] (c2) at (4.575,11.50)
+  {\textbf{2. Fédération d'identité}\\[1.5pt]
+   assertion OIDC\\[1.5pt]
+   \emph{condition d'attribut :}\\
+   \textbf{dépôt ET branche}};
+
+\node[etape, text width=2.55cm, minimum width=2.80cm] (c3) at (8.000,11.50)
+  {\textbf{3. Identité de déploiement}\\[2pt]
+   \pastilleWarn~droit de déploiement \textbf{à l'échelle du projet}\\[2pt]
+   écriture au registre à l'échelle du projet\\[2pt]
+   \pastilleOK~écriture sur la \textbf{seule} table des vulnérabilités};
+
+\node[ident, text width=1.55cm, minimum width=1.80cm] (i1) at (11.40,13.20)
+  {\textbf{4a.} Identité de l'API de supervision};
+\node[ident, text width=1.55cm, minimum width=1.80cm] (i2) at (11.40,11.50)
+  {\textbf{4b.} Identité du tableau de bord};
+\node[ident, text width=1.55cm, minimum width=1.80cm] (i3) at (11.40,9.80)
+  {\textbf{4c.} Identité de l'application hébergée};
+
+\node[res, text width=1.95cm, minimum width=2.20cm] (r1) at (14.50,14.60)
+  {Clé de signature des jetons de session};
+\node[res, text width=1.95cm, minimum width=2.20cm] (r2) at (14.50,13.05)
+  {Clé de chiffrement du secret du second facteur};
+\node[res, text width=1.95cm, minimum width=2.20cm] (r3) at (14.50,11.50)
+  {Mot de passe de la base};
+\node[res, text width=1.95cm, minimum width=2.20cm] (r4) at (14.50,9.95)
+  {Registre d'images};
+\node[res, text width=1.95cm, minimum width=2.20cm] (r5) at (14.50,8.40)
+  {Médias de l'application hébergée};
+
+% =============================================================================
+% ARCS DU GRAPHE PRINCIPAL
+% =============================================================================
+\draw[a] (c1.east) -- (c2.west);
+\node[et, rotate=90, align=center] at (2.925,12.90) {assertion\\signée};
+
+\draw[a] (c2.east) -- (c3.west);
+\node[et, rotate=90, align=center] at (6.225,12.90) {jeton de\\courte durée};
+
+% -- 3 vers 4 : tronc vertical, trois sorties horizontales
+\draw[trunk] (9.95,9.80) -- (9.95,13.20);
+\draw[af]    (c3.east) -- (9.95,11.50);
+\draw[a] (9.95,13.20) -- (i1.west);
+\draw[a] (9.95,11.50) -- (i2.west);
+\draw[a] (9.95,9.80)  -- (i3.west);
+\node[align=center, text width=2.40cm, font=\scriptsize] (lus) at (9.95,14.38)
+  {usurpation autorisée ($\times$3)};
+\draw[lead] (9.95,14.02) -- (9.95,13.20);
+
+% -- 4 vers 5 : tronc vertical, cinq sorties horizontales
+\draw[trunk] (12.85,8.40) -- (12.85,14.60);
+\draw[af] (i1.east) -- (12.85,13.20);
+\draw[af] (i2.east) -- (12.85,11.50);
+\draw[af] (i3.east) -- (12.85,9.80);
+\draw[a] (12.85,14.60) -- (r1.west);
+\draw[a] (12.85,13.05) -- (r2.west);
+\draw[a] (12.85,11.50) -- (r3.west);
+\draw[a] (12.85,9.95)  -- (r4.west);
+\draw[a] (12.85,8.40)  -- (r5.west);
+\node[align=center, text width=4.40cm, font=\scriptsize, anchor=north] (las) at (12.85,7.80)
+  {accès à trois secrets \emph{nommés}\\--- \textbf{jamais} un droit à l'échelle du projet};
+\draw[lead] (12.85,7.80) -- (12.85,8.40);
+
+% =============================================================================
+% ARC DE SYNTHESE -- en surimpression, au-dessus du graphe
+% =============================================================================
+\draw[synth] (c1.north) -- (1.275,16.40) -- (14.50,16.40) -- (r1.north);
+\node[anchor=south, align=center, text width=11.0cm, font=\scriptsize, fill=white,
+      inner sep=2pt] at (7.80,16.52)
+  {\textbf{chemin composé} : pousser sur \texttt{main} $\rightarrow$ déployer une révision
+   arbitraire $\rightarrow$ lire la clé $\rightarrow$ forger un jeton de rôle d'administration};
+
+% =============================================================================
+% ENCARTS
+% =============================================================================
+\node[encart, text width=5.35cm, anchor=north] (e2) at (2.800,9.30)
+  {\pastilleOK~aucune clé de longue durée, vérifiée par inventaire le 19/08/2026\\[2.5pt]
+   Sans la contrainte de branche, toute branche obtiendrait l'identité : le garde-fou
+   posé côté forge n'est pas opposable au fournisseur.};
+\draw[lead] (c2.south) -- (3.60,9.30);
+
+\node[encart, text width=3.95cm, anchor=north] (e3) at (8.150,9.30)
+  {\textbf{Réduction} --- restreindre le droit de déploiement aux seuls services
+   réellement déployés, ressource par ressource ; condition : accueil d'un
+   troisième locataire.};
+\draw[lead] (c3.south) -- (8.150,9.30);
+
+% =============================================================================
+% LEGENDE INTERNE
+% =============================================================================
+\node[legendecadre, anchor=north west, font=\scriptsize, text width=15.4cm] at (0,7.10)
+  {\legendetrait{fluxdonnee}{étape de la chaîne}\quad
+   \legendetrait{fluxcontrole}{atteinte d'une ressource par un droit délégué}\quad
+   \legendetrait{lienstructure}{rattachement}\\[2pt]
+   \legendetrait{fluxsynthese}{le chemin composé --- accent unique de la figure}};
+
+\end{tikzpicture}
+\caption[Chaînes de délégation d'identité]{Chaînes de délégation d'identité : ce qu'un droit de
+déploiement à l'échelle du projet rend atteignable. Aucun droit pris isolément n'est anormal --- la
+fédération est durcie par une condition d'attribut portant sur le dépôt \emph{et} sur la branche,
+sans clé de longue durée, et l'écriture à l'entrepôt est bornée à une seule table. Le risque naît
+de la \textbf{composition} : c'est la portée du droit de déploiement, en aval, qui porte le risque
+résiduel, non la fédération, en amont.}
+\label{fig:delegation-identite}
+\end{figure}
+
+\textbf{Trois chaînes secondaires de délégation} suivent le même motif --- un agent managé du
+fournisseur obtient le droit de créateur de jeton sur une identité d'exécution : l'agent de
+transfert des requêtes planifiées et celui de l'ordonnanceur vers l'identité des règles de
+détection, et l'opérateur humain vers l'identité de la tâche d'enrichissement lors du rejeu des
+tests de bout en bout. Cette dernière liaison est nominative et \textbf{posée hors du code} :
+c'est la seule des trois qu'aucun plan d'infrastructure ne rejouerait.
+
+\subsection{Fédération de la chaîne de livraison, secrets et chiffrement}
+
+Le point bloquant B2 concernait un secret unique gouvernant sept mécanismes ; le scénario SO9, une
+clé d'identité de longue durée détenue par la chaîne de livraison. La réponse aux deux est de même
+nature : \textbf{supprimer la classe de risque plutôt que la gérer.} La chaîne de livraison
+s'authentifie par fédération d'identité --- une assertion signée par la forge, vérifiée par le
+fournisseur cloud, contre un jeton de courte durée --- sous une condition d'attribut restreignant la
+fédération à un dépôt et une branche précis (\cref{subsec:wif}). La politique interdisant la
+création de clés de compte de service étant inapplicable faute d'organisation cloud (É7), l'absence
+de clé est vérifiée par inventaire, non garantie par une contrainte structurelle. Deux règles de
+secrets complètent ce plan, sans exception : \textbf{un secret par usage, jamais de secret dérivé
+d'un autre} --- B2 en démontrait le coût, la fuite d'une valeur unique compromettant
+l'authentification, l'anonymat et l'actif principal --- et \textbf{l'infrastructure en code crée les
+conteneurs de secrets, jamais leurs valeurs}, injectées hors du code, pour que le fichier d'état ne
+devienne jamais un coffre.
+
+\subsection{Authentification à deux facteurs et cycle de la session}
+
+L'accès humain au tableau de bord est le seul point du socle où une personne, et non une charge de
+travail, présente une identité. Ce qu'il faut regarder dans la \cref{fig:seq-mfa} est le
+\textbf{jeton intermédiaire} : entre la vérification du mot de passe et celle du code à usage
+unique, la session est authentifiée sans être autorisée. Ce jeton ne porte \emph{aucune revendication
+de rôle}, vit cinq minutes et est refusé par toutes les routes métier ; symétriquement, un jeton
+d'accès est refusé par la route de vérification du second facteur, et le rôle n'apparaît qu'au
+cinquième état, \emph{relu en base} plutôt que recopié. C'est cette séparation des types de jeton,
+plus que le second facteur, qui constitue le contrôle.
+
+Deux conséquences de conception en découlent. \textbf{La limitation de débit est à deux niveaux} :
+au périmètre, dix requêtes par 60~s et par adresse avec bannissement de 300~s ; en applicatif, un
+compteur indexé sur le \emph{défi} en cours et non sur l'adresse source, parce que l'appel relayé
+présente l'adresse de sortie partagée du tableau de bord. Les deux couches ne mesurent donc pas la
+même chose, et le raisonnement qui conduit à ce choix, mesure à l'appui, est exposé au
+\cref{subsec:authent-dashboard}. La session est par ailleurs un jeton signé sans état serveur,
+donc non révocable avant son échéance d'une heure : arbitrage assumé --- l'état serveur
+qu'exigerait la révocation ajouterait un composant à exploiter, ce que PR1 écarte à ce
+périmètre --- dont la condition de réévaluation est l'ouverture du tableau de bord à des comptes
+autres que ceux de l'exploitant unique.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm, font=\scriptsize,
+  part/.style={draw=black!70, fill=black!4, align=center,
+               inner sep=2.5pt, minimum height=0.95cm},
+  lif/.style={draw=black!70, densely dashed, line width=0.45pt},
+  act/.style={draw=black!70, fill=black!10, line width=0.45pt},
+  msg/.style={fluxdonnee},
+  rep/.style={fluxreponse},
+  % Le refus prend l'aspect de la convention : trait epais a l'encre d'accent,
+  % barre de la croix. Il etait en tirets, aspect reserve au flux asynchrone.
+  ref/.style={fluxrefuse},
+  et/.style={font=\scriptsize, fill=white, inner sep=1pt, align=center},
+  eg/.style={font=\scriptsize, fill=white, inner sep=1pt, align=left},
+  num/.style={circle, draw=black!70, fill=white, line width=0.4pt,
+              inner sep=0.5pt, minimum size=3.4mm, font=\scriptsize},
+  stn/.style={circle, draw=black!70, fill=black!10, line width=0.5pt,
+              inner sep=0.5pt, minimum size=3.8mm, font=\scriptsize\bfseries},
+  note/.style={draw=black!70, fill=black!4, align=left, inner sep=3.5pt,
+               font=\scriptsize},
+  lead/.style={draw=black!55, densely dotted, line width=0.4pt},
+  cart/.style={draw=black!45, rounded corners=2pt, fill=black!2, align=left,
+               inner sep=4pt, font=\scriptsize}]
+
+% ===================== participants ==========================================
+\node[part, text width=1.40cm] (nv) at (1.15,-0.55) {Navigateur};
+\node[part, text width=2.45cm] (tb) at (3.70,-0.55) {Tableau de bord\\(passerelle applicative)};
+\node[part, text width=1.90cm] (ap) at (6.30,-0.55) {API de supervision};
+\node[part, text width=1.60cm] (bd) at (8.60,-0.55) {Base des comptes};
+
+% ===================== lignes de vie =========================================
+\draw[lif] (1.15,-1.05) -- (1.15,-14.20);
+\draw[lif] (3.70,-1.05) -- (3.70,-14.20);
+\draw[lif] (6.30,-1.05) -- (6.30,-14.20);
+\draw[lif] (8.60,-1.05) -- (8.60,-14.20);
+
+% ===================== bande d'etats, a droite ===============================
+\draw[black!70, line width=0.5pt] (10.20,-1.05) rectangle (15.70,-10.55);
+\draw[black!55, line width=0.4pt] (10.20,-4.70) -- (15.70,-4.70);
+\draw[black!55, line width=0.4pt] (10.20,-6.40) -- (15.70,-6.40);
+\draw[black!55, line width=0.4pt] (10.20,-8.15) -- (15.70,-8.15);
+\draw[black!55, line width=0.4pt] (10.20,-9.25) -- (15.70,-9.25);
+\node[anchor=north west, font=\scriptsize\itshape, text=black!55, inner sep=0pt]
+      at (10.34,-1.16) {états de la session du navigateur};
+
+\node[stn] at (10.47,-1.85) {1};
+\node[anchor=north west, text width=4.70cm, align=left, inner sep=0pt]
+      at (10.78,-1.70) {non authentifié};
+
+\node[stn] at (10.47,-5.00) {2};
+\node[anchor=north west, text width=4.70cm, align=left, inner sep=0pt]
+      at (10.78,-4.85) {mot de passe vérifié, second facteur en attente ---
+      \textbf{jeton intermédiaire, 5~min, sans revendication de rôle}};
+
+\node[stn] at (10.47,-6.70) {3};
+\node[anchor=north west, text width=4.70cm, align=left, inner sep=0pt]
+      at (10.78,-6.55) {code vérifié, rôle relu en base};
+
+\node[stn] at (10.47,-8.45) {4};
+\node[anchor=north west, text width=4.70cm, align=left, inner sep=0pt]
+      at (10.78,-8.30) {session active, 60~min, autorisation par rôle à
+      chaque appel};
+
+\node[stn] at (10.47,-9.55) {5};
+\node[anchor=north west, text width=4.70cm, align=left, inner sep=0pt]
+      at (10.78,-9.40) {expirée --- \emph{aucune révocation serveur~: la
+      déconnexion n'invalide pas le jeton}};
+
+% retour de l'etat 5 vers l'etat 1, dans le couloir a gauche de la bande
+% Retour de l'etat « expiree » vers « non authentifie » : c'est une transition
+% d'etat, non un refus — elle ne prend donc pas le trait de refus.
+\draw[-{Latex[length=1.6mm]}, draw=menaltrait, line width=0.5pt]
+     (10.20,-9.90) -- (9.95,-9.90) -- (9.95,-2.20) -- (10.18,-2.20);
+
+% reperes d'etat portes par la ligne de vie du navigateur
+\node[stn] at (0.62,-2.85)  {1}; \draw[lead] (0.81,-2.85)  -- (1.04,-2.85);
+\node[stn] at (0.62,-6.15)  {2}; \draw[lead] (0.81,-6.15)  -- (1.04,-6.15);
+\node[stn] at (0.62,-7.25)  {3}; \draw[lead] (0.81,-7.25)  -- (1.04,-7.25);
+\node[stn] at (0.62,-8.70)  {4}; \draw[lead] (0.81,-8.70)  -- (1.15,-8.70);
+\node[stn] at (0.62,-9.90) {5}; \draw[lead] (0.81,-9.90) -- (1.15,-9.90);
+
+% ===================== barres d'activation ===================================
+\draw[act] (1.04,-1.75) rectangle (1.26,-8.00);
+\draw[act] (3.59,-1.75) rectangle (3.81,-4.30);
+\draw[act] (6.19,-2.40) rectangle (6.41,-4.30);
+\draw[act] (6.19,-5.25) rectangle (6.41,-8.00);
+\draw[act] (8.49,-3.35) rectangle (8.71,-3.60);
+\draw[act] (8.49,-6.05) rectangle (8.71,-6.30);
+\draw[act] (8.49,-6.80) rectangle (8.71,-7.05);
+
+% ===================== messages du parcours nominal ==========================
+% 1
+\draw[msg] (1.26,-1.80) -- (3.59,-1.80);
+\node[num] at (1.62,-1.80) {1};
+\node[et] at (2.65,-1.44) {adresse et mot de passe};
+
+% 2
+\draw[msg] (3.81,-2.45) -- (6.19,-2.45);
+\node[num] at (4.15,-2.45) {2};
+\node[et] at (5.20,-2.18) {relais};
+
+\node[note, text width=1.95cm, anchor=north west] (n2) at (1.34,-2.78)
+      {\textbf{aucun témoin de connexion posé à cette étape}};
+\fill[white] (n2.north east) -- ++(-0.26,0) -- ++(0,-0.26) -- cycle;
+\draw[black!70, line width=0.5pt]
+      ([xshift=-0.26cm]n2.north east) -- ([yshift=-0.26cm]n2.north east);
+\draw[lead] (n2.east) -- (4.95,-2.56);
+
+% 3
+\draw[msg] (6.41,-3.45) -- (8.49,-3.45);
+\node[num] at (6.72,-3.45) {3};
+\node[et] at (8.05,-2.98) {vérification du mot de passe\\(hachage adaptatif)};
+
+% 4
+\draw[rep] (6.19,-4.20) -- (3.81,-4.20);
+\node[num] at (5.88,-4.20) {4};
+\node[et] at (5.00,-4.58) {second facteur requis + \textbf{jeton intermédiaire}};
+
+% 5
+\draw[msg] (1.26,-5.30) -- (6.19,-5.30);
+\node[num] at (1.62,-5.30) {5};
+\node[et] at (4.00,-4.98) {jeton intermédiaire + code à six chiffres};
+
+% 6
+\draw[msg] (6.41,-6.15) -- (8.49,-6.15);
+\node[num] at (6.72,-6.15) {6};
+\node[et] at (7.95,-5.40) {déchiffrement du secret\\partagé, vérification\\(pas de 30~s,\\tolérance $\pm$1 pas)};
+
+% 7
+\draw[msg] (6.41,-6.90) -- (8.49,-6.90);
+\node[num] at (6.72,-6.90) {7};
+\node[et] at (7.45,-6.52) {\textbf{relecture du rôle}};
+
+% 8
+\draw[rep] (6.19,-7.90) -- (1.26,-7.90);
+\node[num] at (5.88,-7.90) {8};
+\node[et] at (3.80,-7.54) {jeton d'accès, 60~min,\\témoin inaccessible au script};
+
+% ===================== fragment des refus ====================================
+\draw[black!70, line width=0.5pt] (0.42,-10.95) rectangle (15.70,-14.20);
+\fill[black!10] (0.42,-10.95) -- (1.92,-10.95) -- (1.92,-11.18)
+                -- (1.74,-11.40) -- (0.42,-11.40) -- cycle;
+\draw[black!70, line width=0.5pt] (0.42,-10.95) -- (1.92,-10.95) -- (1.92,-11.18)
+                -- (1.74,-11.40) -- (0.42,-11.40) -- cycle;
+\node[anchor=west, inner sep=0pt] at (0.55,-11.175) {\textbf{refus}};
+
+\draw[act] (1.04,-11.75) rectangle (1.26,-13.95);
+\draw[act] (6.19,-11.75) rectangle (6.41,-13.95);
+
+% r1 -- mot de passe faux
+\draw[ref] (6.19,-11.85) -- node[croixrefus]{} (1.26,-11.85);
+\node[eg, text width=8.60cm, anchor=west] at (6.55,-11.85)
+      {\textbf{mot de passe faux} --- 401 : réponse identique que le second
+       facteur soit actif ou non, \textbf{aucun oracle}};
+% r2 -- compte desactive
+\draw[ref] (6.19,-12.55) -- node[croixrefus]{} (1.26,-12.55);
+\node[eg, anchor=west] at (6.55,-12.55) {\textbf{compte désactivé} --- 403};
+% r3 -- jeton d'acces presente au second facteur
+\draw[ref] (6.19,-13.20) -- node[croixrefus]{} (1.26,-13.20);
+\node[eg, anchor=west] at (6.55,-13.20)
+      {\textbf{jeton d'accès présenté à la vérification du second facteur} --- 401};
+% r4 -- jeton intermediaire presente a une route metier
+\draw[ref] (6.19,-13.85) -- node[croixrefus]{} (1.26,-13.85);
+\node[eg, anchor=west] at (6.55,-13.85)
+      {\textbf{jeton intermédiaire présenté à une route métier} --- 401};
+
+% ===================== notation ==============================================
+\node[anchor=north west, inner sep=0pt, align=left, text width=15.28cm]
+      at (0.42,-14.60)
+  {\textbf{Notation}\;
+   \tikz[baseline=-0.55ex]{\draw[msg] (0,0) -- (0.62,0);}\,appel synchrone \quad
+   \tikz[baseline=-0.55ex]{\draw[rep] (0,0) -- (0.62,0);}\,réponse \quad
+   \tikz[baseline=-0.55ex]{\draw[ref] (0,0) -- (0.62,0);}\,refus, marqué d'une croix \quad
+   \tikz[baseline=-0.55ex]{\node[stn, minimum size=3.2mm]{\ };}\,état de la session};
+
+\end{tikzpicture}
+\caption[Authentification à deux facteurs]{Authentification à deux facteurs : cinq états de la
+session et le jeton intermédiaire qui ne porte aucun rôle. Entre le mot de passe et le code à usage
+unique, la session existe \textbf{authentifiée mais non autorisée} ; c'est la séparation des types
+de jeton --- non le second facteur --- qui interdit d'utiliser ce demi-passage.}
+\label{fig:seq-mfa}
+\end{figure}
+
+\section{Décisions d'architecture et écarts d'implémentation}
+
+\subsection{Registre des décisions}
+
+Le registre prouve qu'une architecture est délibérée : chaque décision y figure avec son statut
+(\cref{tab:registre-decisions}), sa justification complète étant reportée en
+annexe~\ref{ann:conception-detaillee}. Il en compte dix-sept, de D00 à D16 ; la première, le choix
+d'un fournisseur unique, conditionne toutes les suivantes.
+
+\begin{table}[htbp]
+\caption[Registre synthétique des décisions d'architecture]{Registre synthétique des décisions d'architecture (justification complète en \cref{ann:conception-detaillee}).}
+\label{tab:registre-decisions}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{|P{1.0cm}|P{10.5cm}|P{3.6cm}|}
+\hline
+\# & Décision & Statut \\
+\hline
+D00 & Google Cloud comme fournisseur unique du socle & Validée \\ \hline
+D01 & Exécution de conteneurs sans serveur comme unique plateforme & Validée \\ \hline
+D02 & Point d'entrée unique avec filtrage applicatif & Validée \\ \hline
+D03 & Base de données managée, adresse privée, restauration à un instant donné & Validée \\ \hline
+D04 & Entrepôt de données généraliste comme système de supervision & Validée \\ \hline
+D05 & Modèle de représentation non génératif pour l'enrichissement & Validée \\ \hline
+D06 & Recherche vectorielle déportée dans l'entrepôt & Validée \\ \hline
+D07 & Registre d'images unique, retrait du second registre & Retouchée \\ \hline
+D08 & Fédération d'identité pour la chaîne de livraison & Ajoutée \\ \hline
+D09 & Détection de secrets en tête de chaîne & Ajoutée \\ \hline
+D10 & Autorisation applicative par rôles conservée & Validée \\ \hline
+D11 & Sortie réseau : route par défaut, aucune règle de sortie déclarée & Réserve, levée par D15 \\ \hline
+D12 & Infrastructure en code comme standard unique de provisionnement & Validée, renforcée \\ \hline
+D13 & Passage de la base de données en haute disponibilité régionale & Révision de D03
+(08/08/2026) \\ \hline
+D14 & Réécriture du tableau de bord sur cadre à rendu serveur avec passerelle applicative &
+Validée \\ \hline
+D15 & Sortie réseau directe, refus par défaut en sortie et pare-feu ciblé par identité &
+\textbf{Appliquée} du 11 au 25/08/2026 (\cref{subsec:reseau-cible}) \\ \hline
+D16 & Isolation des données proportionnée à la sensibilité : instance dédiée au locataire
+porteur de donnée irréparable & Arrêtée le 29/08/2026, non appliquée (\cref{subsec:isolation-donnees}) \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{La décision D13 illustre la fonction du registre : elle contredit D03}, contradiction
+enregistrée telle quelle plutôt que masquée par une réécriture rétroactive. Un second registre,
+tenu au fil de la réalisation, compte quinze entrées du 30/07/2026 au 19/08/2026 ; les deux sont
+complémentaires (détail en annexe~\ref{ann:conception-detaillee}).
+
+\subsection{Composants évalués puis écartés}
+\label{tab:composants-ecartes}
+
+Sept éléments ont été évalués puis écartés en application de PR1. Un seul l'a été pour un motif de
+sécurité : le \textbf{modèle de langue génératif}, dont la sortie non déterministe et la surface
+d'injection sont rédhibitoires pour une chaîne de preuve --- \textbf{ce refus ne sera pas révisé si
+le contexte change}. Les six autres --- périmètre anti-exfiltration, orchestrateur et maillage de
+services, cache distribué, déploiement multi-région, signature des images au déploiement, passerelle
+d'authentification --- relèvent d'un arbitrage de coût ou d'une redondance avec un contrôle déjà
+présent (\cref{ann:composants-ecartes}).
+
+\subsection{Écarts entre la conception et l'implémentation}
+
+Tout projet d'infrastructure produit des écarts entre l'architecture décrite et le système déployé.
+La question n'est pas de savoir s'il y en a, mais s'ils sont connus, justifiés, datés lorsqu'ils
+sont clos et mesurés dans leurs conséquences ; ceux encore ouverts portent, à la place d'une date,
+leur état d'avancement, et ils figurent ici plutôt qu'en annexe
+(\cref{tab:ecarts-implementation}). Deux d'entre eux, É10 et É11, portaient sur ce que les
+vues laissaient croire : les vues ont été corrigées, les écarts subsistent parce qu'ils décrivent
+une propriété du système et non un défaut de dessin.
+
+\begin{table}[htbp]
+\caption{Écarts entre conception et implémentation.}
+\label{tab:ecarts-implementation}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{|P{0.75cm}|P{7.70cm}|P{1.95cm}|P{1.85cm}|P{2.34cm}|}
+\hline
+\# & Écart et cause & Date ou état & Exigence & Statut \\
+\hline
+É1 & Journalisation des refus du pare-feu et de la passerelle de sortie initialement absente &
+19/08/2026 & EX20 & Corrigé, déployé et vérifié \\ \hline
+É2 & Les deux sous-réseaux prévus, public \emph{et} privé, sont inutilisés : aucune ressource ne
+les occupait, aucune machine virtuelle n'existait dans le dépôt et les sorties du module réseau
+n'étaient consommées par aucun autre module ; les deux sous-réseaux ont été supprimés au titre de
+D15 & 24/08/2026 & --- & Corrigé, appliqué et vérifié \\ \hline
+É3 & Service d'encodage partage l'identité de la tâche de détection planifiée, faute d'identité
+dédiée & 19/08/2026 & EX5, EX14 & Corrigé le 19/08/2026, vérifié \\ \hline
+É4 & Mécanisme de connexion au réseau privé différent de celui prévu (confort d'un composant
+managé) : le connecteur d'accès sans serveur a été supprimé et remplacé par la sortie réseau
+directe au titre de D15 & 15/08/2026 & --- & Corrigé, appliqué et vérifié \\ \hline
+É5 & Cadence de la tâche d'enrichissement plus lente que prévu (arbitrage coût/latence) & mise
+en œuvre & --- & Assumé \\ \hline
+É6 & Cache d'encodage instrumenté mais non utilisé (non terminé) & mise en œuvre & --- &
+À terminer \\ \hline
+É7 & Politiques d'organisation décrites en code mais inapplicables sans organisation GCP &
+19/08/2026 & EX7 & Ouvert, contrôle compensatoire par IAM et IaC \\ \hline
+É8 & Déploiement applicatif référencé par une étiquette égale au SHA du commit, et non par une
+empreinte d'image stricte & 19/08/2026 & EX9 & Assumé, provenance à renforcer \\ \hline
+É9 & Cloisonnement du tableau de bord non appliqué par les autorisations : l'interface passe par
+l'API de supervision dans son code, mais son identité de service conserve un droit de lecture sur
+le jeu de données de supervision et le droit d'exécuter des requêtes ; la séparation est
+applicative et non structurelle & 27/08/2026 & EX5 & Ouvert \\ \hline
+É10 & Zone de noms de domaine hors du périmètre décrit en code : aucune ressource de zone n'est
+déclarée, les enregistrements sont créés à la main chez le bureau d'enregistrement, par exception
+au principe de description en code (PR4) ; les vues la portent en dépendance externe, jamais en
+composant de la couche de périmètre & 27/08/2026 & --- & Ouvert
+\\ \hline
+É11 & L'accès à l'entrepôt de supervision ne traverse pas le réseau privé : depuis la refonte, les
+appels sortent bien par l'interface de la charge, mais la règle qui les admet (E4) désigne la plage
+des interfaces du fournisseur et non l'entrepôt du socle --- l'autorisation reste portée par
+l'identité seule ; la vue de déploiement distingue ce chemin par le style du lien & 27/08/2026 &
+EX5 & Assumé, documenté \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{L'écart É3 a été le plus significatif}, entorse au principe d'identité dans la couche même
+qui l'illustre : l'identité dédiée a été déployée et vérifiée le 19/08/2026. La séparation est
+établie par la description en code et par la revue, non par une épreuve dynamique --- le contrôle
+d'usurpation qui l'établirait en propre ne figure pas parmi les six protocoles du plan de validation
+continue, et la réserve est portée comme telle. La refonte réseau en a clos deux autres, É2 et É4 ;
+les trois derniers, relevés le 27/08/2026, laissent É9 et É10 ouverts et É11 assumé.
+
+\section*{Conclusion du chapitre}
+\addcontentsline{toc}{section}{Conclusion du chapitre}
+
+Quatre principes ont guidé l'architecture qui prend en charge les vingt exigences du \cref{ch:besoins-menaces} :
+justification de chaque composant, identité comme plan de contrôle plutôt que comme couche,
+intégrité de la chaîne de preuve, description exclusive de l'infrastructure en code. Le modèle
+comporte sept niveaux L1--L7, cinq couches et deux plans transversaux, chacun décrit jusqu'à son
+point de vigilance. Huit vues d'architecture et trois diagrammes de comportement rendent ces choix
+vérifiables plutôt que déclaratifs --- dont la topologie réseau, qui répond à la question de la
+sortie, et le modèle entité-association, qui \emph{montre} pourquoi le rattachement sémantique ne
+rejoint pas le calcul de score --- et le \cref{tab:recette-vues} énonce, pour les six vues qui
+portent une décision opposable, le point de vue servi, les critères de recette datés avec leur
+protocole, et la réserve. Sept flux
+structurent la vue dynamique ; le sixième, hypothèse assortie de son protocole de réfutation,
+relie les vulnérabilités détectées à la livraison aux techniques d'attaque observées en recette.
+Dix-sept décisions ont été enregistrées, de D00 à D16, dont une révision explicite d'une décision
+antérieure, et sept composants écartés. Les onze écarts recensés sont datés lorsqu'ils sont clos
+et rattachés aux exigences qu'ils affectent ; quatre sont clos et vérifiés, deux le 19/08/2026 et
+deux par la refonte réseau, les 15 et 24/08/2026.
+
+% -- Restauration des valeurs par défaut de placement et d'espacement des flottants.
+\renewcommand{\topfraction}{0.7}
+\renewcommand{\bottomfraction}{0.3}
+\renewcommand{\textfraction}{0.2}
+\renewcommand{\floatpagefraction}{0.5}
+\setcounter{topnumber}{2}
+\setcounter{totalnumber}{3}
+\setlength{\textfloatsep}{20pt plus 2pt minus 4pt}
+\setlength{\floatsep}{12pt plus 2pt minus 2pt}
+\setlength{\intextsep}{12pt plus 2pt minus 2pt}
+\setlength{\abovecaptionskip}{10pt}
+\setlength{\belowcaptionskip}{0pt}

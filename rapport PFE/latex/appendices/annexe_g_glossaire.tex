@@ -1,0 +1,73 @@
+% =============================================================
+% Annexe G — HORS DOCUMENT depuis le 29/08/2026. Fichier conservé,
+% volontairement non appelé par main.tex.
+%
+% Décision et argument :
+%
+%   1. Fonction. Une annexe porte le matériel de reproduction que le
+%      corps ne doit pas alourdir : protocoles, extraits de
+%      configuration, jeux d'évaluation. Les neuf termes ci-dessous ne
+%      servent aucune reproduction et aucune vérification : ils sont
+%      tous définis in situ, à leur première occurrence dans le corps
+%      (chaîne d'attaque, dérive de configuration et empreinte de
+%      contenu au ch. 5 ; fédération d'identité, micro-segmentation et
+%      point d'application de politique au ch. 4 ; modèle non génératif,
+%      montée à zéro et similarité sémantique aux ch. 2 et 4). Ce
+%      glossaire redit le corps au lieu de le compléter.
+%
+%   2. Budget. Les annexes A à F devaient passer de 30 à 19 pages. Ce
+%      glossaire coûte une page pleine, qu'il faudrait financer sur du
+%      matériel protégé par le brief — protocoles T1 à T20 avec leur
+%      critère et leur date, statuts d'exigences, non-conformités.
+%
+%   3. Coût de la réintégration. Aucun chapitre ne cite \ref{ann:glossaire}
+%      (vérifié le 29/08 sur les huit fichiers du corps, le frontmatter
+%      et main.tex). Une annexe qu'aucun renvoi n'appelle est
+%      exactement le défaut que le jury voit ; la rendre utile
+%      supposerait d'ajouter un renvoi dans six fichiers appartenant à
+%      trois autres équipes.
+%
+% Condition de réouverture. Si la coupe A-4 de RAPPORT_REDONDANCES.md
+% est appliquée (retrait des onze lignes de glossaire de
+% ch4_conception.tex, l. 1495-1505, au profit de cette annexe), la
+% décision doit être reprise : le glossaire cesserait alors de redire
+% le corps et deviendrait le seul endroit où quatre termes sont
+% définis. Dans ce cas seulement, rétablir l'\input dans main.tex et
+% financer la page correspondante.
+%
+% Le contenu ci-dessous est laissé intact et à jour.
+% =============================================================
+\chapter{Glossaire technique complémentaire}
+\label{ann:glossaire}
+
+\begin{longtable}{|P{4cm}|P{10.5cm}|}
+\hline
+\textbf{Terme} & \textbf{Définition} \\
+\hline
+\endhead
+Chaîne d'attaque (kill-chain) & Séquence d'actions menées par un attaquant, couvrant
+plusieurs tactiques du référentiel MITRE ATT\&CK, qui devient plus significative lorsqu'elle
+est reconstituée que lorsque chaque action est observée isolément. \\ \hline
+Dérive de configuration & Écart entre l'état déclaré dans le code d'infrastructure et
+l'état réellement observé sur la plateforme cloud, révélé par une nouvelle planification de
+changement qui n'aboutit pas à un résultat vide. \\ \hline
+Empreinte de contenu (digest) & Identifiant cryptographique unique d'une image logicielle,
+utilisé pour référencer précisément une version au lieu d'une étiquette modifiable. \\ \hline
+Fédération d'identité & Mécanisme permettant à un système externe (par exemple une chaîne de livraison
+de livraison) de s'authentifier sans détenir de clé d'accès statique, sur la base d'une
+confiance établie entre fournisseurs d'identité. \\ \hline
+Micro-segmentation & Contrôle fin des communications entre composants, réalisé ici par
+l'identité (comptes de service) plutôt que par un découpage réseau traditionnel. \\ \hline
+Modèle non génératif & Modèle produisant une sortie déterministe (par exemple un vecteur
+numérique) plutôt qu'un texte librement généré, retenu pour ses propriétés d'auditabilité. \\ \hline
+Montée à zéro (scale-to-zero) & Capacité d'un service à ne consommer aucune ressource de
+calcul en l'absence de trafic, et à redémarrer à la demande. \\ \hline
+Point d'application de politique & Composant qui intercepte une requête et applique la
+décision d'accès prise en amont, plutôt que de faire confiance à la requête elle-même. \\ \hline
+Similarité sémantique & Mesure de proximité entre deux vecteurs numériques représentant des
+textes, utilisée pour rattacher un événement à une technique d'attaque connue sans
+correspondance exacte de motif. \\
+\hline
+\end{longtable}
+% Glossaire hors numérotation des tableaux.
+\addtocounter{table}{-1}

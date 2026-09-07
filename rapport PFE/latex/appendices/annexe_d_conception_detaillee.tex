@@ -1,0 +1,431 @@
+% =============================================================
+% Annexe D — Conception détaillée
+% La conception couche par couche (ancienne section D.1) a été remontée
+% dans le corps, en section \ref{sec:conception-couches} du chapitre 4 :
+% elle n'est pas dupliquée ici. Cette annexe conserve le registre complet
+% des décisions, les composants écartés et la prise en charge des vingt
+% exigences.
+% =============================================================
+\chapter{Conception détaillée}
+\label{ann:conception-detaillee}
+
+Cette annexe développe trois ensembles que le \cref{ch:conception} ne porte qu'en
+synthèse : la justification de chacune des dix-sept décisions d'architecture, le motif de rejet et
+la condition de réévaluation des sept composants écartés, et l'état de validation des vingt
+exigences. La conception détaillée couche par couche figure dans le corps
+(\cref{sec:conception-couches}) et n'est pas dupliquée ici.
+
+\section{Registre complet des décisions d'architecture}
+\label{ann:registre-decisions}
+
+Les dix-sept décisions D00 à D16 figurent au \cref{tab:registre-decisions-annexe} avec leur statut
+--- \emph{validée} (conservée telle quelle), \emph{retouchée} (ajustée par rapport à la conception
+initiale), \emph{ajoutée} ou \emph{réserve} --- et leur justification. Les deux dernières, dont le
+corps porte le dossier de décision entier, y renvoient plutôt que de le répéter.
+
+\begingroup
+\small
+\setlength{\tabcolsep}{4pt}
+\setlength{\LTpre}{4pt}
+\setlength{\LTpost}{4pt}
+\begin{longtable}{|P{3.2cm}|P{12.1cm}|}
+\caption[Registre complet des décisions d'architecture]{Registre complet des décisions
+d'architecture, avec leur statut et leur justification}
+\label{tab:registre-decisions-annexe} \\
+\hline
+\textbf{Décision et statut} & \textbf{Justification} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Décision et statut} & \textbf{Justification} \\
+\hline
+\endhead
+\textbf{D00} Google Cloud comme fournisseur unique du socle --- \emph{validée} &
+La contrainte humaine écarte l'auto-hébergement des briques de sécurité, la contrainte économique
+la facturation au forfait ; entre les trois fournisseurs restants, le critère décisif --- stockage,
+langage de détection et recherche vectorielle dans un même entrepôt, ce qui supprime la base
+vectorielle séparée qu'imposeraient les deux autres --- est établi au \cref{ch:etat-art}.
+Décision la moins réversible du registre, elle conditionne D01 à D07 et D11 \\ \hline
+\textbf{D01} Exécution de conteneurs sans serveur comme unique plateforme --- \emph{validée} &
+Aucun système d'exploitation à durcir, chiffrement interne natif, identité par service, réduction à
+zéro hors trafic. Un orchestrateur apporterait une souplesse inutile ici, au prix d'un cluster à
+exploiter \\ \hline
+\textbf{D02} Point d'entrée unique avec filtrage applicatif --- \emph{validée} &
+Un point d'entrée unique est un point de contrôle unique, et le filtrage managé couvre les risques
+applicatifs courants sans composant à maintenir. Corollaire assumé : l'évaluation étant
+premier-match-gagne, l'ordre des règles devient une propriété de sécurité \\ \hline
+\textbf{D03} Base de données managée, adresse privée, restauration à un instant donné ---
+\emph{validée} &
+Correspond au besoin de l'application hébergée. L'instance de recette a été basculée en haute
+disponibilité régionale le 08/08/2026 (voir D13) \\ \hline
+\textbf{D04} Entrepôt de données généraliste comme système de supervision --- \emph{validée} &
+Le système de supervision est \emph{construit}, non acheté : c'est l'apport du projet. L'entrepôt
+fournit le stockage, le langage de détection et --- point décisif --- la recherche vectorielle
+nécessaire à L6 sans base spécialisée \\ \hline
+\textbf{D05} Modèle de représentation non génératif pour l'enrichissement --- \emph{validée} &
+Sortie plus reproductible qu'une génération libre, exécution sur processeur généraliste, surface
+d'injection par instruction réduite --- sans supprimer les risques liés aux entrées, au modèle ou à
+sa chaîne d'approvisionnement \\ \hline
+\textbf{D06} Recherche vectorielle déportée dans l'entrepôt --- \emph{validée} &
+Supprime un composant entier ; cohérent avec le principe de justification \\ \hline
+\textbf{D07} Registre d'images unique, retrait du second registre --- \emph{retouchée} &
+Deux registres constituent deux surfaces de chaîne d'approvisionnement et une ambiguïté sur la
+source de vérité. Les images de base restent accessibles par un dépôt miroir en lecture \\ \hline
+\textbf{D08} Fédération d'identité pour la chaîne de livraison --- \emph{ajoutée} &
+Évite une clé de longue durée dans le chemin de livraison. La condition d'attribut porte sur le
+dépôt \emph{et} sur la branche, pour la raison exposée en \cref{subsec:wif} ; la politique
+d'organisation censée interdire toute création de clé est inapplicable dans le périmètre
+administratif disponible (É7) \\ \hline
+\textbf{D09} Détection de secrets en tête de chaîne --- \emph{ajoutée} &
+Coût quasi nul, gain élevé ; l'audit du \cref{ch:cadre-existant} démontre le coût d'un
+secret mal géré \\ \hline
+\textbf{D10} Autorisation applicative par rôles conservée --- \emph{validée} &
+L'autorisation applicative reste dans l'application, celle d'infrastructure protège
+l'infrastructure : les deux plans ne se substituent pas l'un à l'autre \\ \hline
+\textbf{D11} Sortie réseau par le chemin contrôlé --- \emph{réserve, levée par D15} &
+Le routage était décrit en code, mais le contrôle effectif était porté par le paramètre de sortie
+de la plateforme d'exécution et non par une règle de pare-feu : c'est cet écart entre configuration
+établie et propriété vérifiée que le statut enregistrait. La refonte du plan réseau l'a levé ; T20
+le confirme (conforme, 24/08/2026) et T14 en délimite la portée résiduelle (non conforme,
+25/08/2026) \\ \hline
+\textbf{D12} Infrastructure en code comme standard unique de provisionnement ---
+\emph{validée, renforcée} &
+Réponse directe au point bloquant B5. Trois gains : reproductibilité, contrôle avant création,
+détection de dérive \\ \hline
+\textbf{D13} Haute disponibilité régionale appliquée --- \emph{révision de D03, 08/08/2026} &
+Bascule appliquée en recette et confirmée en direct le 08/08/2026, en 11~min~2~s : le point de
+défaillance zonal de la base est fermé et le code d'infrastructure décrit cet état. Limite
+subsistante : le basculement de zone n'a jamais été provoqué ni chronométré en conditions
+réelles \\ \hline
+\textbf{D14} Réécriture du tableau de bord sur un cadre à rendu serveur avec passerelle applicative
+--- \emph{validée} &
+L'interface antérieure exécutait ses requêtes depuis le poste de l'analyste et détenait pour cela
+un mot de passe de service. La réécriture déplace tous les appels côté serveur : le navigateur ne
+détient plus qu'un jeton de session, la clé de signature n'est jamais connue du service qui rend
+les pages, et l'autorité d'autorisation reste l'API de supervision --- le secret antérieur devenant
+un vestige dont le retrait accompagne la clôture de cette décision \\ \hline
+\textbf{D15} Sortie réseau directe, refus par défaut en sortie et pare-feu ciblé par identité ---
+\emph{appliquée du 11 au 25/08/2026} &
+Le verrou levé est qu'une règle de refus n'aurait rien bloqué : le trafic ne passait pas là où elle
+se serait appliquée. Plan d'adressage, douze règles, coût et limites sont établis en
+\cref{subsec:reseau-cible}, la conduite de la migration en \cref{subsec:migration-reseau}.
+Vérification : protocole T20, conforme le 24/08/2026 \\ \hline
+\textbf{D16} Isolation des données proportionnée à la sensibilité ---
+\emph{arrêtée le 29/08/2026, non appliquée} &
+Justification, test d'admission d'un locataire, coût et prix payé en
+\cref{subsec:isolation-donnees}. Le statut est un choix d'ordonnancement énoncé comme tel : deux
+migrations d'infrastructure dans la même quinzaine ne sont pas soutenables par un opérateur
+unique \\
+\hline
+\end{longtable}
+\endgroup
+
+Un second registre, tenu au fil de la réalisation, enregistre les quinze décisions prises du
+30/07/2026 au 19/08/2026 : le premier documente le \emph{pourquoi} de l'architecture cible, le
+second celui de chaque évolution.
+
+\section{Composants évalués puis écartés}
+\label{ann:composants-ecartes}
+
+Sept éléments ont été évalués puis écartés en application du principe de justification. Les
+documenter démontre que leur absence est une décision et non une lacune ; chacun figure au
+\cref{tab:composants-ecartes-annexe} avec son motif de rejet et sa \emph{condition de
+réévaluation}.
+
+\begingroup
+\small
+\setlength{\tabcolsep}{4pt}
+\setlength{\LTpre}{4pt}
+\setlength{\LTpost}{4pt}
+\begin{longtable}{|P{3.4cm}|P{7.0cm}|P{4.6cm}|}
+\caption[Composants écartés et conditions de réévaluation]{Composants évalués puis écartés, motif et condition de réévaluation}
+\label{tab:composants-ecartes-annexe} \\
+\hline
+\textbf{Composant} & \textbf{Motif de rejet} & \textbf{Condition de réévaluation} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Composant} & \textbf{Motif de rejet} & \textbf{Condition de réévaluation} \\
+\hline
+\endhead
+Périmètre de protection contre l'exfiltration &
+Mécanisme puissant mais lourd à exploiter --- exceptions, diagnostic complexe --- et
+disproportionné pour un périmètre à projet unique &
+Passage en production multi-équipes avec données réglementées \\ \hline
+Orchestrateur de conteneurs et maillage de services &
+La plateforme retenue fournit déjà le chiffrement interne et l'identité par service ; un maillage
+ajouterait un plan de contrôle entier sans couvrir de menace résiduelle identifiée &
+Besoin de charges longues, à état, ou de politiques fines entre services \\ \hline
+Cache distribué &
+Nécessaire aux seules limitations de débit distribuées et au cache multi-instances, la mise à
+l'échelle étant hors objectif (BNF7) &
+Montée en charge réelle \\ \hline
+Déploiement multi-région &
+Coût doublé, complexité triplée, valeur de démonstration nulle ; les sauvegardes couvrent le risque
+de perte de données &
+Exigence contractuelle de disponibilité \\ \hline
+Vérification de signature des images au déploiement &
+Contrôle excellent, mais d'apport marginal après le contrôle de vulnérabilité, le registre unique
+et la fédération d'identité &
+Première extension recommandée après le projet \\ \hline
+Passerelle d'authentification devant le tableau de bord &
+L'autorisation applicative par rôles couvre le besoin du périmètre ; une passerelle ajouterait une
+fédération d'entreprise redondante, et son service managé exige une organisation cloud dont le
+projet ne dispose pas &
+Ouverture du tableau de bord à des identités d'entreprise \\ \hline
+Modèle de langue génératif pour l'analyse d'incidents &
+Écarté \textbf{par conception} : sortie non déterministe et surface d'injection par le contenu des
+journaux, inacceptables dans une chaîne de preuve &
+\textbf{Aucune} \\
+\hline
+\end{longtable}
+\endgroup
+
+Le dernier rejet est de nature différente des six autres : ceux-là sont des arbitrages de coût ou
+de complexité, révisables si le contexte change ; celui-ci est un contrôle de sécurité, et sa
+raison ne dépend pas du contexte.
+
+\section{Prise en charge des vingt exigences par la conception}
+\label{sec:annexe-couverture-exigences}
+
+Le \cref{tab:couverture-exigences} donne, exigence par exigence, la ou les couches qui la prennent
+en charge et son état de validation à la date de référence ; le corps
+(\cref{sec:couverture-exigences}) n'en retient que la synthèse et les trois réserves ---
+EX7, EX9 et le couple EX16 / EX18. L'intitulé complet de chaque exigence figure dans la matrice de
+traçabilité du \cref{ch:besoins-menaces}. À la date de \dateref{}, les vingt protocoles
+portent tous un résultat daté ; six d'entre eux sont en outre rejoués à la cadence fixée par le
+\textbf{plan de validation continue} (\cref{sec:plan-validation}).
+
+\begingroup
+\small
+\setlength{\tabcolsep}{4pt}
+\setlength{\LTpre}{4pt}
+\setlength{\LTpost}{4pt}
+\begin{longtable}{|P{1.3cm}|P{1.9cm}|P{11.8cm}|}
+\caption[Prise en charge des exigences]{Prise en charge des exigences par la conception et état de validation}
+\label{tab:couverture-exigences} \\
+\hline
+\textbf{Exigence} & \textbf{Couche(s)} & \textbf{Statut} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Exigence} & \textbf{Couche(s)} & \textbf{Statut} \\
+\hline
+\endhead
+EX1 & L1 & Prévue ; \textbf{T1 non conforme} --- motif brut traité par redirection \\ \hline
+EX2 & L1, L5 & Prévue ; T2 conforme \\ \hline
+EX3 & L1, L7 & Prévue ; T3 partiellement conforme \\ \hline
+EX4 & L4, L5 & Prévue ; T4 partiellement conforme \\ \hline
+EX5 & L2 & Prévue ; T5 conforme \\ \hline
+EX6 & L2, L3 & Prévue ; T6 partiellement conforme \\ \hline
+EX7 & L2 & Réserve : politique d'organisation inapplicable (écart É7) ; T7 conforme, garantie vérifiée par inventaire et non préventive \\ \hline
+EX8 & F3 & Prévue ; T8 conforme --- refus réellement survenu \\ \hline
+EX9 & L2, F3 & Réserve : déploiement par étiquette de commit, empreinte stricte non prouvée (écart É8) ; T9 partiellement conforme \\ \hline
+EX10 & L2, F3 & Prévue ; T10 partiellement conforme \\ \hline
+EX11 & L2, L5 & Prévue ; T11 conforme \\ \hline
+EX12 & L7 & Prévue ; T12 partiellement conforme (22/08/2026) \\ \hline
+EX13 & L7 & Prévue ; T13 partiellement conforme \\ \hline
+EX14 & L4, L6 & \textbf{Ouverte} : T14 non conforme (25/08/2026), sortie managée non gouvernée \\ \hline
+EX15 & L6 & Prévue ; T15 partiellement conforme (22/08/2026) \\ \hline
+EX16 & F7 & Réserve : bornée aux ressources déjà gérées ; T16 partiellement conforme \\ \hline
+EX17 & F7 & Prévue ; T17 conforme (20/08/2026) \\ \hline
+EX18 & F7 & Réserve : revue manuelle, sans porte d'approbation outillée ; T18 partiellement conforme \\ \hline
+EX19 & L7 & Prévue ; T19 partiellement conforme (21/08/2026) \\ \hline
+EX20 & L4 & Journalisation des refus déployée le 19/08/2026 ; T20 conforme (24/08/2026) \\
+\hline
+\end{longtable}
+\endgroup
+
+\section{Conception détaillée par couche : les contrôles apportés}
+\label{ann:conception-couches}
+
+Le \cref{tab:conception-couches} reprend les sept niveaux du
+\cref{tab:conception-couches-synthese}, dans le même ordre, et y ajoute la colonne que le corps ne
+porte pas : les \textbf{contrôles effectivement apportés}. C'est elle, et non la liste des
+composants, qui établit ce que la conception oppose à chaque frontière de confiance.
+
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.1}
+\begin{longtable}{|P{1.70cm}|P{4.5cm}|P{7.18cm}|P{1.6cm}|}
+\caption{Conception détaillée des sept niveaux : composants, produits, contrôles et exigences}
+\label{tab:conception-couches} \\
+\hline
+\textbf{Niveau} & \textbf{Composants et produits employés} & \textbf{Contrôles apportés} &
+\textbf{Exigences} \\
+\hline
+\endfirsthead
+\caption[]{Conception détaillée des sept niveaux (suite)} \\
+\hline
+\textbf{Niveau} & \textbf{Composants et produits employés} & \textbf{Contrôles apportés} &
+\textbf{Exigences} \\
+\hline
+\endhead
+\textbf{L1}\newline Périmètre d'entrée &
+Répartiteur global HTTPS, trois certificats gérés, moteur de filtrage applicatif, limitation de
+débit, restriction géographique. \emph{Cloud Load Balancing}, \emph{Cloud Armor} --- politique
+unique attachée à tous les services publiés. La zone de noms est une dépendance externe (É10) &
+HTTPS exclusivement (port 80 redirigé, TLS 1.2 au minimum). Cinq familles de règles préconfigurées
+en \textbf{blocage direct}, non en observation. Restriction géographique écrite comme un
+\emph{refus} dont les exemptions --- sondes, administration --- sont repliées à l'intérieur, une
+autorisation prioritaire étant terminale. Limitation de débit à deux niveaux : seuil strict avec
+bannissement sur les chemins d'authentification, seuil global élevé contre la saturation &
+EX1, EX2, EX3 \\ \hline
+\textbf{L2}\newline Identité et sécurité \emph{(plan transversal)} &
+\emph{Cloud IAM} (sept identités de service), \emph{Secret Manager} (neuf secrets, dont huit
+chiffrés par une clé gérée par le projet), \emph{Cloud KMS} (deux trousseaux, deux clés, rotation
+de quatre-vingt-dix jours), \emph{Workload Identity Federation} &
+Plan interrogé à chaque appel, quel que soit le niveau (PR2). Un secret par usage, jamais dérivé
+d'un autre ; le code d'infrastructure crée les conteneurs de secrets, jamais leurs valeurs. Les deux
+trousseaux sont une contrainte de plateforme, non une redondance : la réplication du coffre n'accepte
+qu'une clé globale, le chiffrement de l'entrepôt exige une clé régionale. Le neuvième secret, mot de
+passe du tableau de bord antérieur (D14), n'est lu par aucun code &
+EX5, EX6, EX7, EX10, EX11 \\ \hline
+\textbf{L3}\newline Charges de travail &
+\textbf{Cinq services et trois tâches} : API de supervision, tableau de bord, service d'encodage,
+interface web et interface de programmation de l'application hébergée ; enrichissement, migration
+du schéma, vérification quotidienne de l'isolation des bases. \emph{Cloud Run}, \emph{Cloud
+Scheduler} pour deux déclencheurs, la chaîne de livraison pour le troisième &
+Entrée restreinte au répartiteur pour les quatre services publiés, adresses directes du fournisseur
+neutralisées ; entrée strictement interne pour le service d'encodage, invocable par la seule
+identité de la tâche d'enrichissement. Une identité de service par charge de travail. Sortie
+gouvernée par le pare-feu et non plus par un paramètre de plateforme depuis la refonte du
+23/08/2026. Déploiement par une étiquette égale à l'empreinte du commit, qui ne vaut pas empreinte
+d'image immuable (É8) &
+EX6, EX9 \\ \hline
+\textbf{L4}\newline Réseau &
+Un réseau virtuel en mode personnalisé, \textbf{un sous-réseau par locataire} dont un réservé au
+troisième, un appairage de services privés vers la base, et \textbf{douze règles de filtrage dont
+cinq autorisations}. \emph{VPC}, \emph{sortie réseau directe} et \emph{Private Service Access} &
+Refus par défaut \textbf{en entrée et en sortie}, l'un et l'autre journalisés ; cinq autorisations
+ciblées par identité de service et par port ; refus croisés entre locataires journalisés, qui
+alimentent la chaîne de détection sans la modifier ; base joignable par une adresse privée
+exclusive. Principe de la couche : \textbf{le réseau n'autorise jamais par la position, il filtre
+par l'identité} --- être à l'intérieur du réseau privé ne confère aucun droit &
+EX4, EX20 \\ \hline
+\textbf{L5}\newline Données &
+\textbf{Base applicative} (comptes, rôles, journal d'audit) et \textbf{entrepôt de supervision},
+c\oe ur du dispositif de détection (\cref{fig:cycle-donnee}, \cref{fig:modele-donnees}).
+\emph{Cloud SQL for PostgreSQL 15} (adresse privée seule, haute disponibilité régionale,
+restauration à un instant donné sur sept jours), \emph{BigQuery} (dix tables), \emph{Cloud
+Storage} (clé gérée, prévention d'accès public) &
+Intégrité des preuves : l'écriture sur les journaux bruts et les détections est réservée à la
+collecte et aux règles, aucune identité applicative ou d'analyse n'y accédant (EX11). Coût :
+partition par jour, expiration à quatre-vingt-dix jours sur les seules tables de journaux, filtre
+restrictif à la source sur trois exports sur quatre. Seuil de rattachement déclaré en tête de
+requête, donc auditable et modifiable sans redéploiement (BNF6) &
+EX2, EX4, EX11 \\ \hline
+\textbf{L6}\newline Enrichissement sémantique &
+Un service d'encodage sans état, une tâche d'enrichissement par lots, un référentiel de techniques
+d'attaque vectorisé. \emph{Cloud Run} en entrée interne seule, modèle de représentation de phrases
+spécialisé en cybersécurité embarqué dans l'image et exécuté hors ligne, recherche vectorielle
+native de l'entrepôt --- ce qui supprime la base vectorielle séparée qu'imposerait un autre
+fournisseur (D05, D06) &
+Poids du modèle traités comme un artefact tiers non fiable : révision figée, format refusant
+l'exécution de code à la désérialisation, empreintes consignées, mêmes contrôles de vulnérabilité
+que le code. Embarqués dans l'image plutôt que téléchargés à l'exécution, ce qui retire du chemin
+critique une dépendance externe et un point d'injection. Appel authentifié par jeton d'identité. Un
+export quantifié a été rejeté par une porte d'acceptation \emph{codée} --- plancher de similarité
+et accord de premier rang --- dont l'échec interrompt la construction de l'image &
+EX14, EX15 \\ \hline
+\textbf{L7}\newline Observabilité \emph{(plan transversal)} &
+Quatre exports de journaux, politiques d'alerte, objectifs de service, sondes de disponibilité,
+lien entre une alerte affichée et sa procédure d'incident. \emph{Cloud Logging}, \emph{Cloud
+Monitoring} &
+Sources collectées : journaux d'audit du fournisseur, journaux des charges de travail, verdicts du
+filtrage applicatif, journaux réseau (EX13) ; trois exports sur quatre portent un filtre restrictif
+à la source (EX12, BNF3). Sondes sur les points de santé (BNF1). Une procédure d'incident par
+famille de technique, accessible depuis le tableau de bord : une alerte sans conduite à tenir
+transfère toute la charge d'interprétation à l'analyste (BNF4). Indicateurs publiés : délai de
+détection, part des détections issues du rattachement, taux d'alertes non rattachées, latence,
+version du modèle (BNF6) &
+EX12, EX13, EX19 \\
+\hline
+\end{longtable}
+\normalsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.0}
+
+\section{Plan d'adressage et règles de pare-feu du réseau en service}
+\label{ann:reseau-cible}
+
+Détail du plan réseau conçu et appliqué par la décision D15 (\cref{subsec:reseau-cible}) :
+l'adressage avec la justification de chaque longueur de préfixe, puis les douze règles de pare-feu
+en service. Les deux tableaux forment la référence opposable du critère d'acceptation ---
+\emph{aucune règle d'autorisation ne comporte de plage source}.
+
+{\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|P{2.5cm}|P{2.2cm}|P{4.0cm}|P{6.0cm}|}
+\caption[Plan d'adressage du réseau du socle, en service depuis le 11/08/2026]{Plan d'adressage du
+réseau du socle, en service depuis le 11/08/2026. Chaque longueur de préfixe est justifiée par le
+plafond d'instances déclaré et sa marge : un préfixe posé sans raison est une dette d'adressage.}
+\label{tab:adressage-cible} \\
+\hline
+\textbf{Sous-réseau} & \textbf{Plage} & \textbf{Ce qui l'occupe} & \textbf{Justification du préfixe} \\
+\hline
+\endfirsthead
+\caption[]{Plan d'adressage cible (suite)} \\
+\hline
+\textbf{Sous-réseau} & \textbf{Plage} & \textbf{Ce qui l'occupe} & \textbf{Justification du préfixe} \\
+\hline
+\endhead
+Locataire plateforme & \texttt{10.0.8.0/26} & Interfaces de sortie de l'API de supervision, du
+tableau de bord et de la tâche d'enrichissement & 60 adresses pour un plafond déclaré de six
+instances, soit dix fois la marge ; c'est aussi le préfixe minimal recommandé pour la sortie réseau
+directe \\ \hline
+Locataire hébergé & \texttt{10.0.8.64/26} & Interfaces de sortie de l'application hébergée et de
+ses deux tâches & Même préfixe : un locataire ne doit pas hériter d'un plafond de croissance
+inférieur par accident de plan \\ \hline
+Troisième locataire & \texttt{10.0.8.128/26} & \textbf{Créé vide, réservé} & Un sous-réseau sans
+ressource ne coûte rien : l'accueil du troisième locataire, seuil de bascule déclaré du projet,
+devient une ligne de configuration et non une décision d'adressage prise dans l'urgence \\ \hline
+Réserve & \texttt{10.0.8.192/26} & --- & Ferme le bloc \texttt{/24} : un \texttt{/24} vaut quatre
+locataires, l'extension suivante se fait sur le \texttt{/24} voisin selon la même règle \\ \hline
+Appairage de services privés & \texttt{/16} en service, \texttt{/20} pour une reconstruction &
+Adresse privée de la base de données & Le \texttt{/16} en place est seize fois surdimensionné et
+immuable sans recréer l'appairage ; un \texttt{/20} suffit à une instance par locataire et ne vaut
+donc que pour un provisionnement neuf. Séparé du bloc des locataires : une erreur de plan ne peut
+pas les faire se chevaucher \\ \hline
+\multicolumn{4}{|P{15.5cm}|}{\textbf{Supprimés au cours de la migration} : la plage
+\texttt{10.0.3.0/28} et le connecteur, le 15/08/2026 ; les deux sous-réseaux \texttt{10.0.1.0/24}
+et \texttt{10.0.2.0/24}, qu'aucune ressource n'occupait et qu'aucun module ne consommait, le
+24/08/2026 --- ce qui ferme l'écart É2.} \\
+\hline
+\end{longtable}}
+
+{\setlength{\tabcolsep}{4pt}
+\begin{longtable}{|P{1.0cm}|P{1.2cm}|P{4.6cm}|P{3.7cm}|P{1.5cm}|P{2.1cm}|}
+\caption[Règles de pare-feu en service, ciblées par identité]{Règles de pare-feu en service depuis
+le 23/08/2026. Aucune autorisation ne comporte de plage source : c'est le critère d'acceptation de
+la conception.}
+\label{tab:regles-cibles} \\
+\hline
+\textbf{Réf.} & \textbf{Sens} & \textbf{Cible --- identité de service} & \textbf{Destination ou
+source} & \textbf{Ports} & \textbf{Action} \\
+\hline
+\endfirsthead
+\caption[]{Règles de pare-feu cibles (suite)} \\
+\hline
+\textbf{Réf.} & \textbf{Sens} & \textbf{Cible --- identité de service} & \textbf{Destination ou
+source} & \textbf{Ports} & \textbf{Action} \\
+\hline
+\endhead
+E1--E2 & Sortie & API de supervision ; application hébergée & Adresse privée de la base &
+5432 & Autoriser \\ \hline
+E3 & Sortie & Tableau de bord ; tâche d'enrichissement & Adresse privée de la base & tous &
+\textbf{Refuser}, journalisé \\ \hline
+E4 & Sortie & API de supervision ; application hébergée ; tâche d'enrichissement & Interfaces
+privées du fournisseur & 443 & Autoriser \\ \hline
+E5 & Sortie & Tableau de bord & \textbf{Adresse du répartiteur, et elle seule} & 443 &
+Autoriser \\ \hline
+E6 & Sortie & Tâche d'enrichissement & Service d'encodage & 443 & Autoriser \\ \hline
+E7--E8 & Sortie & Identités d'un locataire & Plage de l'autre locataire & tous &
+\textbf{Refuser}, journalisé \\ \hline
+E9 & Sortie & \emph{tout le réseau} & \texttt{0.0.0.0/0} & tous & \textbf{Refuser par défaut},
+journalisé \\ \hline
+I1--I2 & Entrée & Identités d'un locataire & Plage de l'autre locataire & tous &
+\textbf{Refuser}, journalisé \\ \hline
+I3 & Entrée & \emph{tout le réseau} & \texttt{0.0.0.0/0} & tous & \textbf{Refuser par défaut},
+journalisé \\
+\hline
+\end{longtable}}

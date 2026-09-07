@@ -1,0 +1,739 @@
+% =============================================================
+% Chapitre 1 — Contexte du projet, étude de l'existant et problématique (~9 pages)
+% Source : ../../CH1_Cadre_general_et_etude_de_l_existant.md
+% Enrichissement §1.1 et §1.2 : DOSSIER_TECHNIQUE_MENAL.md (§18.1 à §18.6)
+% =============================================================
+\chapter[Contexte du projet, étude de l'existant et problématique]%
+{Contexte du projet, étude de l'existant\\et problématique}
+\label{ch:cadre-existant}
+\soustitrechapitre{De l'audit d'une plateforme en exploitation à la formulation d'un besoin de socle}
+
+% --- Blancs autour des flottants, resserrés pour ce chapitre et le suivant
+%     (valeurs LaTeX par défaut : 20 pt, 12 pt, 12 pt). Rétablis en fin de
+%     chapitre~2 : le réglage ne sort pas du périmètre de cette équipe. ---
+\setlength{\textfloatsep}{10pt plus 2pt minus 2pt}
+\setlength{\intextsep}{8pt plus 2pt minus 2pt}
+\setlength{\floatsep}{8pt plus 2pt minus 2pt}
+
+
+% --- Pictogrammes de couverture (locaux à ce chapitre, réutilisés
+%     à l'identique dans l'annexe A, section 1, alimentée par ce
+%     chapitre) : cercle plein / mi-plein / vide, dessinés en TikZ
+%     plutôt qu'en glyphes Unicode (couverture incertaine dans Times
+%     New Roman) ---
+% Les trois pictogrammes de couverture sont definis dans config/commands.tex :
+% ils sont employes ici et dans l'annexe A, donc hors d'un fichier de chapitre.
+
+Un projet de sécurité ne se justifie pas par les technologies qu'il emploie, mais par le
+risque qu'il fait disparaître. Ce chapitre établit sur des faits vérifiés pourquoi celui-ci
+devait être mené : l'entreprise d'accueil (\cref{sec:cadre-projet}), l'application qui sert de
+cas réel (\cref{sec:etude-existant}), l'audit de son hébergement
+(\cref{sec:critique-existant}), puis la problématique, les objectifs et la démarche
+(\cref{sec:problematique-objectifs,sec:perimetre-contraintes-demarche}). L'application
+fonctionne, mais repose sur un modèle périmétrique et un environnement non reproductible ; le
+socle corrige ces deux défauts, et il est réutilisable parce que c'est l'intérêt de
+l'entreprise.
+
+\section{Cadre du projet et entreprise d'accueil}
+\label{sec:cadre-projet}
+
+\subsection{Fiche signalétique, activités et positionnement}
+\label{subsec:entreprise-accueil}
+\label{subsec:activites-positionnement}
+
+MENAL-SARL est une société de services informatiques à deux axes --- services et fourniture de
+solutions --- qui accompagne un client de la conception à l'exploitation. Le
+\cref{tab:fiche-menal} en donne l'identité, l'organisation et le périmètre d'accueil du projet.
+
+\begin{table}[!htbp]
+\centering
+\scriptsize
+\caption{Fiche signalétique de l'entreprise d'accueil.}
+\label{tab:fiche-menal}
+\begin{tabular}{|P{4.7cm}|P{10.7cm}|}
+\hline
+\textbf{Élément} & \textbf{Information} \\
+\hline
+Raison sociale & MENAL-SARL \\ \hline
+Forme juridique et création & Société à responsabilité limitée, créée en 2025 \\ \hline
+Implantations & Siège social à Nouakchott (Mauritanie) ; implantation secondaire en France \\ \hline
+Secteur et marchés & Services et technologies de l'information, pour des organisations
+mauritaniennes engagées dans la digitalisation et la sécurisation de leur système
+d'information \\ \hline
+Axes d'activité & \textbf{Services informatiques} : architectures cloud, DevSecOps et Zero Trust, applications sécurisées, chaînes de données, audit de systèmes existants. \textbf{Fourniture de solutions IT} : matériels, installation, déploiement, maintenance \\ \hline
+Organisation & Trois niveaux : direction générale, trois directions opérationnelles, neuf unités (\cref{fig:organisation-menal}) \\ \hline
+Domaine institutionnel & \texttt{menal-sarl.com} \\ \hline
+Périmètre d'accueil du projet & Direction technique --- unités \emph{Cloud et DevOps} et \emph{Cyber et SOC} \\ \hline
+Encadrement & M.~Houssein Ezzedine (entreprise), Mme~Rihem Matoussi (académique) \\ \hline
+Période du projet & Du \datedebutstage{} au \datefinstage{} \\
+\hline
+\end{tabular}
+\end{table}
+
+Les organisations que l'entreprise adresse sont des structures émergentes, et l'entreprise
+elle-même en est une : à cette taille, ni une supervision commerciale, dont la licence est
+indexée sur le volume de journaux ingérés, ni une équipe de sécurité à demeure ne s'amortissent
+sur un client unique. Cette contrainte de marché est reprise telle quelle comme
+\textbf{contrainte humaine} et \textbf{contrainte économique} du projet
+(\cref{subsec:contraintes}), puis comme \textbf{verrou V1} de l'état de l'art
+(\cref{ch:etat-art}) : le même fait à trois échelles. Le socle n'est pas la transposition d'un
+modèle existant, c'est la réponse à un modèle qui ne s'applique pas.
+
+\subsection{Organisation, gouvernance et périmètre d'accueil}
+\label{subsec:service-accueil}
+
+La \cref{fig:organisation-menal} donne l'organigramme à la date de \dateref : une direction
+générale, trois directions opérationnelles et neuf unités, dont quatre à la direction technique
+--- hébergement et déploiement, sécurité et supervision, développement applicatif, chaînes de
+données et modèles.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=0.86cm, font=\scriptsize,
+  dg/.style={draw=black!80, line width=0.9pt, rounded corners=2pt, fill=black!8,
+             align=center, inner sep=3pt, minimum height=0.72cm, text width=3.3cm},
+  dir/.style={draw=black!75, rounded corners=2pt, fill=white,
+              align=center, inner sep=3pt, minimum height=0.86cm, text width=3.4cm},
+  un/.style={draw=black!60, rounded corners=2pt, fill=white,
+             align=center, inner sep=2pt, minimum height=0.70cm, text width=1.44cm},
+  unacc/.style={draw=black!85, line width=1.2pt, rounded corners=2pt, fill=black!10,
+                align=center, inner sep=2pt, minimum height=0.70cm, text width=1.44cm},
+  proj/.style={draw=black!80, rounded corners=2pt, fill=black!4,
+               align=center, inner sep=3pt, minimum height=0.78cm, text width=4.6cm},
+  l/.style={black!70, line width=0.6pt},
+  la/.style={black!85, line width=1.0pt},
+  ai/.style={-{Latex[length=1.4mm]}, black!55, densely dotted}]
+
+% ============ niveau 1 =========================================================
+\node[dg] (dg) at (8.56,7.05) {\textbf{DIRECTION GÉNÉRALE}};
+
+% ============ niveau 2 : les trois directions ==================================
+\node[dir] (dt) at (3.49,5.30) {\textbf{Direction technique}\\[1pt] \emph{CTO / Tech Lead}};
+\node[dir] (dc) at (8.83,5.30) {\textbf{Direction commerciale\\et relation client}};
+\node[dir] (af) at (13.36,5.30) {\textbf{Administration\\et finance} --- \emph{RAF}};
+
+\draw[l] (dg.south) -- (8.56,6.18);
+\draw[l] (3.49,6.18) -- (13.36,6.18);
+\draw[l] (dt.north) -- (3.49,6.18);
+\draw[l] (dc.north) -- (8.83,6.18);
+\draw[l] (af.north) -- (13.36,6.18);
+
+% ============ niveau 3 : les neuf unités =======================================
+% Direction technique : quatre unités, dont deux forment le périmètre d'accueil.
+\node[unacc] (u1) at (0.85,3.05) {Cloud\\et DevOps};
+\node[unacc] (u2) at (2.61,3.05) {Cyber\\et SOC};
+\node[un]    (u3) at (4.37,3.05) {Software\\Engi\-neering};
+\node[un]    (u4) at (6.13,3.05) {Data\\et IA};
+% Direction commerciale et relation client : deux unités.
+\node[un]    (u5) at (7.95,3.05) {Business\\Develop\-ment};
+\node[un]    (u6) at (9.71,3.05) {Account\\Manage\-ment};
+% Administration et finance : trois unités.
+\node[un]    (u7) at (11.60,3.05) {Finance};
+\node[un]    (u8) at (13.36,3.05) {Ressources\\humaines};
+\node[un]    (u9) at (15.12,3.05) {Achats};
+
+\draw[l] (dt.south) -- (3.49,4.12);   \draw[l] (0.85,4.12) -- (6.13,4.12);
+\foreach \n in {u1,u2,u3,u4}{\draw[l] (\n.north) -- (\n|-3.49,4.12);}
+\draw[l] (dc.south) -- (8.83,4.12);   \draw[l] (7.95,4.12) -- (9.71,4.12);
+\foreach \n in {u5,u6}{\draw[l] (\n.north) -- (\n|-8.83,4.12);}
+\draw[l] (af.south) -- (13.36,4.12);  \draw[l] (11.60,4.12) -- (15.12,4.12);
+\foreach \n in {u7,u8,u9}{\draw[l] (\n.north) -- (\n|-13.36,4.12);}
+
+% ============ périmètre d'accueil : trait épais doublé par une mention =========
+\draw[la] (0.09,2.30) -- (0.09,2.10) -- (3.37,2.10) -- (3.37,2.30);
+\draw[la] (1.73,2.10) -- (1.73,1.90);
+\node[anchor=north, font=\scriptsize\bfseries, black!85] at (1.73,1.90)
+     {périmètre d'accueil du projet};
+
+% ============ le projet ========================================================
+\node[proj] (pj) at (2.40,0.62)
+     {\textbf{Projet} --- socle d'hébergement sécurisé\\[1pt]
+      \emph{intervenant technique unique}};
+\draw[la] (1.73,1.36) -- (1.73,1.01);
+
+% ============ chaîne de revue des livrables ====================================
+\node[anchor=west, align=left, font=\scriptsize, draw=black!45, rounded corners=2pt,
+      fill=black!2, inner sep=4pt, text width=8.0cm] (rev) at (7.30,0.85)
+     {\textbf{Chaîne de revue des livrables} \\[1pt]
+      Besoins et effets métier $\rightarrow$ responsable de l'application pilote \;·\;
+      arbitrages d'architecture $\rightarrow$ encadrant entreprise \;·\;
+      méthode et démonstration $\rightarrow$ encadrante académique
+      \emph{(hors entreprise)}};
+\draw[ai] (pj.east) -- (rev.west);
+
+\end{tikzpicture}
+\caption[Organigramme de MENAL-SARL et rattachement du projet]{Organigramme de MENAL-SARL et
+rattachement du projet, à la date de \dateref. Ce qu'il faut y voir : une réalisation
+mono-opérateur, portée par deux des neuf unités, validée par trois regards dont un hors de
+l'entreprise.}
+\label{fig:organisation-menal}
+\end{figure}
+
+Trois faits caractérisent le cadre d'exécution, et chacun est repris tel quel comme donnée
+d'entrée dans la suite du mémoire. Le \textbf{périmètre d'accueil} joint deux unités,
+\emph{Cloud et DevOps} et \emph{Cyber et SOC}, et ce rattachement double n'est pas une commodité
+d'organigramme : le socle est précisément l'objet qui les joint --- de la première seule
+relèverait une plateforme d'hébergement, de la seconde seule un outillage de supervision posé sur
+une infrastructure qu'il ne maîtrise pas. Le projet est ensuite \textbf{mono-porteur} ---
+l'élève-ingénieur en assure seul la conception, la réalisation et l'exploitation ---, donnée
+reprise comme contrainte humaine en \cref{subsec:contraintes}, qui écarte par construction tout
+composant à exploitation permanente. Les livrables suivent enfin une \textbf{chaîne de revue à
+trois niveaux} dont le troisième regard est extérieur à l'entreprise : c'est ce qui compense la
+faiblesse structurelle d'un contrôle mono-opérateur.
+
+\subsection{Mission confiée et positionnement stratégique}
+\label{subsec:mission-confiee}
+
+La mission comporte cinq volets : auditer l'application pilote, formaliser les risques qu'elle
+porte, concevoir un socle Zero Trust et DevSecOps, l'implémenter en infrastructure décrite en code
+et confronter ses contrôles à des tests et à des mesures. J'en ai assuré la continuité de bout en
+bout ; le planning figure en \cref{sec:planning-travail}.
+
+Le point décisif est ailleurs, et il commande l'ampleur du travail. Un prestataire qui héberge
+les applications de ses clients dispose de deux voies. La première construit un environnement sur
+mesure par client : rapide au premier contrat, elle fait recommencer à chaque suivant le réseau,
+les identités, les secrets, la journalisation et la chaîne de livraison, et le niveau de sécurité
+atteint est celui qu'autorise le budget du client le plus modeste. La seconde construit une fois
+un socle standardisé dont chaque client devient un locataire : le coût de conception est payé une
+fois, le niveau de sécurité est celui du socle et non du contrat, et l'accueil d'une application
+se réduit à l'instanciation de paramètres. \textbf{Le coût de sécurité cesse alors d'être une
+dépense récurrente pour devenir un actif de l'entreprise} : c'est la voie retenue, et elle
+justifie qu'un projet de fin d'études porte sur un socle plutôt que sur la sécurisation d'une
+application. Elle devient une exigence vérifiable au \cref{ch:besoins-menaces} --- le besoin
+\textbf{BF13} interdit à tout composant du socle une logique propre à une application ---,
+confrontée à sa preuve au \cref{ch:realisation} par l'accueil d'un second locataire puis
+discutée au \cref{ch:validation}.
+
+\section{L'application pilote}
+\label{sec:etude-existant}
+
+\subsection{Nature, publics et modèle fonctionnel}
+\label{subsec:appli-pilote}
+
+L'application retenue comme premier cas d'usage du socle est ELSON, une plateforme de production
+participative gamifiée qui construit des jeux de données parallèles, texte et audio, pour les
+langues nationales de Mauritanie, en commençant par l'arabe hassaniya. Son public est constitué
+de locuteurs hassanophones de Mauritanie et de la diaspora, mobilisés par une compétition dotée
+de prix, et ses données de meilleure qualité alimentent des modèles de reconnaissance vocale, de
+traduction et de synthèse. Le cycle fonctionnel est une boucle à trois temps
+(\cref{fig:elson-fonctionnel}) : un contributeur traduit des phrases sources, enregistre sa voix,
+puis évalue les contributions d'autrui ; les évaluations font le classement, le classement
+commande la dotation, et les contributions validées alimentent le corpus. Chacun de ces trois
+temps produit une donnée d'un genre différent et offre une prise différente à un adversaire.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=0.88cm, font=\scriptsize,
+  temps/.style={draw=black!70, fill=black!4, align=center,
+                inner sep=3pt, minimum height=0.72cm},
+  actif/.style={draw=black!70, double, double distance=0.7pt, fill=white,
+                align=center, inner sep=3pt, minimum height=0.72cm},
+  ext/.style={draw=black!70, fill=black!10, align=center,
+              inner sep=3pt, minimum height=0.55cm},
+  cadre/.style={draw=black!55, densely dotted, rounded corners=4pt, line width=0.7pt},
+  a/.style={-{Latex[length=1.5mm]}, black!65},
+  ai/.style={-{Latex[length=1.5mm]}, black!55, densely dotted},
+  et/.style={font=\scriptsize, fill=white, inner sep=1.5pt}]
+
+% ============ cadre englobant les trois temps de la boucle ====================
+\draw[cadre] (4.10,1.25) rectangle (9.35,7.10);
+\node[anchor=south, align=center, font=\scriptsize\itshape, text width=5.4cm, black!60]
+      at (6.72,7.18) {application web progressive installable\\--- aucun canal natif};
+
+% ============ point d'entree unique ===========================================
+\node[ext, text width=1.1cm] (net) at (1.00,4.20) {Internet};
+\draw[a, line width=0.9pt] (net.east) -- (4.10,4.20);
+\node[anchor=south, align=center, text width=2.1cm, font=\scriptsize, inner sep=1pt]
+      at (3.00,4.32) {HTTPS --- point d'entrée unique};
+
+% ============ les trois temps de la boucle, sens horaire ======================
+\node[temps, text width=2.2cm] (tr) at (6.05,6.30) {\textbf{Traduire}};
+\node[temps, text width=1.8cm] (en) at (8.15,4.20) {\textbf{Enregistrer}\\\textbf{sa voix}};
+\node[temps, text width=2.6cm] (ev) at (6.15,2.20)
+      {\textbf{Évaluer} les\\contributions d'autrui};
+
+\draw[a] (tr.south east) -- node[et, pos=0.50] {phrase source}      (en.north);
+\draw[a] (en.south west) -- node[et, pos=0.50] {contribution audio} (ev.north);
+\draw[a] (ev.west) -- (4.55,2.20) -- (4.55,6.30) -- (tr.west);
+\node[rotate=90, et, font=\scriptsize] at (4.55,5.35) {note de validation};
+
+% ============ les trois actifs produits =======================================
+\node[actif, text width=4.2cm] (cor) at (12.85,6.50) {Corpus texte et voix};
+\node[actif, text width=4.2cm] (pro) at (12.85,4.20)
+      {Profil du contributeur :\\identité, voix, empreinte};
+\node[actif, text width=4.2cm] (cla) at (12.85,1.90) {Classement et dotation};
+
+% -- alimentation du corpus : le texte puis la voix
+\draw[a] (tr.north east) -- (cor.west);
+\draw[a] (en.north east) -- (cor.south west);
+% -- alimentation du classement
+\draw[a] (ev.east) -- (cla.west);
+% -- alimentation du profil, par les trois temps
+\draw[ai] (tr.east)       -- (pro.north west);
+\draw[ai] (en.east)       -- (pro.west);
+\draw[ai] (ev.north east) -- (pro.south west);
+
+\end{tikzpicture}
+\caption[Boucle fonctionnelle de l'application pilote et actifs produits]{Boucle fonctionnelle
+de l'application pilote et actifs produits. Chacun des trois temps produit un actif d'une nature
+différente --- corpus, classement doté, profil de contributeur --- alors que tous trois
+transitent par un seul point d'entrée HTTP.}
+\label{fig:elson-fonctionnel}
+\end{figure}
+
+La \cref{fig:capture-K35} restitue le premier de ces trois temps tel qu'il se présente au
+contributeur.
+
+\begin{figure}[!htbp]
+\centering
+\IfFileExists{figures/K35.png}{%
+  \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+  \fcolorbox{black!30}{white}{\includegraphics[width=0.62\textwidth]{figures/K35.png}}%
+}{%
+  \begin{minipage}{0.62\textwidth}
+  \begin{extraitconf}[breakable=false, fontupper=\footnotesize,
+      title={Cadre de capture K35 : spécification de prise}]
+  \textbf{Vue :} écran de contribution de l'application pilote, environnement de recette --- la vue qu'obtient un contributeur au premier temps de la boucle : phrase source affichée, langue sélectionnée, commande d'enregistrement de la voix.\par\smallskip
+  \textbf{Date de prise :} sur la révision de recette en service. \emph{La date portée par la capture fait foi.}\par\smallskip
+  \textbf{Contenu probant :} la boucle décrite ci-dessus servie par le système réel, et non par une maquette : une phrase source du corpus, la langue de contribution et la commande d'enregistrement visibles dans le même cadre. \textbf{Aucune contribution réelle d'un tiers ne doit apparaître} --- ni voix, ni texte soumis, ni identité de contributeur : la vue est prise sur un compte de recette.\par\smallskip
+  \textbf{Masquage} (rectangle opaque, jamais de flou) \textbf{:} nom et identifiant du compte connecté, adresse du service.
+  \end{extraitconf}
+  \end{minipage}%
+}
+\caption[Écran de contribution de l'application pilote (environnement de recette)]{Écran de contribution de l'application pilote, environnement de recette : le premier temps de la boucle de la \cref{fig:elson-fonctionnel}. Restitution d'état ; la date de relevé est portée par la capture.}
+\label{fig:capture-K35}
+\end{figure}
+
+Une précision d'architecture porte ici un argument et non un détail. ELSON est une
+\textbf{application web progressive installable} servie par un frontend à rendu serveur --- ni
+application native, ni application hybride, le caractère installable tenant à un manifeste et à
+un agent de service écrits à la main. Toute la surface d'attaque transite donc par HTTP : un
+\textbf{filtrage applicatif} placé au bord la couvre entièrement, et \emph{aucun canal mobile
+n'échappe au périmètre du socle}.
+
+Il ne s'agit pas d'un prototype mais d'une application en exploitation réelle. À la date de
+l'audit du 29/07/2026, le dépôt comptait environ 34\,600~lignes de code TypeScript et
+225~points d'entrée HTTP répartis en onze routeurs, dont environ 165~derrière un contrôle
+d'administration ; la base réunissait 54~tables PostgreSQL, 17~vues, 15~fonctions et
+déclencheurs, définies dans 74~fichiers SQL dont 72~migrations. Ces valeurs sont datées parce
+qu'elles décrivent un logiciel vivant --- au 28/08/2026, environ 245~points d'entrée et
+85~migrations ---, et l'analyse repose sur l'état du 29/07/2026, celui sur lequel les décisions
+ont été prises.
+
+\subsection{Sensibilité des données traitées}
+\label{subsec:donnees-sensibles}
+
+Le niveau de sécurité exigé d'un hébergement ne se déduit pas du nombre de ses utilisateurs mais
+de la nature de ce qu'il conserve. Le \cref{tab:sensibilite-elson} recense les catégories
+manipulées, désignées par le champ qui les porte, et l'effet de leur exposition.
+
+{\setlength{\tabcolsep}{3pt}
+\setlength{\LTpre}{4pt}\setlength{\LTpost}{4pt}
+\begin{longtable}{|P{3.3cm}|P{4.3cm}|P{7.7cm}|}
+\caption{Catégories de données traitées par l'application pilote et effet d'une exposition.}
+\label{tab:sensibilite-elson}\\
+\hline
+\textbf{Champ ou groupe de champs} & \textbf{Nature au sens de la protection des données} &
+  \textbf{Ce que produit son exposition} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Champ ou groupe de champs} & \textbf{Nature au sens de la protection des données} &
+  \textbf{Ce que produit son exposition} \\
+\hline
+\endhead
+\hline
+\endfoot
+\texttt{nni} & Identifiant national officiel, unique par compte et rendu immuable par
+déclencheur & Usurpation d'identité administrative hors de la plateforme ; l'identifiant ne
+peut pas être réémis \\ \hline
+\texttt{audio\_url} et fichiers associés & Enregistrement vocal du contributeur, donc donnée
+biométrique au sens de l'article~9 du RGPD & Identification et imitation vocale ; la voix ne
+peut pas être changée \\ \hline
+\texttt{whatsapp}, \texttt{first\_name}, \texttt{last\_name}, \texttt{birthdate},
+\texttt{email} & Contact direct et état civil & Joindre la personne hors de la plateforme et
+rapprocher son compte de son identifiant national \\ \hline
+\texttt{signup\_ip}, \texttt{signup\_geo}, \texttt{signup\_ua},
+\texttt{device\_fingerprint} & Adresse de connexion, géolocalisation et empreinte d'appareil,
+indexées pour le regroupement anti-fraude & Relie des comptes distincts et localise une
+personne : l'outil anti-fraude devient un outil de surveillance s'il fuit \\ \hline
+\texttt{fraud\_score} & Décision individuelle automatisée : au-delà d'un seuil, l'inscription
+est rejetée sans intervention humaine & Relève de l'article~22 du RGPD : la décision doit
+pouvoir être expliquée et contestée, donc son historique protégé \\ \hline
+\texttt{contributor\_credits} (nom et numéro d'un tiers) & Données personnelles de personnes
+\emph{non inscrites} sur la plateforme & Le consentement est saisi par le contributeur, pas
+par la personne concernée : l'exposition atteint des tiers sans relation avec le service
+\\ \hline
+\texttt{audit\_log.details} & Traces d'administration portant des données personnelles en
+clair & Étend la portée de toutes les lignes précédentes à la journalisation elle-même \\
+\end{longtable}
+}
+
+\textbf{L'irréversibilité d'abord.} L'identifiant national et l'empreinte vocale sont les deux
+seules catégories qui ne se révoquent pas : leur exposition est définitive et le reste après la
+fin de vie du service. Au 28/08/2026, elles sont protégées par le chiffrement d'infrastructure du
+socle et, pour l'audio, par des adresses signées à durée courte, sans chiffrement applicatif
+propre : c'est ce constat qui fixe le niveau d'exigence attendu de l'hébergement.
+
+\textbf{L'incitation ensuite.} Aucun flux de paiement ne transite par l'application, ce qui
+restreint utilement le périmètre de conformité ; mais la compétition est dotée de prix, et cette
+incitation crée un adversaire que la plupart des modèles de menace oublient : celui qui
+\emph{dispose déjà d'un accès légitime}, aux requêtes bien formées et aux quotas respectés ---
+le \textbf{participant fraudeur} (acteur A9 du \cref{ch:besoins-menaces}). C'est la
+justification la plus directe du modèle Zero Trust : un périmètre ne dit rien d'un adversaire
+déjà admis.
+
+\textbf{Le cadre juridique enfin.} Le traitement s'exécute dans une région européenne et
+concerne des personnes situées en Mauritanie et dans la diaspora : le RGPD s'applique par le lieu
+du traitement, et pour la diaspora au titre de son article~3. Trois dispositions se cumulent ---
+articles~9 (biométrie), 22 (décision automatisée) et 35 ---, et ce cumul déclenche l'obligation
+d'analyse d'impact. Le rattachement institutionnel du projet appelle en outre la \textbf{loi
+tunisienne n\textsuperscript{o}~2004-63 du 27~juillet 2004} : formalité préalable, consentement
+écrit, droits d'accès et de rectification, encadrement des transferts hors territoire. Reste le
+droit mauritanien, alors que les personnes concernées sont mauritaniennes et que l'identifiant
+collecté est un identifiant d'État : aucune norme mauritanienne n'ayant été vérifiée dans ce
+travail, le mémoire pose la question comme \textbf{ouverte et assumée} plutôt que de la refermer
+par une référence approximative. Son traitement relève du responsable de traitement
+(\cref{subsec:perimetre}).
+
+\subsection{Trois actifs, trois adversaires}
+\label{subsec:actifs-adversaires}
+
+L'analyse de l'application ne fait pas apparaître un actif à protéger, mais trois, de natures
+différentes et exposés à des adversaires différents. \textbf{Le corpus} est le résultat
+économique du projet --- données texte et voix validées, constituées au prix d'un effort humain
+long, exportables par un point d'entrée dédié --- et il attire l'\textbf{acteur intéressé par le
+corpus}, patient et ciblant délibérément (A8). \textbf{L'équité de la compétition} tient au
+classement, qui commande la dotation : faussé, il ne détourne pas seulement un prix, il pollue le
+corpus qu'il devait sélectionner ; l'adversaire y est le \textbf{participant fraudeur},
+disposant d'un accès légitime et d'une incitation financière (A9). \textbf{L'identité des
+contributeurs} --- voix et identifiant national --- est la seule catégorie dont l'exposition ne
+se répare pas, et elle expose à l'\textbf{attaquant opportuniste} (A7) comme à
+l'\textbf{interne ou prestataire} disposant d'un accès légitime initial (A11).
+
+C'est cette mise en regard, et non une liste de bonnes pratiques, qui justifie le niveau de
+défense construit ensuite : contrôler ce qui entre (l'opportuniste), contraindre ce qui est déjà
+admis (le fraudeur), prouver ce qui s'est passé (l'interne). Le \cref{ch:besoins-menaces} reprend
+ces trois actifs comme valeurs métier de l'analyse de risque.
+
+\subsection{L'hébergement initial et son modèle de sécurité}
+\label{subsec:hebergement-initial}
+
+Avant le projet, l'application est déployée sur un serveur unique loué chez un hébergeur
+européen : des conteneurs orchestrés par un seul fichier de composition --- frontend Next.js,
+API Express en cluster, base PostgreSQL~17, pooler PgBouncer, proxy Caddy (TLS), passerelle
+WhatsApp tierce et sauvegarde locale. Ce modèle (\cref{fig:archi-avant}) repose sur un pare-feu
+unique en entrée et une confiance implicite à l'intérieur.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  y=0.9cm,
+  composant/.style={draw=black!70, thick, rounded corners=2pt, fill=blue!3,
+    minimum width=1.85cm, minimum height=0.9cm, align=center, font=\scriptsize},
+  externe/.style={composant, fill=white, minimum width=1.3cm},
+  critique/.style={composant, draw=red!70!black, very thick, fill=red!5},
+  flux/.style={-{Latex[length=1.8mm]}, thick, draw=blue!55!black},
+  retour/.style={{Latex[length=1.6mm]}-{Latex[length=1.6mm]}, thick, draw=blue!55!black},
+  etiquette/.style={font=\scriptsize, inner sep=1pt}
+]
+\node[externe] (net) at (-1.00,0) {Internet};
+\node[composant] (proxy) at (2.25,0) {Caddy\\terminaison TLS};
+\node[composant] (front) at (5.00,0) {Frontend\\Next.js};
+\node[composant] (api) at (7.60,0) {API Express\\4 processus};
+\node[critique] (pgb) at (10.25,0) {PgBouncer\\sans\\authentification};
+\node[composant] (pg) at (12.85,0) {PostgreSQL 17};
+\node[composant] (waha) at (7.60,-1.75) {Passerelle WAHA\\service tiers};
+\node[composant] (backup) at (12.85,1.75) {Sauvegarde\\locale};
+
+\begin{scope}[on background layer]
+  \node[draw=black!60, dashed, thick, rounded corners=4pt, fill=black!4,
+    fit={(proxy)(front)(api)(pgb)(pg)(waha)(backup)}, inner sep=8pt,
+    label={[font=\footnotesize\bfseries]above:Serveur unique --- réseau interne partagé}] {};
+\end{scope}
+
+\draw[flux] (net) -- (proxy) node[etiquette, pos=0.35, above] {HTTPS};
+\draw[flux] (proxy) -- (front) node[etiquette, midway, above] {HTTP};
+\draw[flux] (front) -- (api) node[etiquette, midway, above] {API};
+\draw[flux] (api) -- (pgb) node[etiquette, midway, above] {SQL};
+\draw[flux] (pgb) -- (pg) node[etiquette, midway, above] {SQL};
+\draw[retour] (api.south) -- (waha.north) node[etiquette, midway, right] {messages};
+\draw[flux] (pg.north) -- (backup.south) node[etiquette, midway, right] {copie};
+
+\node[draw=red!70!black, rounded corners=2pt, fill=red!5, font=\scriptsize,
+  align=center, text width=3.0cm] (b3) at (11.05,-1.75)
+  {\textbf{B3} --- PgBouncer accepte tout conteneur interne};
+\draw[-{Latex[length=1.8mm]}, thick, draw=red!70!black]
+  (b3.north) -- (pgb.south);
+\end{tikzpicture}
+\caption[Modèle de sécurité de l'hébergement initial]{Modèle de sécurité avant le projet :
+périmètre unique en entrée, confiance implicite à l'intérieur. Tout composant présent sur le
+réseau interne est traité comme légitime --- c'est la carence C1.}
+\label{fig:archi-avant}
+\end{figure}
+
+\section{Audit de l'existant et critique}
+\label{sec:critique-existant}
+
+\subsection{Méthode et résultats de l'audit}
+\label{subsec:methode-audit}
+\label{subsec:resultats-audit}
+
+Un audit technique et sécurité a été réalisé le 29/07/2026, en amont de toute conception,
+par analyse statique exhaustive du dépôt --- code, configurations, scripts de déploiement et
+74~fichiers SQL ---, sans exécution ni déploiement. Deux règles l'ont encadré, qui gouvernent
+aussi l'écriture de ce mémoire : la \textbf{règle de preuve} (seul ce qui est dans le dépôt est
+documenté, chemin et ligne cités) et la \textbf{règle de confidentialité} (aucun secret
+reproduit, valeurs sensibles désignées par leur nom de variable). Chaque constat
+porte l'un de quatre statuts --- \emph{vérifié}, \emph{dépendant de l'exécution} donc non
+observable dans le dépôt seul, \emph{absent}, \emph{recommandé} ; la répartition des
+41~critères par catégorie et par statut est donnée par la \cref{graph:audit-41}.
+
+L'audit ne conclut pas à un travail de mauvaise qualité : plusieurs mécanismes dépassent ce que
+l'on observe à cette taille --- aucune injection SQL ou système, sessions avec rotation et
+détection de réutilisation, intégrité de la compétition assurée par quatorze signaux de fraude.
+La logique applicative est mûre ; le problème est dans la configuration et l'industrialisation.
+Au 29/07/2026, l'audit retient six constats bloquants.
+
+\begin{itemize}\setlength{\itemsep}{1pt}
+  \item \textbf{B1} --- compte administrateur par défaut, au mot de passe en clair dans le schéma versionné ;
+  \item \textbf{B2} --- secret unique partagé par sept mécanismes cryptographiques ;
+  \item \textbf{B3} --- pooler de base de données accessible sans authentification ;
+  \item \textbf{B4} --- jeton de téléchargement du corpus non lié à un utilisateur, à une adresse IP ou à un usage unique ;
+  \item \textbf{B5} --- schéma de base non reconstructible depuis le dépôt, avec trois objets sans définition versionnée ;
+  \item \textbf{B6} --- état applicatif local au processus, incompatible avec la mise à l'échelle horizontale.
+\end{itemize}
+
+Le mémoire conserve ces six constats dans l'état daté où ils ont été relevés, parce que ce sont
+eux qui fondent le besoin de socle ; plusieurs ont depuis été traités par l'éditeur, en partie à
+l'occasion de l'accueil de l'application sur le socle (\cref{ch:realisation}). La
+\cref{graph:audit-41} donne l'écart à lire : l'application fait ce qu'elle doit faire, mais elle
+n'est ni reproductible, ni observable, ni conforme, ni déployable de façon maîtrisée.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[y=0.28cm, x=1cm, font=\footnotesize]
+\def\ymax{18}
+\draw[thick] (-0.4,0) -- (11.6,0);
+\draw[thick] (-0.4,0) -- (-0.4,\ymax);
+\node[rotate=90, anchor=south, font=\scriptsize] at (-1.35,9) {Nombre de critères};
+\foreach \y in {0,5,10,15}{
+  \draw (-0.55,\y) -- (-0.4,\y);
+  \node[anchor=east, font=\scriptsize] at (-0.6,\y) {\y};
+  \draw[black!20] (-0.4,\y) -- (11.6,\y);
+}
+\foreach \cat/\x/\a/\b/\c/\t in {%
+  Fonctionnel/0.4/6/1/0/7, Technique/2.9/0/1/9/10, Sécurité/5.4/6/4/7/17, Conformité/7.9/0/1/6/7}{
+  \fill[black!8]  (\x,0) rectangle ++(1.6,\a);
+  \draw[thick]    (\x,0) rectangle ++(1.6,\a);
+  \fill[black!30] (\x,\a) rectangle ++(1.6,\b);
+  \draw[thick]    (\x,\a) rectangle ++(1.6,\b);
+  \fill[black!65] (\x,{\a+\b}) rectangle ++(1.6,\c);
+  \draw[thick]    (\x,{\a+\b}) rectangle ++(1.6,\c);
+  \node[anchor=north, font=\scriptsize] at ({\x+0.8},-0.3) {\cat};
+  \node[anchor=south, font=\scriptsize\bfseries] at ({\x+0.8},\t) {\t};
+}
+\fill[black!8]  (10.0,15.4) rectangle ++(0.45,1.1); \draw[thick] (10.0,15.4) rectangle ++(0.45,1.1);
+\node[anchor=west, font=\scriptsize] at (10.55,15.95) {Prêt (12)};
+\fill[black!30] (10.0,13.6) rectangle ++(0.45,1.1); \draw[thick] (10.0,13.6) rectangle ++(0.45,1.1);
+\node[anchor=west, font=\scriptsize] at (10.55,14.15) {Partiel (7)};
+\fill[black!65] (10.0,11.8) rectangle ++(0.45,1.1); \draw[thick] (10.0,11.8) rectangle ++(0.45,1.1);
+\node[anchor=west, font=\scriptsize] at (10.55,12.35) {Non prêt (22)};
+\node[anchor=north west, font=\scriptsize, align=left] at (-0.4,-1.6)
+  {Chaque barre est empilée dans l'ordre prêt / partiel / non prêt ; le total figure au sommet.};
+\end{tikzpicture}
+\caption[Répartition des 41~critères de préparation au déploiement]{Répartition des
+41~critères de préparation au déploiement, par catégorie et par statut (audit du 29/07/2026).}
+\label{graph:audit-41}
+\end{figure}
+
+\subsection{Cinq carences structurantes et positionnement du socle}
+\label{subsec:carences-structurantes}
+\label{subsec:distinction-appli-socle}
+\label{subsec:positionnement-modeles}
+
+Reformulés à un niveau d'abstraction plus élevé, ces constats font apparaître cinq carences
+structurantes qui ne sont pas propres à cette application : elles caractérisent un système
+construit sans socle.
+
+\begin{itemize}\setlength{\itemsep}{1pt}
+  \item \textbf{C1 --- Modèle de confiance périmétrique} : barrière d'entrée unique et confiance implicite à l'intérieur ;
+  \item \textbf{C2 --- Environnement non reproductible} : infrastructure et schéma de données non décrits en code ;
+  \item \textbf{C3 --- Chaîne de livraison non contrôlée} : aucun contrôle automatique entre l'écriture du code et sa mise en production ;
+  \item \textbf{C4 --- Absence d'observabilité et de détection} : événements non centralisés, non corrélés, intrusion non détectée ;
+  \item \textbf{C5 --- Absence de cadre de conformité} : données d'identité et biométriques traitées sans base légale, sans durée de conservation ni droit d'effacement.
+\end{itemize}
+
+Une conclusion importante en découle : corriger l'application ne suffit pas. Les carences C1 à C5
+ne sont pas des défauts de code mais des propriétés absentes de l'environnement d'exécution ;
+aucun correctif applicatif ne créera d'identité par charge de travail, de journalisation
+centralisée, de chaîne de livraison contrôlée ni de reproductibilité. D'où le périmètre : le code
+applicatif en reste dehors, le socle qui héberge, isole, contrôle, journalise et supervise
+l'application en est l'objet --- et un socle conçu indépendamment d'elle peut en accueillir
+d'autres (\cref{subsec:mission-confiee}).
+
+Trois modèles situent la solution visée : le modèle~A, l'architecture périmétrique de l'existant
+(\cref{subsec:hebergement-initial}) ; le modèle~B, un hébergement cloud managé sans démarche de
+sécurité explicite ; le modèle~C, le socle Zero Trust visé. La comparaison à quinze critères,
+issus pour la plupart des principes Zero Trust~\cite{nist800207}, figure au
+\cref{tab:positionnement-15-complet}. Le modèle~C domine sur la sécurité et la reproductibilité
+et perd sur trois critères, repris au \cref{ch:validation} : la simplicité initiale, la mise à
+l'échelle horizontale, écartée des objectifs (\cref{subsec:perimetre}), et la maturité
+opérationnelle, une supervision sur mesure ne bénéficiant d'aucun support éditeur. Ce sont ces
+trois pertes qui rendent crédible le reste de la comparaison.
+
+\section{Problématique et objectifs}
+\label{sec:problematique-objectifs}
+
+\subsection{Problématique et questions dérivées}
+\label{subsec:problematique}
+
+Les constats précédents permettent de formuler la question centrale du mémoire.
+\begin{keybox}
+Comment concevoir, déployer et surtout \emph{prouver} un socle d'hébergement cloud aligné sur
+les principes Zero Trust et sur une chaîne de livraison DevSecOps ? La question se pose dans
+les conditions réelles d'une entreprise émergente : une seule personne pour l'exploitation,
+un budget de quelques dizaines d'euros par mois, aucune solution de supervision commerciale.
+Et quel prix faut-il payer, en faux positifs, en latence de détection et en complexité, pour
+atteindre ce résultat ?
+\end{keybox}
+
+Le verbe \emph{prouver} est central : chaque contrôle doit être associé à un test qui démontre
+son efficacité, non à une déclaration de conformité ; et la question porte un coût explicite, une
+architecture qui ne mesure pas ce qu'elle coûte n'étant pas une architecture d'ingénieur. Six
+questions dérivées en découlent, chacune associée à un objectif et à un chapitre. \textbf{Q1} (O2 · ch.~5-6) un environnement complet peut-il être
+détruit puis reconstruit à l'identique depuis le seul dépôt, en combien de temps ? \textbf{Q2}
+(O1 · ch.~4-6) que reste-t-il atteignable depuis Internet quand le point d'entrée unique est
+contourné ? \textbf{Q3} (O1 · ch.~4-6) que peut faire un compte ou un service compromis,
+jusqu'où peut-il aller ? \textbf{Q4} (O4 · ch.~5-6) quelles attaques sont détectées, lesquelles
+ne le sont pas, en combien de temps ? \textbf{Q5} (O3 · ch.~5-6) qu'est-ce qui empêche une
+régression de sécurité d'atteindre la production, à quel coût en blocages injustifiés ?
+\textbf{Q6} (O5 · ch.~5-6) les vulnérabilités livrées peuvent-elles être priorisées selon les
+menaces réellement observées ? Toutes portent sur des capacités, non sur des produits ; Q6 est
+l'axe original du travail, reliant chaîne de développement et détection d'incidents.
+
+\subsection{Objectifs et critères de succès}
+\label{subsec:objectifs}
+
+Un objectif qui ne peut pas être mesuré ne peut pas être défendu : chacun porte un indicateur,
+une cible et un moyen de vérification (\cref{tab:objectifs}) --- contrat d'évaluation du mémoire,
+auquel le \cref{ch:validation} répond point par point.
+
+{\setlength{\tabcolsep}{3pt}
+\setlength{\LTpre}{4pt}\setlength{\LTpost}{4pt}
+\begin{longtable}{|P{0.7cm}|P{3.7cm}|P{5.2cm}|P{5.4cm}|}
+\caption{Objectifs et critères de succès du projet.}
+\label{tab:objectifs}\\
+\hline
+\textbf{\#} & \textbf{Objectif} & \textbf{Indicateur} & \textbf{Cible et vérification} \\
+\hline
+\endfirsthead
+\hline
+\textbf{\#} & \textbf{Objectif} & \textbf{Indicateur} & \textbf{Cible et vérification} \\
+\hline
+\endhead
+\hline
+\endfoot
+O1 & Supprimer la confiance implicite du réseau & Nombre de tentatives de contournement
+bloquées lors de la campagne de tests adverses & 100~\% des scénarios définis ; campagne de
+tests adverses, \cref{ch:validation} \\ \hline
+O2 & Rendre l'infrastructure reproductible & Part du socle décrite en code d'infrastructure ;
+durée de reconstruction complète d'un environnement & 100~\% du socle ; durée mesurée et
+documentée par destruction puis reconstruction chronométrée \\ \hline
+O3 & Contrôler la chaîne de livraison & Nombre de portes bloquantes ; nombre de clés de
+compte de service exportées & 3~portes (secrets, analyse statique, vulnérabilités) ; 0~clé ;
+journaux d'exécution de la chaîne de livraison applicative \\ \hline
+O4 & Détecter les événements de sécurité & Nombre de règles de détection ; couverture des
+tactiques de la matrice de référence ; taux de fausses alertes sur 7~jours & Couverture
+mesurée et publiée, lacunes comprises ; requêtes de détection et mesures, \cref{ch:validation} \\ \hline
+O5 & Enrichir les alertes de façon déterministe & Précision de l'association alerte~$\to$~technique
+d'attaque, comparée à une méthode de référence simple & Gain mesuré, positif ou négatif, sur
+un jeu annoté ; évaluation comparative, \cref{ch:validation} \\ \hline
+O6 & Rester exploitable et économiquement soutenable & Coût mensuel réel ; disponibilité et
+latence observées ; existence de procédures d'incident exécutées au moins une fois & Quelques
+dizaines d'euros par mois ; objectifs de service instrumentés ; facturation, supervision et
+exécution réelle des procédures \\
+\end{longtable}
+}
+
+Deux précisions : l'objectif O4 demande de publier ce que le système \textbf{ne détecte pas}, et
+l'objectif O5 admet par avance un résultat négatif, condition d'une évaluation rigoureuse.
+
+\section{Périmètre, contraintes et démarche}
+\label{sec:perimetre-contraintes-demarche}
+
+\subsection{Périmètre et hypothèses assumées}
+\label{subsec:perimetre}
+
+Sont dans le périmètre : le socle d'hébergement cloud (filtrage en entrée, identité, exécution
+des charges, réseau, données, enrichissement, observabilité), la chaîne de livraison applicative,
+la supervision de sécurité sur un entrepôt de données, l'enrichissement sémantique des alertes,
+le tableau de bord de l'analyste et des recommandations de conformité. Restent hors périmètre :
+le code interne de l'application hébergée, le déploiement multi-région et la reprise d'activité
+inter-région, la mise à l'échelle massive. Le socle prend en charge trois obligations attachées
+aux données de \cref{subsec:donnees-sensibles} : région unique et documentée, chiffrement par
+clés gérées des secrets et de l'espace média, journalisation centralisée des accès
+d'administration. Base légale, durée de conservation et droit d'effacement relèvent du
+responsable de traitement : c'est la carence C5, formulée ici et non refermée par ce projet.
+
+Trois hypothèses sont assumées. Les deux environnements réels et la production cible sont des
+projets cloud distincts d'une même région, bâtis sur les mêmes modules, seules les variables de
+dimensionnement changeant : \textbf{la sécurité n'est jamais un paramètre d'environnement}. La
+mise à l'échelle est écartée des objectifs, ses limites étant mesurées plutôt que contournées. La
+simplicité est érigée en critère d'architecture : tout composant justifie son existence, et tout
+retrait se documente au même titre qu'un ajout.
+
+\subsection{Contraintes du projet}
+\label{subsec:contraintes}
+
+Six contraintes structurent la conception ; les deux premières traduisent, à l'échelle du projet,
+la contrainte de marché de \cref{subsec:activites-positionnement}.
+
+\begin{itemize}\setlength{\itemsep}{1pt}
+  \item \textbf{Humaine} : une seule personne conçoit, réalise et exploite le socle --- écarte les composants à exploitation permanente, impose des procédures écrites ;
+  \item \textbf{Économique} : quelques dizaines d'euros par mois --- écarte les solutions de supervision commerciales, impose un filtrage des journaux à la source ;
+  \item \textbf{Technique, exécution} : l'application hébergée écrit sur le disque local et conserve son état en mémoire, ce qui conditionne le mode d'exécution retenu ;
+  \item \textbf{Technique, données} : le schéma de base n'est pas reconstructible depuis le dépôt, ce qui rend sa consolidation préalable à toute migration ;
+  \item \textbf{Réglementaire} : des données d'identité officielle et biométriques imposent une région d'hébergement documentée et un chiffrement par clés gérées ;
+  \item \textbf{Temporelle} : la durée du projet de fin d'études impose le phasage à critères de sortie présenté en \cref{subsec:demarche}.
+\end{itemize}
+
+\subsection{Démarche méthodologique}
+\label{subsec:demarche}
+
+La démarche suit une règle unique : rien n'existe dans l'infrastructure qui n'existe d'abord sous
+forme de code versionné, les commandes interactives étant réservées aux opérations ponctuelles
+--- rotation d'un secret, réponse à un incident --- et jamais au provisionnement. Elle répond à
+la carence C2 : reproductibilité complète, contrôle de la sécurité avant création, détection de
+toute dérive. Deux registres accompagnent le projet, tous deux tenus au \cref{ch:conception} :
+celui des décisions d'architecture et celui des écarts entre conception cible et implémentation
+réelle. Le projet est organisé en huit phases, chacune fermée par un critère de sortie
+vérifiable, qui sont le découpage du planning (\cref{sec:planning-travail}).
+
+\begin{itemize}\setlength{\itemsep}{1pt}
+  \item \textbf{PH0 --- Immersion et cadrage} ; sortie : périmètre et interlocuteurs établis ;
+  \item \textbf{PH1 --- Étude de l'existant}, par analyse statique du dépôt et de l'hébergement en place ; sortie : audit figé sur 41~critères et six constats bloquants ;
+  \item \textbf{PH2 --- Risques et exigences} : valeurs métier, sources de risque, scénarios, vingt exigences ; sortie : matrice menace --- exigence --- contrôle --- test complète ;
+  \item \textbf{PH3 --- Architecture Zero Trust} : vues d'architecture, sept flux, registre des décisions ; sortie : conception justifiée par écrit, chaque exigence rattachée à un contrôle ;
+  \item \textbf{PH4 --- Infrastructure en code et chaînes de livraison} : réseau, identités, données, portes de contrôle, identité fédérée ; sortie : infrastructure entièrement décrite en code et planification sans différence ;
+  \item \textbf{PH5 --- Détection et enrichissement} : collecte, normalisation, sept règles, couche sémantique ; sortie : chaîne de bout en bout fonctionnelle et détections visibles dans le tableau de bord ;
+  \item \textbf{PH6 --- Validation et corrections} : tests adverses, mesures de détection, de performance, de résilience et de coût ; sortie : chaque objectif O1 à O6 confronté à une mesure ;
+  \item \textbf{PH7 --- Rapport, transfert et clôture} ; sortie : mémoire remis et socle exploitable par un tiers à partir du seul dépôt.
+\end{itemize}
+
+\section*{Conclusion du chapitre}
+\addcontentsline{toc}{section}{Conclusion du chapitre}
+
+\looseness=-1
+Ce chapitre a établi le point de départ sur des faits vérifiés. Sur un marché où ni une supervision
+commerciale ni une équipe de sécurité dédiée ne s'amortissent sur un client unique, le socle
+réutilisable est une décision d'entreprise et non un raffinement technique. L'application retenue
+traite un identifiant national, des enregistrements vocaux et une décision automatisée --- trois
+actifs, trois adversaires ; mature fonctionnellement, 6~critères sur 7, elle laisse 22 des
+41~critères de préparation au déploiement non remplis au 29/07/2026, dont six points bloquants qui
+se ramènent à cinq carences structurantes, toutes situées dans l'environnement d'exécution. L'objet
+du mémoire n'est donc pas de corriger une application mais de construire le socle qui la contraint,
+la surveille et la rend reproductible ; le chapitre suivant examine l'état de l'art et justifie les
+choix technologiques.

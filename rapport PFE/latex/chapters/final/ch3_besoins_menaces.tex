@@ -1,0 +1,671 @@
+% =============================================================
+% Chapitre 3 - Analyse des besoins et modélisation des menaces (~9 pages)
+% Source : ../../CH3_Analyse_des_besoins_et_modele_de_menaces.md
+% =============================================================
+% -- Resserrement typographique local au chapitre 3 (valeurs restaurées en fin de fichier).
+\setlength{\textfloatsep}{10pt plus 2pt minus 3pt}
+\setlength{\floatsep}{8pt plus 2pt minus 2pt}
+\setlength{\intextsep}{8pt plus 2pt minus 2pt}
+\setlength{\abovecaptionskip}{4pt}
+\setlength{\belowcaptionskip}{2pt}
+\setlength{\LTpre}{6pt}\setlength{\LTpost}{6pt}
+
+\chapter{Analyse des besoins et modélisation des menaces}
+\label{ch:besoins-menaces}
+\soustitrechapitre{De la valeur métier à l'exigence de sécurité vérifiable}
+
+Une architecture de sécurité ne se conçoit pas à partir d'une liste de bonnes pratiques, mais à
+partir d'une réponse à trois questions : qu'est-ce qui a de la valeur, qui voudrait s'y attaquer,
+et par quel chemin ? Ce chapitre y répond, puis en dérive vingt exigences de sécurité et la matrice
+qui relie le risque analysé ici, l'architecture du \cref{ch:conception}, la réalisation du \cref{ch:realisation} et les
+mesures du \cref{ch:validation}.
+
+\textbf{Pourquoi deux méthodes plutôt qu'une.} Aucune des deux méthodes retenues au \cref{ch:etat-art} ne
+suffit seule : EBIOS Risk Manager hiérarchise et fixe la gravité, mais laisserait des scénarios
+trop abstraits pour en dériver un test ; STRIDE énumère systématiquement, mais produirait un
+inventaire sans hiérarchie de valeur, où le balayage automatisé pèserait autant que la perte du
+corpus. Leur combinaison sépare le niveau métier, qui décide de ce qui compte, du niveau technique,
+qui décide d'où cela peut être atteint.
+
+\section{Acteurs et cas d'utilisation}
+
+\subsection{Acteurs légitimes et acteurs hostiles}
+
+L'analyse distingue les acteurs \textbf{légitimes}, dont les besoins définissent les
+fonctionnalités, des acteurs \textbf{hostiles}, dont les objectifs définissent les menaces. La
+distinction n'est pas étanche --- un compte légitime détourné devient un acteur hostile disposant
+de droits légitimes --- d'où une série unique A1 à A11 dont une colonne indique la nature
+(\cref{tab:acteurs}), plutôt qu'une numérotation séparée qui suggérerait deux populations
+disjointes.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|P{2.5cm}|P{1.3cm}|P{5.4cm}|P{5.85cm}|}
+\caption[Acteurs du modèle, A1 à A11]{Acteurs du modèle : série unique, nature indiquée en colonne}
+\label{tab:acteurs} \\
+\hline
+\textbf{Acteur} & \textbf{Nature} & \textbf{Rôle ou motivation} & \textbf{Interaction ou moyens} \\
+\hline
+\endfirsthead
+\caption[]{Acteurs du modèle (suite)} \\
+\hline
+\textbf{Acteur} & \textbf{Nature} & \textbf{Rôle ou motivation} & \textbf{Interaction ou moyens} \\
+\hline
+\endhead
+A1 — Utilisateur & Légitime & Contribue à l'application hébergée & Point d'entrée public (F1) \\ \hline
+A2 — Analyste & Légitime & Consulte, qualifie et documente les incidents & Tableau de bord, lecture et verdict \\ \hline
+A3 — Administrateur & Légitime & Administre la plateforme & Consoles d'administration et dépôts \\ \hline
+A4 — Développeur & Légitime & Modifie le code ou l'infrastructure & Chaînes F3 et F7 \\ \hline
+A5 — Identité de déploiement & Légitime & Identité automatisée à privilèges & Fédération sans secret permanent, F3 et F7 \\ \hline
+A6 — Tâches internes & Légitime & Détectent et enrichissent & Requêtes et tâches planifiées, F5 \\ \hline
+A7 — Opportuniste & Hostile & Gain rapide, cible non choisie & Outils automatisés, vulnérabilités connues \\ \hline
+A8 — Acteur intéressé par le corpus & Hostile & Valeur du corpus linguistique constitué & Ciblage délibéré, patience \\ \hline
+A9 — Participant fraudeur & Hostile & Gain financier lié aux prix de la compétition & Comptes multiples, manipulation applicative \\ \hline
+A10 — Chaîne d'approvisionnement & Hostile & Exécution de code chez la victime & Dépendance ou image de base compromise \\ \hline
+A11 — Interne ou prestataire & Hostile & Négligence, curiosité ou malveillance & Accès légitime initial, connaissance du système \\
+\hline
+\end{longtable}
+}
+
+Deux acteurs appellent une vigilance particulière. L'identité de déploiement (A5) possède des
+droits de modification sur l'ensemble du socle et doit être traitée comme une identité à
+privilèges, non comme un outil. Le participant fraudeur (A9) dispose d'un accès parfaitement
+légitime et d'une incitation financière : aucun contrôle de périmètre ne le distingue d'un
+contributeur ordinaire, et c'est le comportement applicatif, non le réseau, qui le révèle.
+
+\subsection{Cas d'utilisation du socle}
+
+Huit cas d'utilisation structurent le socle, formulés du point de vue de l'acteur et non du
+composant technique (\cref{fig:cas-utilisation}), chacun rattaché à un flux : F1 pour UC1 à
+UC3, F3 pour UC4, F7 pour UC5, F4 et F5 pour UC6, F5 pour UC7, F6 pour UC8. Deux commandent la
+conception : \textbf{UC3} impose que le verdict de l'analyste soit enregistré sans pouvoir altérer
+les preuves sur lesquelles il porte, d'où la séparation, au \cref{ch:conception}, entre tables de preuve en
+écriture interdite et table de verdict humain ; \textbf{UC8}, qui correspond à la question Q6 et au
+verrou V4, constitue l'apport propre du mémoire.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[scale=0.92, every node/.append style={transform shape},
+  uc/.style={draw=black, thick, ellipse, inner sep=1.5pt, text width=2.65cm,
+    minimum width=3.9cm, minimum height=1.05cm, align=center, font=\scriptsize,
+    fill=black!4},
+  acteur/.style={font=\scriptsize, align=center, text width=1.7cm},
+  acteurSysteme/.style={draw=black, thick, rounded corners=2pt, fill=black!6,
+    font=\scriptsize, align=center, text width=1.65cm, minimum height=0.8cm},
+  humain/.style={-, thick, draw=black!75, rounded corners=2pt},
+  machine/.style={-, thick, dashed, draw=black!55, rounded corners=2pt}
+]
+  % Frontière du système. Les gouttières intérieures (haut, bas, gauche, droite)
+  % et le couloir central entre les deux colonnes restent libres : aucune
+  % association ne longe le cadre ni n'en sort pour y rentrer.
+  \draw[thick, rounded corners=5pt, fill=black!1] (1.55,0.20) rectangle (12.00,8.85);
+  \node[font=\small\bfseries, fill=white, inner sep=2pt] at (3.40,8.85)
+    {Socle Zero Trust};
+
+  \node[uc] (uc1) at (4.35,7.15) {UC1\\Accéder à une application};
+  \node[uc] (uc2) at (4.35,5.45) {UC2\\Consulter les alertes};
+  \node[uc] (uc3) at (4.35,3.75) {UC3\\Qualifier une alerte\\et enregistrer le verdict};
+  \node[uc] (uc5) at (4.35,1.95) {UC5\\Modifier l'infrastructure};
+  \node[uc] (uc4) at (9.05,7.15) {UC4\\Livrer une version};
+  \node[uc] (uc6) at (9.05,5.45) {UC6\\Détecter un comportement\\suspect};
+  \node[uc] (uc7) at (9.05,3.75) {UC7\\Enrichir une alerte};
+  \node[uc] (uc8) at (9.05,1.95) {UC8\\Prioriser les correctifs};
+
+  % Acteurs humains à gauche.
+  \foreach \y/\id/\nom in {7.15/A1/Utilisateur final,4.60/A2/Analyste sécurité,1.95/A3/Administrateur}{
+    \draw[thick] (0.55,\y+0.36) circle (0.14) (0.55,\y+0.22) -- (0.55,\y-0.24)
+      (0.32,\y) -- (0.78,\y) (0.55,\y-0.24) -- (0.33,\y-0.60)
+      (0.55,\y-0.24) -- (0.77,\y-0.60);
+    \node[acteur, anchor=north] at (0.55,\y-0.68) {\textbf{\id}\\\nom};
+  }
+  % Le développeur est humain ; l'identité de déploiement et les tâches
+  % planifiées sont des systèmes.
+  \draw[thick] (13.55,7.51) circle (0.14) (13.55,7.37) -- (13.55,6.91)
+    (13.32,7.15) -- (13.78,7.15) (13.55,6.91) -- (13.33,6.55)
+    (13.55,6.91) -- (13.77,6.55);
+  \node[acteur, anchor=north] at (13.55,6.47) {\textbf{A4}\\Développeur};
+  % A5 descendu de 5,05 a 4,70 : a 5,05 sa bordure haute recouvrait le libelle
+  % « Developpeur » de A4, ancre au nord en 6,47 et haut de deux lignes.
+  \node[acteurSysteme] (a5) at (13.55,4.70) {\textbf{A5}\\\guillemotleft système\guillemotright\\Identité de déploiement};
+  \node[acteurSysteme] (a6) at (13.55,2.60) {\textbf{A6}\\\guillemotleft système\guillemotright\\Tâches planifiées};
+
+  % Associations humaines à gauche : ramification courte dans la gouttière.
+  \draw[humain] (0.78,7.15) -- (uc1.west);
+  \draw[humain] (0.78,4.60) -- (2.05,4.60);
+  \draw[humain] (2.05,4.60) |- (uc2.west);
+  \draw[humain] (2.05,4.60) |- (uc3.west);
+  \draw[humain] (0.78,1.95) -- (uc5.west);
+
+  % A4 : UC4 en vis-à-vis ; UC5 et UC8 par un tronc unique qui franchit la
+  % gouttière haute puis descend dans le couloir libre entre les deux colonnes.
+  \draw[humain] (13.32,7.15) -- (uc4.east);
+  \draw[humain] (13.55,7.65) -- (13.55,8.15) -- (6.70,8.15) -- (6.70,1.95) -- (uc5.east);
+  \draw[humain] (6.70,2.60) -- (uc8.140);
+
+  % A5 et A6 : acteurs système ancrés face au bord droit du cadre, segment court
+  % vers l'ellipse la plus proche. Le seul trajet long contourne la colonne
+  % d'acteurs par la droite et rejoint UC5 par la gouttière basse.
+  \draw[machine] (a5.north west) -- (uc4.338);
+  \draw[machine] (a5.east) -- (14.80,5.05) -- (14.80,0.72) -- (4.35,0.72) -- (uc5.south);
+  \draw[machine] (a6.north west) -- (uc6.332);
+  \draw[machine] (a6.north west) -- (uc7.342);
+  \draw[machine] (a6.west) -- (uc8.10);
+
+  \draw[humain] (3.00,-0.35) -- +(0.7,0) node[right, font=\footnotesize] {association humaine};
+  \draw[machine] (7.80,-0.35) -- +(0.7,0) node[right, font=\footnotesize] {association automatisée};
+\end{tikzpicture}
+\caption{Diagramme de cas d'utilisation du socle}
+\label{fig:cas-utilisation}
+\end{figure}
+
+\section{Spécification des besoins}
+
+\subsection{Besoins fonctionnels}
+
+Les besoins fonctionnels traduisent les carences C1 à C4 identifiées par l'audit du \cref{ch:cadre-existant}
+(\cref{tab:besoins-fonctionnels}).
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|P{1cm}|P{9.85cm}|P{2.1cm}|P{2.1cm}|}
+\caption{Besoins fonctionnels\label{tab:besoins-fonctionnels}} \\
+\hline
+\textbf{\#} & \textbf{Besoin} & \textbf{Segment} & \textbf{Origine} \\
+\hline
+\endfirsthead
+\caption[]{Besoins fonctionnels (suite)} \\
+\hline
+\textbf{\#} & \textbf{Besoin} & \textbf{Segment} & \textbf{Origine} \\
+\hline
+\endhead
+BF1 & Exposer les applications derrière un point d'entrée unique, filtré et journalisé & Sécurité & C1 \\ \hline
+BF2 & Attribuer une identité distincte à chaque charge de travail, droits minimaux & Sécurité & C1 \\ \hline
+BF3 & Rendre les données inaccessibles depuis Internet, accès privé uniquement & Sécurité & C1 \\ \hline
+BF4 & Décrire l'intégralité du socle sous forme de code versionné & Ops & C2 \\ \hline
+BF5 & Contrôler automatiquement chaque livraison avant mise en production & Dev & C3 \\ \hline
+BF6 & Authentifier l'identité de déploiement sans secret permanent & Dev & C3 \\ \hline
+BF7 & Centraliser les journaux de toutes les couches dans un entrepôt unique & Détection & C4 \\ \hline
+BF8 & Exécuter des règles de détection versionnées sur ces journaux & Détection & C4 \\ \hline
+BF9 & Garantir qu'aucun composant d'analyse ne modifie les preuves qu'il analyse & Sécurité & (propre) \\ \hline
+BF10 & Associer automatiquement chaque alerte à une technique d'attaque connue & Données & V3 \\ \hline
+BF11 & Présenter à l'analyste incidents, contexte et conduite à tenir & Métier & C4 \\ \hline
+BF12 & Réordonner les vulnérabilités détectées à la livraison selon les menaces observées & Données & V4 \\ \hline
+BF13 & Permettre l'accueil d'une nouvelle application sans reconception du socle & Métier & (entreprise) \\
+\hline
+\end{longtable}
+}
+
+\textbf{BF9} est volontairement absolu : \emph{un moteur de détection ne doit jamais modifier les
+preuves qu'il analyse}. \textbf{BF13} traduit l'objectif d'entreprise du \cref{ch:cadre-existant} : aucun
+composant du socle ne doit contenir de logique spécifique à une application.
+
+\subsection{Besoins non fonctionnels}
+
+Le \cref{tab:besoins-non-fonctionnels} recense les sept besoins non fonctionnels, avec
+pour chacun la cible visée et le moyen de vérification retenu.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|P{1.2cm}|P{3.4cm}|P{7.65cm}|P{2.8cm}|}
+\caption{Besoins non fonctionnels}
+\label{tab:besoins-non-fonctionnels} \\
+\hline
+\textbf{\#} & \textbf{Besoin} & \textbf{Cible} & \textbf{Vérification} \\
+\hline
+\endfirsthead
+\caption[]{Besoins non fonctionnels (suite)} \\
+\hline
+\textbf{\#} & \textbf{Besoin} & \textbf{Cible} & \textbf{Vérification} \\
+\hline
+\endhead
+BNF1 & Disponibilité & Objectif de niveau de service instrumenté, mesuré en continu & Supervision, ch.6 \\ \hline
+BNF2 & Latence & Objectif défini et mesuré ; tout dépassement documenté & Supervision, ch.6 \\ \hline
+BNF3 & Coût mensuel & Quelques dizaines d'euros ; poste dominant identifié & Facturation, ch.6 \\ \hline
+BNF4 & Exploitabilité par une seule personne & Procédures écrites et exécutées au moins une fois & Exécution réelle, ch.6 \\ \hline
+BNF5 & Reproductibilité & Reconstruction complète d'un environnement, chronométrée & Reconstruction complète \\ \hline
+BNF6 & Auditabilité & Chaque décision automatisée journalisée, entrées et version & Inspection des journaux \\ \hline
+BNF7 & Scalabilité & Volontairement limitée ; limites mesurées et documentées & Déclaration explicite, ch.6 \\
+\hline
+\end{longtable}
+}
+
+\textbf{BNF3} : le poste de coût dominant d'une supervision de sécurité n'est pas le calcul mais
+l'\textbf{ingestion des journaux}, d'où le choix de filtrer à la source (\cref{ch:conception}). \textbf{BNF7}
+est une limite assumée : déclarée sans mesure, elle resterait une affirmation, d'où son
+inscription au programme de validation du \cref{ch:validation}.
+
+\section{Flux de données et frontières de confiance}
+\label{sec:dfd-frontieres}
+
+STRIDE ne s'applique pas à une architecture en général mais à un objet précis : un
+\textbf{diagramme de flux de données} portant ses \textbf{frontières de confiance} --- les lieux
+où une donnée passe sous le contrôle d'une entité de confiance différente. C'est là, et seulement
+là, que la méthode énumère ses six catégories : poser ce diagramme est la condition de validité des
+scénarios opérationnels qui en sont dérivés.
+
+\subsection{Le diagramme de flux de données du socle}
+
+La \cref{fig:dfd-frontieres} représente le socle dans la notation usuelle de la modélisation de
+menaces. Les composants y portent exactement les noms de la vue de déploiement du \cref{ch:conception}
+(\cref{fig:deploiement}), afin que les deux figures se lisent l'une sur l'autre ; les arcs portent
+les identifiants des sept flux F1 à F7 (\cref{tab:flux}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  x=0.925cm, y=0.90cm, font=\scriptsize,
+  proc/.style={draw=black!70, rounded corners=3pt, fill=black!4,
+               align=center, inner sep=2.5pt, minimum height=0.62cm},
+  mag/.style={draw=black!70, double, double distance=0.7pt, fill=white,
+              align=center, inner sep=2.5pt, minimum height=0.58cm},
+  ext/.style={draw=black!70, fill=black!10, align=center,
+              inner sep=2.5pt, minimum height=0.58cm},
+  cadre/.style={draw=black!35, densely dotted, rounded corners=4pt},
+  tb/.style={draw=black!80, dashed, line width=0.9pt},
+  tblab/.style={fill=white, inner sep=1.5pt, font=\scriptsize\bfseries},
+  a/.style={-{Latex[length=1.5mm]}, black!65},
+  ab/.style={{Latex[length=1.5mm]}-{Latex[length=1.5mm]}, black!65},
+  ai/.style={-{Latex[length=1.5mm]}, black!55, densely dotted},
+  et/.style={font=\scriptsize, fill=white, inner sep=1pt}]
+
+% ============ frontieres empilees TB1..TB4, franchies par le reseau ============
+% Libelles volontairement reduits au code : les cinq frontieres sont enoncees
+% en toutes lettres dans le tableau qui suit immediatement la figure.
+\draw[tb] (0,10.95) -- (9.55,10.95);   \node[tblab] at (0.32,11.14) {TB1};
+\draw[tb] (0,9.15)  -- (9.55,9.15);    \node[tblab] at (0.32,9.34)  {TB2};
+\draw[tb] (0,7.25)  -- (9.55,7.25);    \node[tblab] at (0.32,7.44)  {TB3};
+\draw[tb] (0,4.75)  -- (9.55,4.75);    \node[tblab] at (0.32,4.94)  {TB4};
+
+% ============ frontiere orthogonale TB5, franchie par l'identite seule ========
+\draw[tb] (9.95,2.55) -- (9.95,12.95);
+\node[tblab] at (9.95,13.16) {TB5};
+
+% ============ entites externes, au-dessus de TB1 ==============================
+\node[ext, text width=2.0cm]  (uti)   at (1.15,12.15) {Utilisateurs de\\l'application hébergée};
+\node[ext, text width=1.8cm]  (ana)   at (4.10,12.15) {Analyste et\\administrateur};
+\node[ext, text width=2.2cm]  (forge) at (7.55,12.15) {Dépôt de code et\\chaîne de livraison};
+\node[ext, text width=3.5cm]  (ref)   at (12.95,12.15)
+      {Référentiel de techniques d'attaque,\\catalogues de vulnérabilités};
+
+% ============ bande 1 : perimetre =============================================
+\node[proc, text width=8.2cm] (per) at (4.75,10.15)
+      {\textbf{Périmètre (L1)} \; --- \; répartiteur HTTPS, filtrage applicatif, limitation de débit};
+
+% ============ bande 2 : charges de travail ====================================
+\node[proc, text width=2.15cm] (app) at (1.45,8.20) {Application\\hébergée};
+\node[proc, text width=2.15cm] (tdb) at (4.75,8.20) {Tableau de\\bord};
+\node[proc, text width=2.15cm] (api) at (8.05,8.20) {API de\\supervision};
+
+% ============ bande 3 : reseau prive ==========================================
+\node[cadre, minimum width=8.9cm, minimum height=1.30cm] (rp) at (4.75,6.15) {};
+\node[anchor=north west, font=\scriptsize\itshape, black!55] at (0.45,6.78) {Réseau privé (L4)};
+\node[proc, text width=2.8cm] (enc) at (2.35,5.98) {Service d'encodage\\(entrée interne seule)};
+\node[proc, text width=2.8cm] (enr) at (7.15,5.98) {Tâche planifiée\\d'enrichissement};
+
+% ============ bande 4 : donnees ===============================================
+\node[mag, text width=3.2cm] (bdd) at (3.10,3.85) {Base de données};
+
+% ============ plan manage du fournisseur, a droite de TB5 =====================
+\node[mag,  text width=3.4cm] (reg) at (12.95,10.60) {Registre d'images\\et coffre de secrets};
+\node[proc, text width=3.4cm]  (col)  at (12.95,8.90)  {Collecte journalisée (L7)};
+\node[mag,  text width=3.4cm]  (siem) at (12.95,7.25)  {Entrepôt de supervision};
+\node[proc, text width=3.4cm]  (req)  at (12.95,5.65)  {Requêtes planifiées\\de détection};
+\node[mag,  text width=3.4cm]  (obj)  at (12.95,4.05)  {Stockage objet};
+
+% ============ arcs ============================================================
+% -- TB1 : entree publique
+\draw[a] (uti) -- node[et, pos=0.30] {F1} (uti|-per.north);
+\draw[a] (ana) -- (ana|-per.north);
+% -- TB2 : perimetre vers charges de travail
+\draw[a] (per.south-|app) -- node[et, pos=0.45] {F1} (app.north);
+\draw[a] (per.south-|tdb) -- (tdb.north);
+\draw[a] (per.south-|api) -- (api.north);
+% -- le tableau de bord n'atteint les donnees que par l'API
+\draw[a] (tdb.east) -- node[et, pos=0.5] {jeton} (api.west);
+% -- TB3 puis TB4 : acces aux donnees par le reseau prive
+\draw[ab] (app.south) -- node[et, pos=0.62, xshift=-3.2mm] {F2} (app|-bdd.north);
+\draw[ab] (api.south) .. controls +(0,-1.1) and +(2.4,0.2) .. (bdd.east);
+% -- TB5 : l'API atteint l'entrepot par l'identite seule, hors reseau prive
+\draw[a] (api.east) -- node[et, pos=0.52] {\textbf{F2b} --- identité seule (É11)} (siem.west);
+% -- collecte des journaux
+\draw[a] (per.east) -- node[et, pos=0.40] {F4} (col.west);
+\draw[a] (col.south) -- (siem.north);
+% -- enrichissement semantique
+\draw[a] (enr.west) -- node[et, pos=0.5] {F5a} (enc.east);
+\draw[ab] (enr.east) -- node[et, pos=0.55] {F5b} (siem.south west);
+% -- detection : entierement dans le plan manage
+\draw[ab] (req.north) -- (siem.south);
+% -- chaine de livraison : identite federee, sans cle
+\draw[a] (forge.east) -- node[et, pos=0.45] {F3} (reg.north west);
+% F7 descend en ligne droite a x=10,35 : il doit etre trace AVANT l'etiquette
+% « etiquette SHA », dont le fond blanc le masque a l'endroit ou ils se croisent.
+% Trace apres, il barrait le S et le donnait a lire comme un signe dollar.
+  \draw[a] (forge.south east) -- (10.35,11.50) -- (10.35,4.05) -- node[et, pos=0.93] {F7} (obj.west);
+\draw[ai] (reg.south) -- ++(0,-0.42) -- node[et, pos=0.78] {étiquette SHA} (api.north east);
+% -- imports differes de referentiels
+\draw[ai] (ref.south) .. controls +(1.9,-1.1) and +(1.9,1.3) .. node[et, pos=0.55] {F6} (siem.east);
+
+% ============ legende et cartouche ============================================
+\node[draw=black!45, rounded corners=2pt, fill=black!2, align=left,
+      inner sep=4pt, text width=6.0cm, font=\scriptsize] at (3.35,1.50)
+  {\textbf{Notation} \\[1pt]
+   \tikz[baseline=-0.5ex]{\node[proc, minimum width=0.5cm, minimum height=0.22cm, inner sep=1pt]{};}\;processus \quad
+   \tikz[baseline=-0.5ex]{\node[mag, minimum width=0.5cm, minimum height=0.22cm, inner sep=1pt]{};}\;magasin de données \\
+   \tikz[baseline=-0.5ex]{\node[ext, minimum width=0.5cm, minimum height=0.22cm, inner sep=1pt]{};}\;entité externe \quad
+   \tikz[baseline=-0.5ex]{\draw[tb] (0,0) -- (0.65,0);}\;frontière de confiance \\
+   \tikz[baseline=-0.5ex]{\draw[ai] (0,0) -- (0.65,0);}\;flux différé ou hors requête \\[1pt]
+   \emph{TB1 à TB5 sont énoncées en toutes lettres au tableau suivant.}};
+
+
+\end{tikzpicture}
+\caption[Diagramme de flux de données du socle et ses cinq frontières de confiance]{Diagramme
+de flux de données du socle et ses cinq frontières de confiance. Les frontières TB1 à TB4 sont
+empilées et franchies par le réseau ; TB5 leur est orthogonale et n'est franchie que par
+l'identité. C'est cette frontière, sur laquelle aucun dispositif réseau ne peut s'interposer,
+que traversent douze des vingt-quatre scénarios opérationnels, dont six des huit
+scénarios de gravité critique.}
+\label{fig:dfd-frontieres}
+\end{figure}
+
+{\footnotesize
+\setlength{\tabcolsep}{2pt}
+\begin{longtable}{|P{0.75cm}|P{2.45cm}|P{2.2cm}|P{2.35cm}|P{3.6cm}|P{3.5cm}|}
+\caption[Les cinq frontières de confiance et les scénarios qui les franchissent]{Les cinq
+frontières de confiance : ce que chacune porte, et les scénarios opérationnels qui la franchissent}
+\label{tab:frontieres-scenarios} \\
+\hline
+\textbf{\#} & \textbf{Frontière} & \textbf{Franchie par} & \textbf{Menaces dominantes} & \textbf{Nature du contrôle qui s'y interpose} & \textbf{Scénarios rattachés (nombre, dont critiques)} \\
+\hline
+\endfirsthead
+\caption[]{Les cinq frontières de confiance (suite)} \\
+\hline
+\textbf{\#} & \textbf{Frontière} & \textbf{Franchie par} & \textbf{Menaces dominantes} & \textbf{Nature du contrôle qui s'y interpose} & \textbf{Scénarios rattachés (nombre, dont critiques)} \\
+\hline
+\endhead
+TB1 & Internet $\rightarrow$ périmètre & Requête HTTPS (F1) & Déni de service, divulgation par reconnaissance, usurpation & Réseau et applicatif : filtrage applicatif, limitation de débit, terminaison TLS & SO2 à SO5 --- \textbf{4}, aucun critique \\ \hline
+TB2 & Périmètre $\rightarrow$ charges de travail & Trafic déjà filtré (F1) & Altération, élévation de privilège & Réseau : entrée des services restreinte au répartiteur ; jeton d'identité vérifié & SO1 --- \textbf{1}, aucun critique \\ \hline
+TB3 & Charges de travail $\rightarrow$ réseau privé & Interface de sortie directe de la charge (F2, F5) & Divulgation par canal sortant, élévation par rebond & Réseau : refus par défaut en sortie, autorisations nommées par identité et par port, refus journalisés & SO17, SO18, SO24 --- \textbf{3}, aucun critique \\ \hline
+TB4 & Réseau privé $\rightarrow$ données & Adresse privée (F2) & Divulgation d'information & Réseau : absence d'adresse publique, chiffrement obligatoire du transport & SO6, SO8 --- \textbf{2}, les deux critiques \\ \hline
+TB5 & Charges de travail $\rightarrow$ \textbf{plan managé du fournisseur} & \textbf{Identité seule}, hors du réseau privé (F3, F4, F5b, F7) & Usurpation, altération des preuves, élévation de privilège & \textbf{Identité exclusivement} : autorisations, jetons de courte durée, fédération & SO7, SO9 à SO14, SO16, SO20 à SO23 --- \textbf{12}, dont \textbf{6 critiques} : SO9, SO10, SO12, SO20, SO21, SO22 \\
+\hline
+\end{longtable}
+}
+
+\subsection{TB5, frontière sans contrôle réseau}
+
+Les quatre premières frontières se comportent comme celles d'une architecture classique : chacune
+sépare deux zones que le trafic relie par un chemin réseau, sur lequel un dispositif peut être
+posé — filtre, refus par défaut, absence d'adresse publique. Un lecteur habitué au modèle
+périmétrique les reconnaît, et c'est ce qui rend TB5 difficile à voir.
+
+\textbf{TB5 n'est pas un chemin réseau.} Lorsqu'une charge de travail écrit dans l'entrepôt de
+supervision, lit un secret dans le coffre, tire une image du registre ou modifie l'état de
+l'infrastructure, elle s'adresse aux interfaces du fournisseur : aucun dispositif réseau
+n'arbitre cet appel. Depuis la refonte du plan réseau (\cref{subsec:reseau-cible}), il emprunte
+bien l'interface de sortie de la charge et se heurte au refus par défaut ; mais la règle qui le
+laisse passer ne désigne qu'une plage de destination du fournisseur, la même pour l'entrepôt du
+socle et pour tout autre entrepôt du même fournisseur. Il est autorisé, ou refusé, par la seule
+vérification de l'identité qui le présente. Le \cref{ch:conception} relève ce point comme l'écart É11 : la
+vue de déploiement, qui aligne les composants sur un plan réseau, laisse croire l'inverse.
+
+Deux conséquences en découlent. Aucun contrôle réseau ne réduit un risque porté par TB5 : aucun ne
+sépare l'interface du fournisseur que le socle emploie de celle qu'un attaquant contrôlerait chez
+le même fournisseur, et les distinguer supposerait un périmètre de service, donc une organisation
+dont le projet ne dispose pas. Et TB5 est la frontière que franchissent les chemins
+d'administration et de livraison --- précisément ceux que le modèle périmétrique du \cref{ch:cadre-existant}
+laissait sans contrôle parce qu'il ne les voyait pas comme des chemins.
+
+\begin{keybox}
+Sur TB5, l'identité n'est pas un contrôle parmi d'autres : elle est le seul. C'est la traduction
+opérationnelle du principe d'identité (PR2) et la raison pour laquelle le \cref{ch:conception} traite le
+plan d'identité comme la segmentation réelle de l'architecture.
+\end{keybox}
+
+\section{Analyse de risque}
+
+\subsection{Valeurs métier, sources de risque et scénarios stratégiques}
+
+Une \textbf{valeur métier} est ce dont la perte, l'altération ou la divulgation nuit à
+l'organisation ; un \textbf{bien support} est un élément technique dont une valeur métier dépend.
+Six valeurs métier ont été retenues : le corpus linguistique constitué, premier actif de
+l'entreprise ; les identités et les voix des contributeurs ; l'intégrité de la compétition, dont
+dépend la crédibilité du dispositif d'incitation ; la disponibilité du service ; l'intégrité des
+preuves de supervision ; la crédibilité technique de MENAL, atteinte transverse des cinq
+précédentes. La cinquième est propre au socle : protéger les données sans protéger les traces de
+l'attaque rend la supervision contestable, et c'est elle qui justifie l'interdiction d'écriture
+faite aux composants d'analyse (BF9).
+
+Neuf biens supports les portent, de la base applicative au point d'entrée public, et les cinq
+sources de risque sont les acteurs hostiles A7 à A11 du \cref{tab:acteurs}. Une sixième,
+l'acteur étatique organisé, est \textbf{écartée par décision explicite} : la traiter supposerait
+des moyens de détection et de réponse sans commune mesure avec le périmètre du projet, et l'inclure
+sans ces moyens produirait une analyse dont aucune exigence ne découlerait ; l'exclusion est datée
+et révisable si le corpus change de statut. La codification des ateliers figure en
+annexe~\ref{ann:modele-menaces}.
+
+\textbf{Sept scénarios stratégiques} relient chacun une source de risque à une valeur métier
+atteinte, par un chemin de haut niveau ; l'annexe~\ref{ann:modele-menaces} les énonce avec leur
+codification et leur gravité. \textbf{Quatre sont de gravité critique} : accès direct à la base de
+données puis copie du corpus et des identités, obtention du jeton d'export du corpus, détournement
+de l'identité de déploiement suivi d'un déploiement non revu, divulgation d'un secret permettant de
+reconstituer des accès légitimes. Les trois autres, graves ou significatifs, portent sur
+l'altération des journaux et des détections, sur le classement de la compétition et sur la
+disponibilité d'un service exposé. Trois des quatre critiques --- accès direct à la base, jeton
+d'export, divulgation d'un secret --- correspondent à des points bloquants de l'audit du
+\cref{ch:cadre-existant} : l'audit a fourni la matière factuelle de cette analyse, non une liste théorique.
+
+\subsection{Scénarios opérationnels}
+
+Les scénarios stratégiques sont traduits en chemins techniques par application systématique des
+six catégories STRIDE aux sept flux F1 à F7, en chacun des points où ils franchissent une des cinq
+frontières de la \cref{sec:dfd-frontieres}. L'opération produit \textbf{vingt-quatre
+scénarios opérationnels SO1 à SO24}, dont huit au niveau de risque le plus élevé ; le tableau
+détaillé de l'annexe~\ref{ann:modele-menaces} rattache chacun à sa frontière et à sa catégorie
+STRIDE, et la dernière colonne du \cref{tab:frontieres-scenarios} en donne la répartition.
+
+\textbf{Lecture.} Douze scénarios sur vingt-quatre, et \textbf{six des huit de gravité critique},
+franchissent TB5 : ce résultat n'était pas un objectif de la modélisation, il en sort. Les deux
+scénarios de TB4 sont eux aussi de gravité critique, mais un contrôle réseau simple et vérifiable
+les adresse --- l'absence d'adresse publique.
+
+Trois rattachements méritent d'être justifiés, aucun n'ayant été forcé. \textbf{SO15}, l'absence
+de trace permettant d'attribuer une action, et \textbf{SO19}, la falsification du rattachement
+d'une vulnérabilité pour la déclasser, ne franchissent aucune frontière et ne figurent donc dans
+aucune ligne du tableau ; ce sont aussi les seuls auxquels la matrice des techniques d'attaque ne
+fait correspondre aucune technique, pour la même raison --- un défaut de traçabilité et un abus de
+droit interne ne sont pas des chemins d'attaque, ce sont les conditions qui les rendent
+indétectables. \textbf{SO1} est rattaché à TB2, la frontière qu'une charge utile franchit
+effectivement, alors que le contrôle qui le traite est posé une frontière en amont, sur TB1 : seul
+endroit du socle où la défense est placée avant la frontière menacée plutôt que sur elle.
+
+\subsection{Appréciation et traitement du risque}
+
+Le croisement gravité $\times$ vraisemblance, détaillé en annexe~\ref{ann:modele-menaces}, place
+la zone de risque la plus élevée sur les chaînes de livraison applicative et de provisionnement
+(F3, F7) et sur l'accès direct aux données (F2) --- la répartition qui précède en donne
+l'explication structurelle. Le scénario le plus critique de vraisemblance forte correspond
+exactement au point bloquant B2 de l'audit.
+
+Les décisions de traitement sont, pour l'essentiel, la \textbf{réduction} par des contrôles
+d'architecture, complétée par deux \textbf{acceptations explicites}, datées et révisables ; aucun
+transfert n'est appliqué, faute d'assurance ou de sous-traitance de sécurité dans le périmètre.
+
+\section{Exigences de sécurité et traçabilité}
+
+\subsection{Les vingt exigences de sécurité}
+
+L'analyse de risque est traduite en vingt exigences de sécurité EX1 à EX20
+(\cref{tab:exigences}). Chacune est formulée comme une \textbf{propriété vérifiable du
+système} et non comme une intention, ce qui rend possible l'écriture d'un test au \cref{ch:validation} :
+« les accès doivent être maîtrisés » ne se teste pas ; « une connexion directe depuis Internet
+est refusée » se teste par une connexion directe depuis Internet.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|P{1cm}|P{14.5cm}|}
+\caption{Formulation complète des vingt exigences de sécurité}
+\label{tab:exigences} \\
+\hline
+\textbf{\#} & \textbf{Exigence de sécurité} \\
+\hline
+\endfirsthead
+\caption[]{Formulation complète des vingt exigences de sécurité (suite)} \\
+\hline
+\textbf{\#} & \textbf{Exigence de sécurité} \\
+\hline
+\endhead
+EX1 & Toute requête empruntant le point d'entrée public est soumise aux règles de filtrage configurées \\ \hline
+EX2 & Les tentatives d'authentification anormales sont limitées et détectées \\ \hline
+EX3 & Le service reste disponible sous charge anormale et le balayage est tracé \\ \hline
+EX4 & La base applicative n'expose pas d'adresse publique et une connexion directe depuis Internet est refusée \\ \hline
+EX5 & Une identité applicative ne peut accéder qu'aux données de son périmètre \\ \hline
+EX6 & Tout accès aux données est lié à une identité vérifiée, sans jeton transmissible \\ \hline
+EX7 & Les comptes de service du périmètre n'utilisent pas de clé statique inventoriée ; toute exception est tracée \\ \hline
+EX8 & Un artefact présentant une vulnérabilité critique corrigeable détectée par la porte configurée est bloqué \\ \hline
+EX9 & Le déploiement ne peut tirer que du registre de confiance unique \\ \hline
+EX10 & Un secret reconnu par les règles du détecteur configuré bloque la chaîne avant livraison \\ \hline
+EX11 & Les identités d'exécution des composants d'analyse n'ont aucun droit d'écriture sur les tables de preuve \\ \hline
+EX12 & Toute interruption de la collecte de journaux est détectable \\ \hline
+EX13 & Toute action privilégiée est attribuable à un acteur identifié \\ \hline
+EX14 & Le service d'encodage n'accepte que des appels internes, et sa sortie réseau est restreinte aux destinations nécessaires à son fonctionnement \\ \hline
+EX15 & Une charge anormale d'alertes ne compromet pas la chaîne d'enrichissement \\ \hline
+EX16 & Une modification hors code d'une ressource déjà gérée est détectée par rafraîchissement ; les ressources non gérées sont contrôlées par inventaire \\ \hline
+EX17 & L'état de l'infrastructure est privé, versionné et chiffré \\ \hline
+EX18 & Toute modification de droits est revue avant application \\ \hline
+EX19 & Une consommation de ressources anormale est détectée \\ \hline
+EX20 & Les sorties réseau sont limitées à des destinations connues, et les refus du pare-feu sont journalisés \\
+\hline
+\end{longtable}
+}
+
+Deux exigences appellent une précision d'état à la date de \dateref{}, postérieure à la refonte du
+plan réseau (décision D15, \cref{subsec:reseau-cible}, qui en établit le détail et les dates).
+\textbf{EX20} est portée par un contrôle et non plus par l'autorisation implicite du fournisseur :
+la totalité du trafic sortant des charges porteuses de données emprunte le réseau virtuel, cinq
+autorisations nommées par identité et par port y sont posées, et le refus par défaut en sortie
+rejette tout le reste ; les destinations autorisées sont celles inventoriées pendant la fenêtre du
+15 au 22/08/2026, non celles supposées, et les refus sont journalisés depuis le 19/08/2026 (écart
+É1, clos). Le critère se vérifie en deux points : aucune règle d'autorisation ne comporte de plage
+source, et une destination hors inventaire est refusée puis retrouvée dans l'entrepôt --- objet du
+protocole T20.
+
+\textbf{EX14} est portée en entrée par la restriction du service d'encodage aux appels internes,
+et contre le rebond par son retrait du réseau privé : le composant ne porte plus d'interface dans
+un sous-réseau, et son identité dédiée --- écart É3, corrigé le 19/08/2026 --- ne détient que le
+droit d'écrire des journaux. Sa sortie emprunte en revanche le chemin managé de la plateforme
+d'exécution, qu'aucune règle de pare-feu ne gouverne ; le relevé du 25/08/2026 l'établit, et
+l'exigence reste ouverte à ce titre (protocole T14, non conforme).
+
+\textbf{Deux réserves accompagnent ces états}, toutes deux établies en
+\cref{subsec:reseau-cible} : l'exfiltration par les interfaces du fournisseur n'est pas fermée, et
+le sélecteur des règles est l'étiquette réseau et non le compte de service --- la frontière est
+donc opposable à une charge de travail compromise, non à un opérateur capable de déployer. La
+distinction entre la propriété exigée et le degré de garantie atteint est portée par le
+\cref{ch:validation}, jamais dissimulée dans la formulation de l'exigence.
+
+\subsection{Matrice de traçabilité}
+
+Cette matrice (\cref{tab:matrice-tracabilite}) relie les quatre niveaux d'analyse : pour
+chaque scénario opérationnel, elle établit la chaîne complète du risque analysé jusqu'à sa
+démonstration. Chaque ligne se lit ainsi : \emph{ce scénario impose cette exigence, réalisée par
+ce contrôle, dont l'efficacité est démontrée par ce test.} L'exigence y est appelée par son
+identifiant ; sa formulation complète est celle du \cref{tab:exigences} ci-dessus.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|P{1.5cm}|P{1.0cm}|P{6.3cm}|P{6.2cm}|}
+\caption[Matrice de traçabilité menace--exigence--contrôle--test]{Matrice de traçabilité
+menace $\rightarrow$ exigence $\rightarrow$ contrôle $\rightarrow$ test}
+\label{tab:matrice-tracabilite} \\
+\hline
+\textbf{Menace} & \textbf{Exig.} & \textbf{Contrôle (couche)} & \textbf{Test de validation} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Menace} & \textbf{Exig.} & \textbf{Contrôle (couche)} & \textbf{Test de validation} \\
+\hline
+\endhead
+SO1 & EX1 & Filtrage applicatif au point d'entrée unique (L1) & T1 — Charges d'attaque connues ; vérification du blocage \\ \hline
+SO2, SO3 & EX2 & Limitation de débit (L1) ; règle de détection sur échecs répétés (L5) & T2 — Échecs répétés ; blocage et alerte \\ \hline
+SO4, SO5 & EX3 & Limitation de débit, restriction géographique (L1) ; journalisation (L7) & T3 — Test de charge ; limitation et trace \\ \hline
+SO6 & EX4 & Base sans adresse publique, accès privé uniquement (L4, L5) & T4 — Connexion directe externe ; échec attendu \\ \hline
+SO7 & EX5 & Une identité de service par charge de travail (L2) & T5 — Lecture de l'entrepôt de supervision ; refus attendu \\ \hline
+SO8 & EX6 & Authentification requise entre services (L2, L3) & T6 — Appel sans jeton ; refus attendu \\ \hline
+SO9 & EX7 & Identité fédérée, jetons courts, création de clés interdite (L2) & T7 — Inventaire des clés ; tentative de création ; refus attendu \\ \hline
+SO10 & EX8 & Contrôle de vulnérabilité bloquant (F3) & T8 — Artefact vulnérable ; blocage attendu \\ \hline
+SO11 & EX9 & Registre unique autorisé, droits limités (L2, F3) & T9 — Déploiement depuis source externe ; refus attendu \\ \hline
+SO12 & EX10 & Détection de secrets bloquante (F3) ; gestionnaire dédié (L2) & T10 — Secret factice ; blocage attendu \\ \hline
+SO13, SO16 & EX11 & Droits d'écriture réservés à la collecte (L2, L5) & T11 — Écriture avec l'identité d'enrichissement ; refus attendu \\ \hline
+SO14 & EX12 & Supervision de la continuité du flux (L7) & T12 — Interruption volontaire ; alerte attendue \\ \hline
+SO15 & EX13 & Journaux d'audit du fournisseur activés (L7) & T13 — Action privilégiée ; attribution vérifiée \\ \hline
+SO17 & EX14 & Entrée interne (L6) ; composant retiré du réseau privé, sans interface ni chemin vers une ressource privée ; identité dédiée limitée à l'écriture de journaux (L2, L4) & T14 — Connexion sortante émise depuis le composant ; refus et trace attendus \\ \hline
+SO18 & EX15 & Traitement par lots à cadence fixe (L6) & T15 — Volume anormal ; comportement et coût observés \\ \hline
+SO20 & EX16 & Infrastructure en code exclusive, détection de dérive (F7) & T16 — Ressource manuelle ; détection comme dérive \\ \hline
+SO21 & EX17 & Stockage d'état distant, accès restreint (F7) & T17 — Accès non autorisé ; refus attendu \\ \hline
+SO22 & EX18 & Approbation manuelle obligatoire (F7) & T18 — Changement élargissant des droits ; blocage en attente \\ \hline
+SO23 & EX19 & Supervision de consommation, alerte de budget (L7) & T19 — Consommation simulée ; alerte attendue \\ \hline
+SO24 & EX20 & Refus par défaut en sortie ; cinq autorisations nommées par identité et par port ; refus journalisés et versés à l'entrepôt (L4, É1) & T20 — Destination hors inventaire ; refus attendu et ligne de refus retrouvée dans l'entrepôt \\
+\hline
+\end{longtable}
+}
+
+\textbf{Vingt exigences, vingt tests.} Ces tests constituent le programme de validation du
+\cref{ch:validation}, qu'ils fixent \emph{avant} que celui-ci ne soit écrit ; aucun n'est optionnel, une
+exigence ne devenant une propriété établie qu'au passage de son test. La matrice se lit dans les
+deux sens : de gauche à droite elle justifie chaque exigence par le scénario qui la motive, de
+droite à gauche elle vérifie que chacune porte son test. Elle compte une ligne par exigence
+et nomme donc vingt des vingt-quatre scénarios ; le traitement des quatre autres --- SO3,
+SO5, SO16 et SO19 --- est arrêté par la table de décision de risque de l'\cref{ann:modele-menaces},
+qui les couvre tous. Elle établit enfin que les douze scénarios
+de TB5 sont adressés par des contrôles d'identité (EX5 à EX11, EX16 à EX19) et non par des
+contrôles réseau qui ne s'y appliqueraient pas.
+
+\section{Rattachement aux référentiels}
+
+Les vingt exigences sont rattachées aux référentiels du \cref{ch:etat-art}
+(\cref{tab:rattachement-referentiels}), pour exprimer la conformité en termes reconnus et
+identifier les écarts assumés ; le \cref{ch:validation} en donne le détail, lacunes comprises.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|P{3.4cm}|P{4.4cm}|P{7.5cm}|}
+\caption{Rattachement des exigences aux référentiels}
+\label{tab:rattachement-referentiels} \\
+\hline
+\textbf{Référentiel} & \textbf{Exigences concernées} & \textbf{Écarts assumés} \\
+\hline
+\endfirsthead
+\caption[]{Rattachement des exigences aux référentiels (suite)} \\
+\hline
+\textbf{Référentiel} & \textbf{Exigences concernées} & \textbf{Écarts assumés} \\
+\hline
+\endhead
+Zero Trust (\cite{nist800207}) & EX4-EX7, EX11, EX13, EX14, EX20 & Aucun principe non traité ; degré mesuré au ch.6 \\ \hline
+Applicatif (\cite{owasp2025}) & EX1, EX8-EX10 & Code hébergé hors périmètre \\ \hline
+Infrastructure (CIS) & EX4, EX5, EX7, EX13, EX16, EX17, EX20 & Journalisation des flux échantillonnée en régime permanent, justifiée par le coût \\ \hline
+Techniques d'attaque (\cite{mitre_attack}) & Couverture des scénarios opérationnels & Partielle par construction ; plafond et lacunes publiés au ch.6 \\
+\hline
+\end{longtable}
+}
+
+\section*{Conclusion du chapitre}
+\addcontentsline{toc}{section}{Conclusion du chapitre}
+
+Ce chapitre a transformé les carences du \cref{ch:cadre-existant} et l'état de l'art du \cref{ch:etat-art} en exigences
+vérifiables : six valeurs métier, dont l'intégrité de la chaîne de preuve, propre au socle ; cinq
+sources de risque, la sixième écartée par décision datée ; sept scénarios stratégiques, que
+l'application systématique de STRIDE au diagramme de flux et à ses cinq frontières a traduits en
+vingt-quatre scénarios opérationnels, puis en vingt exigences associées chacune à un contrôle et à
+un test. Le principal enseignement est double : les scénarios les plus graves ne concernent pas
+l'application exposée sur Internet mais les chemins d'administration, de livraison et d'accès aux
+données, et ces chemins se distinguent par le fait qu'ils franchissent TB5, la seule frontière du
+socle qu'aucun contrôle réseau ne peut garder. Le chapitre suivant présente l'architecture qui
+réalise ces vingt contrôles, et son plan d'identité --- réponse directe à TB5.
+
+% -- Restauration des valeurs par défaut d'espacement des flottants.
+\setlength{\textfloatsep}{20pt plus 2pt minus 4pt}
+\setlength{\floatsep}{12pt plus 2pt minus 2pt}
+\setlength{\intextsep}{12pt plus 2pt minus 2pt}
+\setlength{\abovecaptionskip}{10pt}
+\setlength{\belowcaptionskip}{0pt}
+\setlength{\LTpre}{\bigskipamount}\setlength{\LTpost}{\bigskipamount}

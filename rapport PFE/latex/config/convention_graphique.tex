@@ -1,0 +1,106 @@
+% =============================================================
+% CONVENTION GRAPHIQUE UNIQUE DU MÉMOIRE
+%
+% Un aspect de trait = une signification, stable dans tout le document.
+% Une couleur = une signification. L'accent « refus » ne porte jamais seul
+% le sens : un refus est toujours aussi un trait épais ET une croix, de
+% sorte que la figure reste lisible à l'impression en noir et blanc.
+%
+% Bibliothèques requises : arrows.meta, positioning, shapes.geometric,
+% calc, fit, backgrounds — toutes déjà chargées par config/packages.tex.
+% Aucun paquet nouveau.
+% =============================================================
+
+% --- 1. PALETTE : cinq teintes, une signification chacune -----------------
+\definecolor{menalencre}{gray}{0.15}   % traits et libellés porteurs
+\definecolor{menaltrait}{gray}{0.45}   % traits secondaires, annotations
+\definecolor{menalplanA}{gray}{0.970}  % bande — plan de données
+\definecolor{menalplanB}{gray}{0.900}  % bande — plan de contrôle
+\definecolor{menalplanC}{gray}{0.830}  % bande — plan d'observation
+\definecolor{menalrefus}{rgb}{0.55,0.10,0.10} % refus / faiblesse (accent unique)
+
+% --- 2. STYLES DE TRAIT ---------------------------------------------------
+\tikzset{
+  fluxdonnee/.style   = {-{Latex[length=1.7mm]}, line width=0.6pt,
+                         draw=menalencre},
+  fluxreponse/.style  = {-{Latex[length=1.7mm,open]}, line width=0.6pt,
+                         draw=menaltrait},
+  fluxevenement/.style= {-{Latex[length=1.7mm]}, line width=0.6pt,
+                         draw=menalencre, densely dashed},
+  fluxcontrole/.style = {-{Latex[length=1.7mm]}, line width=0.6pt,
+                         draw=menalencre, densely dotted},
+  fluxrefuse/.style   = {-{Latex[length=1.9mm]}, line width=1.4pt,
+                         draw=menalrefus, line cap=round},
+  lienstructure/.style= {line width=0.5pt, draw=menaltrait},
+  % Pas de style « dépendance externe » : essayé, puis écarté --- un trait plein
+  % à pointe creuse est indistinguable de fluxdonnee en niveaux de gris.
+  % L'extériorité est portée par la forme du nœud (nexterne).
+  fluxsynthese/.style = {-{Latex[length=2.4mm,width=1.8mm]}, line width=1.6pt,
+                         draw=menalencre, line join=round},
+  seuil/.style        = {line width=1.0pt, draw=menalencre, dashed},
+  frontiereplan/.style= {line width=1.6pt, draw=menalencre},
+  % Croix de refus : \draw[fluxrefuse] (a) -- node[croixrefus]{} (b);
+  % Le fond blanc masque le trait sous la croix.
+  croixrefus/.style   = {pos=0.5, inner sep=0pt, minimum size=2.4mm,
+                         draw=none, fill=white,
+                         path picture={%
+                           \draw[line width=1.1pt, menalrefus, line cap=round]
+                             (path picture bounding box.south west)
+                               -- (path picture bounding box.north east)
+                             (path picture bounding box.north west)
+                               -- (path picture bounding box.south east);}},
+  etiq/.style         = {midway, fill=white, inner sep=1.2pt,
+                         font=\footnotesize, text=menalencre},
+  etiqsec/.style      = {midway, fill=white, inner sep=1.2pt,
+                         font=\scriptsize, text=menaltrait},
+}
+
+% --- 3. FORMES DE NŒUD ----------------------------------------------------
+\tikzset{
+  nsysteme/.style  = {draw=menalencre, line width=0.6pt, rounded corners=2pt,
+                      fill=white, align=center, font=\footnotesize,
+                      inner sep=3.5pt, minimum height=0.80cm},
+  nexterne/.style  = {nsysteme, densely dashed},
+  nstock/.style    = {nsysteme, double, double distance=0.8pt,
+                      rounded corners=0pt},
+  nacteur/.style   = {nsysteme, rounded corners=6pt, fill=menalplanA},
+  nporte/.style    = {draw=menalencre, line width=1.1pt, diamond,
+                      aspect=2.2, fill=menalplanB, align=center,
+                      font=\footnotesize, inner sep=2pt},
+  ncontrole/.style = {nsysteme, line width=1.2pt},
+  nabsent/.style   = {nsysteme, densely dashed, draw=menaltrait,
+                      text=menaltrait},
+  bandedonnee/.style      = {fill=menalplanA, rounded corners=3pt,
+                             inner sep=5pt, draw=none},
+  bandecontrole/.style    = {fill=menalplanB, rounded corners=3pt,
+                             inner sep=5pt, draw=none},
+  bandeobservation/.style = {fill=menalplanC, rounded corners=3pt,
+                             inner sep=5pt, draw=none},
+  titrebande/.style= {font=\footnotesize\itshape, text=menalencre,
+                      inner sep=2pt},
+}
+
+% --- 4. LÉGENDE INTERNE : obligatoire dès deux aspects de trait -----------
+% Déclarées ROBUSTES, pour la même raison que les pictogrammes de couverture :
+% une commande TikZ fragile casse dès qu'elle remonte dans une légende ou
+% dans la liste des figures.
+% Les deux macros n'imposent aucune taille : elles héritent de celle du contexte.
+% Une taille forcée composait « refus » plus gros que ses voisins dans la ligne de
+% notation d'une figure, qui est en \scriptsize.
+\DeclareRobustCommand{\legendetrait}[2]{%
+  \tikz[baseline=-0.55ex]{\draw[#1] (0,0) -- (0.7,0);}~{#2}%
+}
+\DeclareRobustCommand{\legendecroix}[1]{%
+  \tikz[baseline=-0.55ex]{\draw[fluxrefuse] (0,0) -- node[croixrefus]{} (0.7,0);}%
+  ~{#1}%
+}
+\tikzset{
+  legendecadre/.style = {draw=menaltrait, line width=0.4pt, rounded corners=2pt,
+                         fill=white, inner sep=4pt, align=left,
+                         font=\footnotesize},
+}
+
+% --- 5. ANNOTATION SECONDAIRE --------------------------------------------
+% Nom de produit ou compteur cité dans un nœud, sans valeur démonstrative.
+% Défini ici plutôt que dans un chapitre : plusieurs chapitres l'emploient.
+\providecommand{\gcprod}[1]{{\scriptsize\color{menaltrait}#1}}

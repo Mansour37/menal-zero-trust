@@ -1,0 +1,113 @@
+% =============================================================
+% Chapitre 4 — Mise en œuvre (~13 pages)
+% Contenu dérivé du LLD (conception cible détaillée) — À CONFRONTER
+% à 06_ECARTS_IMPLEMENTATION.md avant validation : ce chapitre ne
+% doit décrire, dans sa version finale, que ce qui est réellement
+% déployé, pas seulement ce qui était prévu.
+% =============================================================
+\chapter{Mise en œuvre}
+\label{ch:mise-en-oeuvre}
+
+\begin{attentedoc}
+Chapitre rédigé à partir du document de conception détaillée (LLD). Chaque sous-section
+ci-dessous doit être confrontée à \texttt{06\_ECARTS\_IMPLEMENTATION.md} avant validation
+finale : reformuler au passé (\og a été déployé \fg{}) uniquement ce qui est confirmé
+réellement en place ; garder le conditionnel ou signaler explicitement un écart sinon.
+\end{attentedoc}
+
+\section{Stratégie d'environnements et provisionnement}
+
+L'ensemble du socle --- des sept couches jusqu'au pipeline de livraison lui-même --- est
+décrit exclusivement sous forme de code d'infrastructure, organisé en un module réutilisable
+par couche. Aucune ressource n'est créée manuellement dans la console du fournisseur cloud :
+toute création passe par un pipeline dédié qui formate, valide, planifie, scanne, fait
+approuver puis applique les changements.
+
+\begin{keybox}[title=Principe retenu]
+Une image applicative est construite et analysée \textbf{une seule fois}, puis
+\emph{promue} d'un environnement à l'autre par son identifiant de contenu (empreinte)
+plutôt que reconstruite à chaque environnement. Ce qui s'exécute en production est, à
+l'octet près, ce qui a été analysé en amont --- reconstruire annulerait la valeur des
+analyses de sécurité.
+\end{keybox}
+
+\todo{Confirmer l'état réel de la stratégie de promotion (dev $\rightarrow$ recette
+$\rightarrow$ production) au moment de la rédaction --- certains environnements peuvent ne
+pas encore avoir été créés.}
+
+\section{Déploiement de la couche identité et du réseau}
+
+La couche identité et la couche réseau sont posées avant tout le reste, conformément à
+l'ordre de construction retenu (\og de l'intérieur vers l'extérieur \fg{}) : les fondations
+d'identité conditionnent la sécurité de toutes les couches suivantes. Cette couche comprend
+la création des comptes de service, la définition des rôles associés, le stockage des
+secrets applicatifs (un secret par valeur, jamais un secret dérivé d'un autre), et la
+configuration du réseau privé avec un accès contrôlé aux ressources de données.
+
+\section{Déploiement des workloads et du point d'entrée}
+
+Les services applicatifs sont déployés sur une plateforme d'exécution serverless, avec un
+point d'entrée unique filtré par un pare-feu applicatif. Chaque service ne peut être atteint
+que via ce point d'entrée --- une tentative d'accès direct à l'adresse interne d'un service
+est un des tests de validation prévus au chapitre~\ref{ch:tests}.
+
+\section{Mise en œuvre du pipeline DevSecOps}
+
+Le pipeline de livraison applique une séquence de portes bloquantes avant tout déploiement :
+
+\begin{enumerate}
+  \item authentification du pipeline par fédération d'identité (aucune clé stockée) ;
+  \item détection de secrets accidentellement commités --- échec immédiat si un secret est
+        détecté ;
+  \item analyse statique du code ;
+  \item construction de l'image, à partir d'une image de base identifiée par empreinte ;
+  \item analyse de l'image et de ses dépendances (vulnérabilités connues) ;
+  \item publication dans un registre unique de confiance ;
+  \item déploiement référencé par empreinte de contenu, jamais par une étiquette mutable.
+\end{enumerate}
+
+Un second pipeline, distinct mais authentifié selon le même principe de fédération
+d'identité, applique une séquence équivalente à l'infrastructure elle-même : formatage,
+validation, plan de changement soumis à relecture humaine, analyse de sécurité de la
+configuration d'infrastructure, puis application.
+
+\section{Déploiement de la détection et de l'enrichissement sémantique}
+
+Les journaux d'audit et applicatifs de l'ensemble des couches sont collectés puis filtrés
+avant ingestion dans l'entrepôt de détection, afin de maîtriser le volume ingéré --- poste
+de coût potentiellement dominant s'il n'est pas contrôlé. Un ensemble de règles de détection
+traduites sous forme de requêtes s'exécute périodiquement sur ces journaux pour produire des
+détections normalisées.
+
+Un traitement planifié complète ensuite chaque détection non couverte par une règle
+statique : il interroge le composant d'enrichissement sémantique, compare le résultat aux
+techniques d'attaque connues, et n'inscrit un rattachement que si la similarité dépasse un
+seuil déclaré --- et non codé en dur --- ce qui permet de l'ajuster sans redéploiement.
+
+\section{Dashboard de supervision sécurité}
+
+Le tableau de bord de supervision n'accède ni directement à l'entrepôt de détection ni au
+composant d'enrichissement : il passe systématiquement par l'interface applicative
+intermédiaire, qui applique un contrôle d'accès par rôle (administration, analyse, lecture
+standard). Cette contrainte évite qu'une interface destinée à la consultation devienne un
+chemin d'accès direct aux données sensibles.
+
+\todo{Décrire les composants réellement livrés du tableau de bord (matrice de couverture
+des techniques d'attaque, chronologie d'incident, panneau de détail, vulnérabilités
+priorisées) une fois leur état d'avancement confirmé.}
+
+\section{Planning du PFE}
+
+\begin{attentedoc}
+Le guide pédagogique demande un planning sur une page complète en fin de description du
+travail réalisé. À construire à partir du calendrier réel du stage (dates de début/fin de
+chaque phase), pas du calendrier indicatif de la méthodologie de cadrage --- les deux
+peuvent diverger.
+\end{attentedoc}
+
+% \begin{figure}[htbp]
+%   \centering
+%   \includegraphics[width=\linewidth]{figures/planning_pfe.pdf}
+%   \caption{Planning réel du PFE}
+%   \label{fig:planning}
+% \end{figure}

@@ -1,0 +1,26 @@
+==================================================================
+ PREUVE K15
+ Test T2 — refus repetes sur le second facteur (trace 19/08)
+ ---
+ genere le : 2026-08-28 12:36:58 UTC
+ projet    : menal-zero-trust-staging
+ dataset   : menal_security_staging
+==================================================================
+
+Statuts HTTP historiques sur /auth/mfa/verify le 19/08/2026
+Source : menal_security_staging.run_googleapis_com_requests (journal de la passerelle)
+
++-----------+--------+-------------+-------------+
+| code_http | nombre | premier_utc | dernier_utc |
++-----------+--------+-------------+-------------+
+|       422 |     14 | 12:05:07    | 13:59:35    |
++-----------+--------+-------------+-------------+
+
+Le 429 de la 11e tentative n apparait pas ici : au 19/08 il etait
+servi hors de ce journal. Aujourd hui il vient de Cloud Armor (10/min,
+ban 5 min) — verifiable en direct, mais avec des 401 et non des 422.
+
+------------------------------------------------------------------
+ code de retour : 0
+ fin            : 2026-08-28 12:37:05 UTC
+------------------------------------------------------------------

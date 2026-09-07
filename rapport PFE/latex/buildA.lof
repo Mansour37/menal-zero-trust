@@ -1,0 +1,45 @@
+\babel@toc {french}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {french}{}\relax 
+\contentsline {figure}{\numberline {1}{\ignorespaces Carte du mémoire : chaque chapitre consomme le livrable du précédent}}{3}{figure.caption.11}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2}{\ignorespaces Organigramme de MENAL-SARL et rattachement du projet}}{5}{figure.caption.13}%
+\contentsline {figure}{\numberline {3}{\ignorespaces Boucle fonctionnelle de l'application pilote et actifs produits}}{7}{figure.caption.14}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Modèle de sécurité de l'hébergement initial}}{9}{figure.caption.15}%
+\contentsline {figure}{\numberline {5}{\ignorespaces Répartition des 41~critères de préparation au déploiement}}{10}{figure.caption.16}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {6}{\ignorespaces Diagramme de cas d'utilisation du socle}}{32}{figure.caption.20}%
+\contentsline {figure}{\numberline {7}{\ignorespaces Diagramme de flux de données du socle et ses cinq frontières de confiance}}{34}{figure.caption.21}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {8}{\ignorespaces Vue de contexte : le socle, ses acteurs et les systèmes extérieurs dont il dépend}}{42}{figure.caption.22}%
+\contentsline {figure}{\numberline {9}{\ignorespaces Modèle en couches : cinq couches empilées (L1, L3, L4, L5, L6) et deux plans transversaux}}{43}{figure.caption.23}%
+\contentsline {figure}{\numberline {10}{\ignorespaces Vue de déploiement : composants, liens réseau et flux F1 à F5}}{44}{figure.caption.24}%
+\contentsline {figure}{\numberline {11}{\ignorespaces Topologie réseau \textbf {avant la refonte} --- état du dépôt jusqu'au 11/08/2026, et diagnostic qui a motivé la migration}}{45}{figure.caption.25}%
+\contentsline {figure}{\numberline {12}{\ignorespaces Topologie réseau \textbf {après la refonte appliquée du 11 au 25/08/2026} --- le réseau en service à 25/08/2026, à comparer à la \cref {fig:topologie-reseau}}}{48}{figure.caption.26}%
+\contentsline {figure}{\numberline {13}{\ignorespaces Cycle de vie de la donnée de sécurité : six étapes, et le budget de latence porté par les cadences}}{54}{figure.caption.28}%
+\contentsline {figure}{\numberline {14}{\ignorespaces Modèle de données des deux systèmes de stockage : ce que les clés permettent, et la jointure que leur absence interdit}}{55}{figure.caption.29}%
+\contentsline {figure}{\numberline {15}{\ignorespaces Requête malveillante refusée au périmètre : ordre d'évaluation des règles et trajet de la preuve jusqu'à l'analyste}}{56}{figure.caption.30}%
+\contentsline {figure}{\numberline {16}{\ignorespaces De l'attaque à l'incident : cinq repères et budget de latence par segment}}{57}{figure.caption.31}%
+\contentsline {figure}{\numberline {17}{\ignorespaces Plan d'identité : droits accordés et interdictions structurantes (cinq identités)}}{61}{figure.caption.33}%
+\contentsline {figure}{\numberline {18}{\ignorespaces Chaînes de délégation d'identité : ce qu'un droit de déploiement à l'échelle du projet rend atteignable}}{62}{figure.caption.34}%
+\contentsline {figure}{\numberline {19}{\ignorespaces Authentification à deux facteurs : cinq états de la session et le jeton intermédiaire qui ne porte aucun rôle}}{64}{figure.caption.35}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {20}{\ignorespaces Graphe des tâches de la chaîne de livraison applicative}}{71}{figure.caption.38}%
+\contentsline {figure}{\numberline {21}{\ignorespaces Chaîne de livraison applicative : huit étapes et trois portes bloquantes}}{71}{figure.caption.39}%
+\contentsline {figure}{\numberline {22}{\ignorespaces Boucle F6 : rapprochement des vulnérabilités livrées et des techniques observées}}{74}{figure.caption.40}%
+\contentsline {figure}{\numberline {23}{\ignorespaces Chaîne de provisionnement de l'infrastructure : la frontière automatique/manuel comme choix de privilège}}{75}{figure.caption.41}%
+\contentsline {figure}{\numberline {24}{\ignorespaces Chaîne de détection et d'enrichissement : deux cycles indépendants}}{80}{figure.caption.43}%
+\contentsline {figure}{\numberline {25}{\ignorespaces Architecture interne des deux logiciels écrits}}{82}{figure.caption.45}%
+\contentsline {figure}{\numberline {26}{\ignorespaces Chaîne de données d'une vue du tableau de bord : les cinq sauts et la frontière que le jeton ne franchit pas}}{82}{figure.caption.46}%
+\contentsline {figure}{\numberline {27}{\ignorespaces Accueil d'un locataire : six étapes, et les cinq gestes qui restent hors du code}}{87}{figure.caption.48}%
+\contentsline {figure}{\numberline {28}{\ignorespaces Planning consolidé du stage, du 03/03/2026{} au 07/09/2026{}}}{92}{figure.caption.49}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {29}{\ignorespaces Démarrage à froid du service d'encodage}}{101}{figure.caption.51}%
+\contentsline {figure}{\numberline {30}{\ignorespaces Scénario de bout en bout du 19/08/2026 : de l'attaque à l'alerte qualifiée}}{104}{figure.caption.54}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }

@@ -1,0 +1,1254 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nyt/global//global/global/global}
+    \entry{attackbert_model}{misc}{}{}
+      \name{author}{5}{}{%
+        {{hash=9130d8968432056e9f07ab16b434cbcc}{%
+           family={Abdeen},
+           familyi={A\bibinitperiod},
+           given={Basel},
+           giveni={B\bibinitperiod}}}%
+        {{hash=374166c6777e8b22e3492ec8cc52f34f}{%
+           family={Al-Shaer},
+           familyi={A\bibinithyphendelim S\bibinitperiod},
+           given={Ehab},
+           giveni={E\bibinitperiod}}}%
+        {{hash=be68bdccd8d20ba63b87fd0fde09fcd2}{%
+           family={Singhal},
+           familyi={S\bibinitperiod},
+           given={Anoop},
+           giveni={A\bibinitperiod}}}%
+        {{hash=8796800ba5993ce66e4f20ef1f70142b}{%
+           family={Khan},
+           familyi={K\bibinitperiod},
+           given={Latifur},
+           giveni={L\bibinitperiod}}}%
+        {{hash=e97ce9ec6bf3717a17b693ac72f0ef57}{%
+           family={Hamlen},
+           familyi={H\bibinitperiod},
+           given={Kevin\bibnamedelima W.},
+           giveni={K\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+      }
+      \strng{namehash}{6657fb86843f87d7dfb8382b430407f6}
+      \strng{fullhash}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{fullhashraw}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{bibnamehash}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{authorbibnamehash}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{authornamehash}{6657fb86843f87d7dfb8382b430407f6}
+      \strng{authorfullhash}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{authorfullhashraw}{3caa10eabeb9008a97fc749ec4bf5419}
+      \field{extraname}{1}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{Hugging Face, dépôt \texttt{basel/ATTACK-BERT}}
+      \field{note}{Modèle publié par les auteurs de SMET}
+      \field{title}{{ATT\&CK-BERT} : modèle de représentation de phrases spécialisé pour la cybersécurité (carte de modèle)}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2023}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://huggingface.co/basel/ATTACK-BERT
+      \endverb
+      \verb{url}
+      \verb https://huggingface.co/basel/ATTACK-BERT
+      \endverb
+    \endentry
+    \entry{smet2023}{inproceedings}{}{}
+      \name{author}{5}{}{%
+        {{hash=9130d8968432056e9f07ab16b434cbcc}{%
+           family={Abdeen},
+           familyi={A\bibinitperiod},
+           given={Basel},
+           giveni={B\bibinitperiod}}}%
+        {{hash=374166c6777e8b22e3492ec8cc52f34f}{%
+           family={Al-Shaer},
+           familyi={A\bibinithyphendelim S\bibinitperiod},
+           given={Ehab},
+           giveni={E\bibinitperiod}}}%
+        {{hash=be68bdccd8d20ba63b87fd0fde09fcd2}{%
+           family={Singhal},
+           familyi={S\bibinitperiod},
+           given={Anoop},
+           giveni={A\bibinitperiod}}}%
+        {{hash=8796800ba5993ce66e4f20ef1f70142b}{%
+           family={Khan},
+           familyi={K\bibinitperiod},
+           given={Latifur},
+           giveni={L\bibinitperiod}}}%
+        {{hash=e97ce9ec6bf3717a17b693ac72f0ef57}{%
+           family={Hamlen},
+           familyi={H\bibinitperiod},
+           given={Kevin\bibnamedelima W.},
+           giveni={K\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{6657fb86843f87d7dfb8382b430407f6}
+      \strng{fullhash}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{fullhashraw}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{bibnamehash}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{authorbibnamehash}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{authornamehash}{6657fb86843f87d7dfb8382b430407f6}
+      \strng{authorfullhash}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{authorfullhashraw}{3caa10eabeb9008a97fc749ec4bf5419}
+      \field{extraname}{2}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Data and Applications Security and Privacy XXXVII}
+      \field{series}{Lecture Notes in Computer Science}
+      \field{title}{{SMET}: Semantic Mapping of {CVE} to {ATT\&CK} and Its Application to Cybersecurity}
+      \field{volume}{13942}
+      \field{year}{2023}
+      \field{pages}{243\bibrangedash 260}
+      \range{pages}{18}
+      \verb{doi}
+      \verb 10.1007/978-3-031-37586-6_15
+      \endverb
+    \endentry
+    \entry{smet2024}{article}{}{}
+      \name{author}{5}{}{%
+        {{hash=9130d8968432056e9f07ab16b434cbcc}{%
+           family={Abdeen},
+           familyi={A\bibinitperiod},
+           given={Basel},
+           giveni={B\bibinitperiod}}}%
+        {{hash=374166c6777e8b22e3492ec8cc52f34f}{%
+           family={Al-Shaer},
+           familyi={A\bibinithyphendelim S\bibinitperiod},
+           given={Ehab},
+           giveni={E\bibinitperiod}}}%
+        {{hash=be68bdccd8d20ba63b87fd0fde09fcd2}{%
+           family={Singhal},
+           familyi={S\bibinitperiod},
+           given={Anoop},
+           giveni={A\bibinitperiod}}}%
+        {{hash=8796800ba5993ce66e4f20ef1f70142b}{%
+           family={Khan},
+           familyi={K\bibinitperiod},
+           given={Latifur},
+           giveni={L\bibinitperiod}}}%
+        {{hash=e97ce9ec6bf3717a17b693ac72f0ef57}{%
+           family={Hamlen},
+           familyi={H\bibinitperiod},
+           given={Kevin\bibnamedelima W.},
+           giveni={K\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+      }
+      \strng{namehash}{6657fb86843f87d7dfb8382b430407f6}
+      \strng{fullhash}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{fullhashraw}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{bibnamehash}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{authorbibnamehash}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{authornamehash}{6657fb86843f87d7dfb8382b430407f6}
+      \strng{authorfullhash}{3caa10eabeb9008a97fc749ec4bf5419}
+      \strng{authorfullhashraw}{3caa10eabeb9008a97fc749ec4bf5419}
+      \field{extraname}{3}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Computer Security}
+      \field{title}{{SMET}: Semantic Mapping of {CTI} Reports and {CVE} to {ATT\&CK} for Advanced Threat Intelligence}
+      \field{year}{2024}
+      \verb{doi}
+      \verb 10.3233/JCS-230218
+      \endverb
+    \endentry
+    \entry{anssi_ebios_rm2018}{report}{}{}
+      \name{author}{1}{}{%
+        {{hash=2f43dae9c7bbb87834a2f493069d649e}{%
+           family={{Agence nationale de la sécurité des systèmes d'information (ANSSI)}},
+           familyi={A\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {ANSSI}%
+      }
+      \strng{namehash}{2f43dae9c7bbb87834a2f493069d649e}
+      \strng{fullhash}{2f43dae9c7bbb87834a2f493069d649e}
+      \strng{fullhashraw}{2f43dae9c7bbb87834a2f493069d649e}
+      \strng{bibnamehash}{2f43dae9c7bbb87834a2f493069d649e}
+      \strng{authorbibnamehash}{2f43dae9c7bbb87834a2f493069d649e}
+      \strng{authornamehash}{2f43dae9c7bbb87834a2f493069d649e}
+      \strng{authorfullhash}{2f43dae9c7bbb87834a2f493069d649e}
+      \strng{authorfullhashraw}{2f43dae9c7bbb87834a2f493069d649e}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{12}
+      \field{number}{ANSSI-PA-048, version 1.1}
+      \field{title}{La méthode EBIOS Risk Manager --- Le Guide}
+      \field{type}{techreport}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2018}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.ssi.gouv.fr/uploads/2018/10/guide-methode-ebios-risk-manager.pdf
+      \endverb
+      \verb{url}
+      \verb https://www.ssi.gouv.fr/uploads/2018/10/guide-methode-ebios-risk-manager.pdf
+      \endverb
+    \endentry
+    \entry{securebert2022}{online}{}{}
+      \name{author}{4}{}{%
+        {{hash=5d4e709ec8ce3865d5da612b7170e456}{%
+           family={Aghaei},
+           familyi={A\bibinitperiod},
+           given={Ehsan},
+           giveni={E\bibinitperiod}}}%
+        {{hash=f9772b3ec96a6dc29379dcc0a4b25152}{%
+           family={Niu},
+           familyi={N\bibinitperiod},
+           given={Xi},
+           giveni={X\bibinitperiod}}}%
+        {{hash=cdd458ca7aaa1f275dff772411ece563}{%
+           family={Shadid},
+           familyi={S\bibinitperiod},
+           given={Waseem},
+           giveni={W\bibinitperiod}}}%
+        {{hash=374166c6777e8b22e3492ec8cc52f34f}{%
+           family={Al-Shaer},
+           familyi={A\bibinithyphendelim S\bibinitperiod},
+           given={Ehab},
+           giveni={E\bibinitperiod}}}%
+      }
+      \strng{namehash}{dc119c5f8f4f1cf2855b09db65627ce8}
+      \strng{fullhash}{fda701c72b934d836532addabed3aedd}
+      \strng{fullhashraw}{fda701c72b934d836532addabed3aedd}
+      \strng{bibnamehash}{fda701c72b934d836532addabed3aedd}
+      \strng{authorbibnamehash}{fda701c72b934d836532addabed3aedd}
+      \strng{authornamehash}{dc119c5f8f4f1cf2855b09db65627ce8}
+      \strng{authorfullhash}{fda701c72b934d836532addabed3aedd}
+      \strng{authorfullhashraw}{fda701c72b934d836532addabed3aedd}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprinttype}{arXiv}
+      \field{title}{{SecureBERT}: A Domain-Specific Language Model for Cybersecurity}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2022}
+      \field{urldateera}{ce}
+      \verb{eprint}
+      \verb 2204.02685
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/2204.02685
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/2204.02685
+      \endverb
+    \endentry
+    \entry{aws_regions}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=3eb2c1a57a8160029f036e3dcbf84bf1}{%
+           family={{Amazon Web Services}},
+           familyi={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{3eb2c1a57a8160029f036e3dcbf84bf1}
+      \strng{fullhash}{3eb2c1a57a8160029f036e3dcbf84bf1}
+      \strng{fullhashraw}{3eb2c1a57a8160029f036e3dcbf84bf1}
+      \strng{bibnamehash}{3eb2c1a57a8160029f036e3dcbf84bf1}
+      \strng{authorbibnamehash}{3eb2c1a57a8160029f036e3dcbf84bf1}
+      \strng{authornamehash}{3eb2c1a57a8160029f036e3dcbf84bf1}
+      \strng{authorfullhash}{3eb2c1a57a8160029f036e3dcbf84bf1}
+      \strng{authorfullhashraw}{3eb2c1a57a8160029f036e3dcbf84bf1}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{{AWS} Global Infrastructure: Regions and Availability Zones}
+      \field{urlday}{27}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://aws.amazon.com/about-aws/global-infrastructure/regions_az/
+      \endverb
+      \verb{url}
+      \verb https://aws.amazon.com/about-aws/global-infrastructure/regions_az/
+      \endverb
+    \endentry
+    \entry{nist180035}{report}{}{}
+      \true{moreauthor}
+      \true{morelabelname}
+      \name{author}{5}{}{%
+        {{hash=e787d1fa9ed1abc3c9e5b389996ddaac}{%
+           family={Borchert},
+           familyi={B\bibinitperiod},
+           given={Oliver},
+           giveni={O\bibinitperiod}}}%
+        {{hash=6c2a56f6b8f9691e6dbeacee598bf8db}{%
+           family={Howell},
+           familyi={H\bibinitperiod},
+           given={Gema},
+           giveni={G\bibinitperiod}}}%
+        {{hash=627545218a1cdba9d49794be0dffabce}{%
+           family={Kerman},
+           familyi={K\bibinitperiod},
+           given={Alper},
+           giveni={A\bibinitperiod}}}%
+        {{hash=3c3d7dbac07ac32c82628b6a0e35decb}{%
+           family={Rose},
+           familyi={R\bibinitperiod},
+           given={Scott},
+           giveni={S\bibinitperiod}}}%
+        {{hash=ffbf3d2da7973bafe66533b2afd05546}{%
+           family={Souppaya},
+           familyi={S\bibinitperiod},
+           given={Murugiah},
+           giveni={M\bibinitperiod}}}%
+      }
+      \list{institution}{2}{%
+        {National Institute of Standards}%
+        {Technology (NIST)}%
+      }
+      \strng{namehash}{e646bb6f6f199ec5ca82c32c682fab6b}
+      \strng{fullhash}{135a1bf426a1b5708d5a0f5570fb9ac6}
+      \strng{fullhashraw}{135a1bf426a1b5708d5a0f5570fb9ac6}
+      \strng{bibnamehash}{135a1bf426a1b5708d5a0f5570fb9ac6}
+      \strng{authorbibnamehash}{135a1bf426a1b5708d5a0f5570fb9ac6}
+      \strng{authornamehash}{e646bb6f6f199ec5ca82c32c682fab6b}
+      \strng{authorfullhash}{135a1bf426a1b5708d5a0f5570fb9ac6}
+      \strng{authorfullhashraw}{135a1bf426a1b5708d5a0f5570fb9ac6}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{6}
+      \field{number}{1800-35}
+      \field{title}{Implementing a Zero Trust Architecture}
+      \field{type}{NIST Special Publication}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2025}
+      \field{urldateera}{ce}
+      \verb{doi}
+      \verb 10.6028/NIST.SP.1800-35
+      \endverb
+      \verb{urlraw}
+      \verb https://csrc.nist.gov/pubs/sp/1800/35/final
+      \endverb
+      \verb{url}
+      \verb https://csrc.nist.gov/pubs/sp/1800/35/final
+      \endverb
+    \endentry
+    \entry{cis_gcp_benchmark}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=4bb05c228ea4da8e9f76e80ae1e45db5}{%
+           family={{Center for Internet Security}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \strng{namehash}{4bb05c228ea4da8e9f76e80ae1e45db5}
+      \strng{fullhash}{4bb05c228ea4da8e9f76e80ae1e45db5}
+      \strng{fullhashraw}{4bb05c228ea4da8e9f76e80ae1e45db5}
+      \strng{bibnamehash}{4bb05c228ea4da8e9f76e80ae1e45db5}
+      \strng{authorbibnamehash}{4bb05c228ea4da8e9f76e80ae1e45db5}
+      \strng{authornamehash}{4bb05c228ea4da8e9f76e80ae1e45db5}
+      \strng{authorfullhash}{4bb05c228ea4da8e9f76e80ae1e45db5}
+      \strng{authorfullhashraw}{4bb05c228ea4da8e9f76e80ae1e45db5}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{{CIS Google Cloud Computing Platform Benchmark}}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.cisecurity.org/benchmark/google_cloud_computing_platform
+      \endverb
+      \verb{url}
+      \verb https://www.cisecurity.org/benchmark/google_cloud_computing_platform
+      \endverb
+    \endentry
+    \entry{cisa_aa20_352a}{report}{}{}
+      \name{author}{1}{}{%
+        {{hash=3f8db76109f17dfb857138bae71f9ce3}{%
+           family={{Cybersecurity and Infrastructure Security Agency (CISA)}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {CISA}%
+      }
+      \strng{namehash}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{fullhash}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{fullhashraw}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{bibnamehash}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{authorbibnamehash}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{authornamehash}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{authorfullhash}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{authorfullhashraw}{3f8db76109f17dfb857138bae71f9ce3}
+      \field{extraname}{1}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{12}
+      \field{note}{Mis à jour en avril 2021}
+      \field{number}{AA20-352A}
+      \field{title}{Advanced Persistent Threat Compromise of Government Agencies, Critical Infrastructure, and Private Sector Organizations}
+      \field{type}{Cybersecurity Advisory}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2020}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-352a
+      \endverb
+      \verb{url}
+      \verb https://www.cisa.gov/news-events/cybersecurity-advisories/aa20-352a
+      \endverb
+    \endentry
+    \entry{cisa_zt_maturity_model}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=3f8db76109f17dfb857138bae71f9ce3}{%
+           family={{Cybersecurity and Infrastructure Security Agency (CISA)}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \strng{namehash}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{fullhash}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{fullhashraw}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{bibnamehash}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{authorbibnamehash}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{authornamehash}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{authorfullhash}{3f8db76109f17dfb857138bae71f9ce3}
+      \strng{authorfullhashraw}{3f8db76109f17dfb857138bae71f9ce3}
+      \field{extraname}{2}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Zero Trust Maturity Model}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{version}{2.0}
+      \field{year}{2023}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.cisa.gov/zero-trust-maturity-model
+      \endverb
+      \verb{url}
+      \verb https://www.cisa.gov/zero-trust-maturity-model
+      \endverb
+    \endentry
+    \entry{devlin_bert2019}{inproceedings}{}{}
+      \name{author}{4}{}{%
+        {{hash=13202969e372bc82318f9629cbdd199b}{%
+           family={Devlin},
+           familyi={D\bibinitperiod},
+           given={Jacob},
+           giveni={J\bibinitperiod}}}%
+        {{hash=a45784fe7163b45f11d166564f5d24b6}{%
+           family={Chang},
+           familyi={C\bibinitperiod},
+           given={Ming-Wei},
+           giveni={M\bibinithyphendelim W\bibinitperiod}}}%
+        {{hash=8dde73b4194f5bc4230c4808f3fc1534}{%
+           family={Lee},
+           familyi={L\bibinitperiod},
+           given={Kenton},
+           giveni={K\bibinitperiod}}}%
+        {{hash=b92aa283415413bb8d2a1548716d0c7d}{%
+           family={Toutanova},
+           familyi={T\bibinitperiod},
+           given={Kristina},
+           giveni={K\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Association for Computational Linguistics}%
+      }
+      \strng{namehash}{ad8e2e2a80d28ade21e86852b804fc9b}
+      \strng{fullhash}{e8bccd48302a14eeba57d9dce2f49ef4}
+      \strng{fullhashraw}{e8bccd48302a14eeba57d9dce2f49ef4}
+      \strng{bibnamehash}{e8bccd48302a14eeba57d9dce2f49ef4}
+      \strng{authorbibnamehash}{e8bccd48302a14eeba57d9dce2f49ef4}
+      \strng{authornamehash}{ad8e2e2a80d28ade21e86852b804fc9b}
+      \strng{authorfullhash}{e8bccd48302a14eeba57d9dce2f49ef4}
+      \strng{authorfullhashraw}{e8bccd48302a14eeba57d9dce2f49ef4}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies}
+      \field{title}{{BERT}: Pre-training of Deep Bidirectional Transformers for Language Understanding}
+      \field{year}{2019}
+      \field{pages}{4171\bibrangedash 4186}
+      \range{pages}{16}
+    \endentry
+    \entry{gitguardian_sprawl}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=bc813f738ebdc7f65b83fbf094291f21}{%
+           family={{GitGuardian}},
+           familyi={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{bc813f738ebdc7f65b83fbf094291f21}
+      \strng{fullhash}{bc813f738ebdc7f65b83fbf094291f21}
+      \strng{fullhashraw}{bc813f738ebdc7f65b83fbf094291f21}
+      \strng{bibnamehash}{bc813f738ebdc7f65b83fbf094291f21}
+      \strng{authorbibnamehash}{bc813f738ebdc7f65b83fbf094291f21}
+      \strng{authornamehash}{bc813f738ebdc7f65b83fbf094291f21}
+      \strng{authorfullhash}{bc813f738ebdc7f65b83fbf094291f21}
+      \strng{authorfullhashraw}{bc813f738ebdc7f65b83fbf094291f21}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{State of Secrets Sprawl}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2025}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.gitguardian.com/state-of-secrets-sprawl-report-2025
+      \endverb
+      \verb{url}
+      \verb https://www.gitguardian.com/state-of-secrets-sprawl-report-2025
+      \endverb
+    \endentry
+    \entry{gcp_container_best_practices}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=57f3af2a3d1051c172ab3c3db7d5409d}{%
+           family={{Google Cloud}},
+           familyi={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{fullhash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{fullhashraw}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{bibnamehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authorbibnamehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authornamehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authorfullhash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authorfullhashraw}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \field{extraname}{1}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Best Practices for Building Containers}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://cloud.google.com/architecture/best-practices-for-building-containers
+      \endverb
+      \verb{url}
+      \verb https://cloud.google.com/architecture/best-practices-for-building-containers
+      \endverb
+    \endentry
+    \entry{gcp_architecture_framework}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=57f3af2a3d1051c172ab3c3db7d5409d}{%
+           family={{Google Cloud}},
+           familyi={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{fullhash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{fullhashraw}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{bibnamehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authorbibnamehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authornamehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authorfullhash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authorfullhashraw}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \field{extraname}{2}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Google Cloud Architecture Framework}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://cloud.google.com/architecture/framework
+      \endverb
+      \verb{url}
+      \verb https://cloud.google.com/architecture/framework
+      \endverb
+    \endentry
+    \entry{gcp_free_tier}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=57f3af2a3d1051c172ab3c3db7d5409d}{%
+           family={{Google Cloud}},
+           familyi={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{fullhash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{fullhashraw}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{bibnamehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authorbibnamehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authornamehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authorfullhash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authorfullhashraw}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \field{extraname}{3}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Google Cloud Free Program: Free Tier Usage Limits}
+      \field{urlday}{27}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://cloud.google.com/free/docs/free-cloud-features
+      \endverb
+      \verb{url}
+      \verb https://cloud.google.com/free/docs/free-cloud-features
+      \endverb
+    \endentry
+    \entry{gcp_regions_zones}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=57f3af2a3d1051c172ab3c3db7d5409d}{%
+           family={{Google Cloud}},
+           familyi={G\bibinitperiod}}}%
+      }
+      \strng{namehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{fullhash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{fullhashraw}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{bibnamehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authorbibnamehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authornamehash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authorfullhash}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \strng{authorfullhashraw}{57f3af2a3d1051c172ab3c3db7d5409d}
+      \field{extraname}{4}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Regions and Zones}
+      \field{urlday}{27}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://cloud.google.com/compute/docs/regions-zones
+      \endverb
+      \verb{url}
+      \verb https://cloud.google.com/compute/docs/regions-zones
+      \endverb
+    \endentry
+    \entry{hashicorp_drift}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=1129ea7ef173c0128f37020fea647cec}{%
+           family={{HashiCorp}},
+           familyi={H\bibinitperiod}}}%
+      }
+      \strng{namehash}{1129ea7ef173c0128f37020fea647cec}
+      \strng{fullhash}{1129ea7ef173c0128f37020fea647cec}
+      \strng{fullhashraw}{1129ea7ef173c0128f37020fea647cec}
+      \strng{bibnamehash}{1129ea7ef173c0128f37020fea647cec}
+      \strng{authorbibnamehash}{1129ea7ef173c0128f37020fea647cec}
+      \strng{authornamehash}{1129ea7ef173c0128f37020fea647cec}
+      \strng{authorfullhash}{1129ea7ef173c0128f37020fea647cec}
+      \strng{authorfullhashraw}{1129ea7ef173c0128f37020fea647cec}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Automatically Detect Resource Drift and Health}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2025}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://developer.hashicorp.com/well-architected-framework/optimize-systems/monitor-system-health/detect-configuration-drift
+      \endverb
+      \verb{url}
+      \verb https://developer.hashicorp.com/well-architected-framework/optimize-systems/monitor-system-health/detect-configuration-drift
+      \endverb
+    \endentry
+    \entry{hetzner_locations}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=c99b2528ad52ee3d32dadeeb1a6359f0}{%
+           family={{Hetzner Online GmbH}},
+           familyi={H\bibinitperiod}}}%
+      }
+      \strng{namehash}{c99b2528ad52ee3d32dadeeb1a6359f0}
+      \strng{fullhash}{c99b2528ad52ee3d32dadeeb1a6359f0}
+      \strng{fullhashraw}{c99b2528ad52ee3d32dadeeb1a6359f0}
+      \strng{bibnamehash}{c99b2528ad52ee3d32dadeeb1a6359f0}
+      \strng{authorbibnamehash}{c99b2528ad52ee3d32dadeeb1a6359f0}
+      \strng{authornamehash}{c99b2528ad52ee3d32dadeeb1a6359f0}
+      \strng{authorfullhash}{c99b2528ad52ee3d32dadeeb1a6359f0}
+      \strng{authorfullhashraw}{c99b2528ad52ee3d32dadeeb1a6359f0}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Hetzner Data Center Locations}
+      \field{urlday}{27}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.hetzner.com/unternehmen/rechenzentrum/
+      \endverb
+      \verb{url}
+      \verb https://www.hetzner.com/unternehmen/rechenzentrum/
+      \endverb
+    \endentry
+    \entry{iso27005_2022}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=7058e4bd76f877c52b621c942b30613c}{%
+           family={{International Organization for Standardization}},
+           familyi={I\bibinitperiod}}}%
+      }
+      \strng{namehash}{7058e4bd76f877c52b621c942b30613c}
+      \strng{fullhash}{7058e4bd76f877c52b621c942b30613c}
+      \strng{fullhashraw}{7058e4bd76f877c52b621c942b30613c}
+      \strng{bibnamehash}{7058e4bd76f877c52b621c942b30613c}
+      \strng{authorbibnamehash}{7058e4bd76f877c52b621c942b30613c}
+      \strng{authornamehash}{7058e4bd76f877c52b621c942b30613c}
+      \strng{authorfullhash}{7058e4bd76f877c52b621c942b30613c}
+      \strng{authorfullhashraw}{7058e4bd76f877c52b621c942b30613c}
+      \field{sortinit}{I}
+      \field{sortinithash}{8d291c51ee89b6cd86bf5379f0b151d8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{10}
+      \field{number}{ISO/IEC 27005:2022}
+      \field{title}{Information Security, Cybersecurity and Privacy Protection --- Guidance on Managing Information Security Risks}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2022}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.iso.org/standard/80585.html
+      \endverb
+      \verb{url}
+      \verb https://www.iso.org/standard/80585.html
+      \endverb
+    \endentry
+    \entry{kindervag2010}{report}{}{}
+      \name{author}{1}{}{%
+        {{hash=bed0a102d93de5ed73be558a35647dd6}{%
+           family={Kindervag},
+           familyi={K\bibinitperiod},
+           given={John},
+           giveni={J\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {Forrester Research}%
+      }
+      \strng{namehash}{bed0a102d93de5ed73be558a35647dd6}
+      \strng{fullhash}{bed0a102d93de5ed73be558a35647dd6}
+      \strng{fullhashraw}{bed0a102d93de5ed73be558a35647dd6}
+      \strng{bibnamehash}{bed0a102d93de5ed73be558a35647dd6}
+      \strng{authorbibnamehash}{bed0a102d93de5ed73be558a35647dd6}
+      \strng{authornamehash}{bed0a102d93de5ed73be558a35647dd6}
+      \strng{authorfullhash}{bed0a102d93de5ed73be558a35647dd6}
+      \strng{authorfullhashraw}{bed0a102d93de5ed73be558a35647dd6}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{No More Chewy Centers: Introducing the Zero Trust Model of Information Security}
+      \field{type}{techreport}
+      \field{year}{2010}
+    \endentry
+    \entry{mitre_attack}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=74ba159b7a793d67eb4e566a38793238}{%
+           family={{MITRE Corporation}},
+           familyi={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{74ba159b7a793d67eb4e566a38793238}
+      \strng{fullhash}{74ba159b7a793d67eb4e566a38793238}
+      \strng{fullhashraw}{74ba159b7a793d67eb4e566a38793238}
+      \strng{bibnamehash}{74ba159b7a793d67eb4e566a38793238}
+      \strng{authorbibnamehash}{74ba159b7a793d67eb4e566a38793238}
+      \strng{authornamehash}{74ba159b7a793d67eb4e566a38793238}
+      \strng{authorfullhash}{74ba159b7a793d67eb4e566a38793238}
+      \strng{authorfullhashraw}{74ba159b7a793d67eb4e566a38793238}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{{MITRE ATT\&CK}}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{version}{v19}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://attack.mitre.org/
+      \endverb
+      \verb{url}
+      \verb https://attack.mitre.org/
+      \endverb
+    \endentry
+    \entry{iac_morris2020}{book}{}{}
+      \name{author}{1}{}{%
+        {{hash=63fa37eb1278902f4d1c5aa6e2b44e9d}{%
+           family={Morris},
+           familyi={M\bibinitperiod},
+           given={Kief},
+           giveni={K\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {O'Reilly Media}%
+      }
+      \strng{namehash}{63fa37eb1278902f4d1c5aa6e2b44e9d}
+      \strng{fullhash}{63fa37eb1278902f4d1c5aa6e2b44e9d}
+      \strng{fullhashraw}{63fa37eb1278902f4d1c5aa6e2b44e9d}
+      \strng{bibnamehash}{63fa37eb1278902f4d1c5aa6e2b44e9d}
+      \strng{authorbibnamehash}{63fa37eb1278902f4d1c5aa6e2b44e9d}
+      \strng{authornamehash}{63fa37eb1278902f4d1c5aa6e2b44e9d}
+      \strng{authorfullhash}{63fa37eb1278902f4d1c5aa6e2b44e9d}
+      \strng{authorfullhashraw}{63fa37eb1278902f4d1c5aa6e2b44e9d}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{edition}{2}
+      \field{isbn}{978-1-098-11467-1}
+      \field{title}{Infrastructure as Code: Dynamic Systems for the Cloud Age}
+      \field{year}{2020}
+    \endentry
+    \entry{slsa_framework}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=4b4246042c43243116968ff4284254af}{%
+           family={{Open Source Security Foundation (OpenSSF)}},
+           familyi={O\bibinitperiod}}}%
+      }
+      \strng{namehash}{4b4246042c43243116968ff4284254af}
+      \strng{fullhash}{4b4246042c43243116968ff4284254af}
+      \strng{fullhashraw}{4b4246042c43243116968ff4284254af}
+      \strng{bibnamehash}{4b4246042c43243116968ff4284254af}
+      \strng{authorbibnamehash}{4b4246042c43243116968ff4284254af}
+      \strng{authornamehash}{4b4246042c43243116968ff4284254af}
+      \strng{authorfullhash}{4b4246042c43243116968ff4284254af}
+      \strng{authorfullhashraw}{4b4246042c43243116968ff4284254af}
+      \field{sortinit}{O}
+      \field{sortinithash}{2cd7140a07aea5341f9e2771efe90aae}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Supply-chain Levels for Software Artifacts (SLSA)}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{version}{1.0}
+      \field{year}{2023}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://slsa.dev
+      \endverb
+      \verb{url}
+      \verb https://slsa.dev
+      \endverb
+    \endentry
+    \entry{owasp_cicd_top10}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=b0d7a4bf1a0878d4e92cdd7461e48710}{%
+           family={{OWASP Foundation}},
+           familyi={O\bibinitperiod}}}%
+      }
+      \strng{namehash}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{fullhash}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{fullhashraw}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{bibnamehash}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{authorbibnamehash}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{authornamehash}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{authorfullhash}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{authorfullhashraw}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \field{extraname}{1}
+      \field{sortinit}{O}
+      \field{sortinithash}{2cd7140a07aea5341f9e2771efe90aae}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{{OWASP} Top 10 {CI/CD} Security Risks}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2022}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://owasp.org/www-project-top-10-ci-cd-security-risks/
+      \endverb
+      \verb{url}
+      \verb https://owasp.org/www-project-top-10-ci-cd-security-risks/
+      \endverb
+    \endentry
+    \entry{owasp2025}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=b0d7a4bf1a0878d4e92cdd7461e48710}{%
+           family={{OWASP Foundation}},
+           familyi={O\bibinitperiod}}}%
+      }
+      \strng{namehash}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{fullhash}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{fullhashraw}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{bibnamehash}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{authorbibnamehash}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{authornamehash}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{authorfullhash}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \strng{authorfullhashraw}{b0d7a4bf1a0878d4e92cdd7461e48710}
+      \field{extraname}{2}
+      \field{sortinit}{O}
+      \field{sortinithash}{2cd7140a07aea5341f9e2771efe90aae}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{{OWASP} Top 10:2025}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2025}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://owasp.org/Top10/
+      \endverb
+      \verb{url}
+      \verb https://owasp.org/Top10/
+      \endverb
+    \endentry
+    \entry{sbert2019}{inproceedings}{}{}
+      \name{author}{2}{}{%
+        {{hash=da9947b27b0d1c4c912e2b391426d443}{%
+           family={Reimers},
+           familyi={R\bibinitperiod},
+           given={Nils},
+           giveni={N\bibinitperiod}}}%
+        {{hash=ea70b44be1920f6e8c379706bc7d047a}{%
+           family={Gurevych},
+           familyi={G\bibinitperiod},
+           given={Iryna},
+           giveni={I\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Association for Computational Linguistics}%
+      }
+      \strng{namehash}{2466af6376c9c5e3658dcc6692351f3e}
+      \strng{fullhash}{2466af6376c9c5e3658dcc6692351f3e}
+      \strng{fullhashraw}{2466af6376c9c5e3658dcc6692351f3e}
+      \strng{bibnamehash}{2466af6376c9c5e3658dcc6692351f3e}
+      \strng{authorbibnamehash}{2466af6376c9c5e3658dcc6692351f3e}
+      \strng{authornamehash}{2466af6376c9c5e3658dcc6692351f3e}
+      \strng{authorfullhash}{2466af6376c9c5e3658dcc6692351f3e}
+      \strng{authorfullhashraw}{2466af6376c9c5e3658dcc6692351f3e}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of EMNLP-IJCNLP 2019}
+      \field{title}{Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2019}
+      \field{urldateera}{ce}
+      \field{pages}{3982\bibrangedash 3992}
+      \range{pages}{11}
+      \verb{doi}
+      \verb 10.18653/v1/D19-1410
+      \endverb
+      \verb{urlraw}
+      \verb https://aclanthology.org/D19-1410/
+      \endverb
+      \verb{url}
+      \verb https://aclanthology.org/D19-1410/
+      \endverb
+    \endentry
+    \entry{nist800207}{report}{}{}
+      \name{author}{4}{}{%
+        {{hash=3c3d7dbac07ac32c82628b6a0e35decb}{%
+           family={Rose},
+           familyi={R\bibinitperiod},
+           given={Scott},
+           giveni={S\bibinitperiod}}}%
+        {{hash=e787d1fa9ed1abc3c9e5b389996ddaac}{%
+           family={Borchert},
+           familyi={B\bibinitperiod},
+           given={Oliver},
+           giveni={O\bibinitperiod}}}%
+        {{hash=bb759fb738bf98cd99171afc9de1f822}{%
+           family={Mitchell},
+           familyi={M\bibinitperiod},
+           given={Stu},
+           giveni={S\bibinitperiod}}}%
+        {{hash=43153bbb8dcab159d4bc17eed5da08f3}{%
+           family={Connelly},
+           familyi={C\bibinitperiod},
+           given={Sean},
+           giveni={S\bibinitperiod}}}%
+      }
+      \list{institution}{2}{%
+        {National Institute of Standards}%
+        {Technology (NIST)}%
+      }
+      \strng{namehash}{ab8391fddb28dc8d96b77c21d6f45aad}
+      \strng{fullhash}{3a8354cfccf1e096b680b06a4ca33cb9}
+      \strng{fullhashraw}{3a8354cfccf1e096b680b06a4ca33cb9}
+      \strng{bibnamehash}{3a8354cfccf1e096b680b06a4ca33cb9}
+      \strng{authorbibnamehash}{3a8354cfccf1e096b680b06a4ca33cb9}
+      \strng{authornamehash}{ab8391fddb28dc8d96b77c21d6f45aad}
+      \strng{authorfullhash}{3a8354cfccf1e096b680b06a4ca33cb9}
+      \strng{authorfullhashraw}{3a8354cfccf1e096b680b06a4ca33cb9}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{8}
+      \field{number}{800-207}
+      \field{title}{Zero Trust Architecture}
+      \field{type}{NIST Special Publication}
+      \field{year}{2020}
+      \verb{doi}
+      \verb 10.6028/NIST.SP.800-207
+      \endverb
+    \endentry
+    \entry{scaleway_regions}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=73c733efb004028ab32181f48d8dbe79}{%
+           family={{Scaleway}},
+           familyi={S\bibinitperiod}}}%
+      }
+      \strng{namehash}{73c733efb004028ab32181f48d8dbe79}
+      \strng{fullhash}{73c733efb004028ab32181f48d8dbe79}
+      \strng{fullhashraw}{73c733efb004028ab32181f48d8dbe79}
+      \strng{bibnamehash}{73c733efb004028ab32181f48d8dbe79}
+      \strng{authorbibnamehash}{73c733efb004028ab32181f48d8dbe79}
+      \strng{authornamehash}{73c733efb004028ab32181f48d8dbe79}
+      \strng{authorfullhash}{73c733efb004028ab32181f48d8dbe79}
+      \strng{authorfullhashraw}{73c733efb004028ab32181f48d8dbe79}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Understanding Regions and Availability Zones}
+      \field{urlday}{27}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.scaleway.com/en/docs/console/my-account/reference-content/products-availability/
+      \endverb
+      \verb{url}
+      \verb https://www.scaleway.com/en/docs/console/my-account/reference-content/products-availability/
+      \endverb
+    \endentry
+    \entry{shostack2014}{book}{}{}
+      \name{author}{1}{}{%
+        {{hash=cd4e1bc9b81b807b8e800e61e051ed3c}{%
+           family={Shostack},
+           familyi={S\bibinitperiod},
+           given={Adam},
+           giveni={A\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Wiley}%
+      }
+      \strng{namehash}{cd4e1bc9b81b807b8e800e61e051ed3c}
+      \strng{fullhash}{cd4e1bc9b81b807b8e800e61e051ed3c}
+      \strng{fullhashraw}{cd4e1bc9b81b807b8e800e61e051ed3c}
+      \strng{bibnamehash}{cd4e1bc9b81b807b8e800e61e051ed3c}
+      \strng{authorbibnamehash}{cd4e1bc9b81b807b8e800e61e051ed3c}
+      \strng{authornamehash}{cd4e1bc9b81b807b8e800e61e051ed3c}
+      \strng{authorfullhash}{cd4e1bc9b81b807b8e800e61e051ed3c}
+      \strng{authorfullhashraw}{cd4e1bc9b81b807b8e800e61e051ed3c}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{isbn}{978-1-118-80999-0}
+      \field{title}{Threat Modeling: Designing for Security}
+      \field{year}{2014}
+    \endentry
+    \entry{sigma_spec}{misc}{}{}
+      \name{author}{1}{}{%
+        {{hash=cfcb0e7d2402102081081f75c5883691}{%
+           family={{SigmaHQ}},
+           familyi={S\bibinitperiod}}}%
+      }
+      \strng{namehash}{cfcb0e7d2402102081081f75c5883691}
+      \strng{fullhash}{cfcb0e7d2402102081081f75c5883691}
+      \strng{fullhashraw}{cfcb0e7d2402102081081f75c5883691}
+      \strng{bibnamehash}{cfcb0e7d2402102081081f75c5883691}
+      \strng{authorbibnamehash}{cfcb0e7d2402102081081f75c5883691}
+      \strng{authornamehash}{cfcb0e7d2402102081081f75c5883691}
+      \strng{authorfullhash}{cfcb0e7d2402102081081f75c5883691}
+      \strng{authorfullhashraw}{cfcb0e7d2402102081081f75c5883691}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Sigma Specification: Generic Signature Format for SIEM Systems}
+      \field{urlday}{26}
+      \field{urlmonth}{8}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://sigmahq.io/sigma-specification/
+      \endverb
+      \verb{url}
+      \verb https://sigmahq.io/sigma-specification/
+      \endverb
+    \endentry
+    \entry{shiftleft_smith2001}{article}{}{}
+      \name{author}{1}{}{%
+        {{hash=c1b10fea357294ad0885a7c9f6f289ad}{%
+           family={Smith},
+           familyi={S\bibinitperiod},
+           given={Larry},
+           giveni={L\bibinitperiod}}}%
+      }
+      \strng{namehash}{c1b10fea357294ad0885a7c9f6f289ad}
+      \strng{fullhash}{c1b10fea357294ad0885a7c9f6f289ad}
+      \strng{fullhashraw}{c1b10fea357294ad0885a7c9f6f289ad}
+      \strng{bibnamehash}{c1b10fea357294ad0885a7c9f6f289ad}
+      \strng{authorbibnamehash}{c1b10fea357294ad0885a7c9f6f289ad}
+      \strng{authornamehash}{c1b10fea357294ad0885a7c9f6f289ad}
+      \strng{authorfullhash}{c1b10fea357294ad0885a7c9f6f289ad}
+      \strng{authorfullhashraw}{c1b10fea357294ad0885a7c9f6f289ad}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Dr. Dobb's Journal}
+      \field{number}{9}
+      \field{title}{Shift-Left Testing}
+      \field{volume}{26}
+      \field{year}{2001}
+      \field{pages}{56\bibrangedash 62}
+      \range{pages}{7}
+    \endentry
+    \entry{mitre_attack_design2018}{report}{}{}
+      \name{author}{6}{}{%
+        {{hash=3863338ca674101ff7383be2bbdab70c}{%
+           family={Strom},
+           familyi={S\bibinitperiod},
+           given={Blake\bibnamedelima E.},
+           giveni={B\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+        {{hash=ee19e247cced4166966664ea8c7886a5}{%
+           family={Applebaum},
+           familyi={A\bibinitperiod},
+           given={Andy},
+           giveni={A\bibinitperiod}}}%
+        {{hash=1ad3f5e492ac590161e783cba6a6700b}{%
+           family={Miller},
+           familyi={M\bibinitperiod},
+           given={Doug\bibnamedelima P.},
+           giveni={D\bibinitperiod\bibinitdelim P\bibinitperiod}}}%
+        {{hash=d2f182b4fead892320a1175aa40a28a6}{%
+           family={Nickels},
+           familyi={N\bibinitperiod},
+           given={Kathryn\bibnamedelima C.},
+           giveni={K\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+        {{hash=19d77c16be7fd5d14eb2b667085d4300}{%
+           family={Pennington},
+           familyi={P\bibinitperiod},
+           given={Adam\bibnamedelima G.},
+           giveni={A\bibinitperiod\bibinitdelim G\bibinitperiod}}}%
+        {{hash=5b2e782a008f48db82e32e0915529421}{%
+           family={Thomas},
+           familyi={T\bibinitperiod},
+           given={Cody\bibnamedelima B.},
+           giveni={C\bibinitperiod\bibinitdelim B\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {MITRE Corporation}%
+      }
+      \strng{namehash}{f8b690a9ac0c9c2998310a3f4d057eb0}
+      \strng{fullhash}{1107c7e5f5df082f03c5382d83f9bfa0}
+      \strng{fullhashraw}{1107c7e5f5df082f03c5382d83f9bfa0}
+      \strng{bibnamehash}{1107c7e5f5df082f03c5382d83f9bfa0}
+      \strng{authorbibnamehash}{1107c7e5f5df082f03c5382d83f9bfa0}
+      \strng{authornamehash}{f8b690a9ac0c9c2998310a3f4d057eb0}
+      \strng{authorfullhash}{1107c7e5f5df082f03c5382d83f9bfa0}
+      \strng{authorfullhashraw}{1107c7e5f5df082f03c5382d83f9bfa0}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{number}{MP180360R1}
+      \field{title}{{MITRE ATT\&CK}: Design and Philosophy}
+      \field{type}{techreport}
+      \field{year}{2018}
+    \endentry
+    \entry{beyondcorp2014}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=17fcc338d483a2fda1413a558d8079f1}{%
+           family={Ward},
+           familyi={W\bibinitperiod},
+           given={Rory},
+           giveni={R\bibinitperiod}}}%
+        {{hash=804009dd6ea3185359156e228afc3f35}{%
+           family={Beyer},
+           familyi={B\bibinitperiod},
+           given={Betsy},
+           giveni={B\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {USENIX Association}%
+      }
+      \strng{namehash}{a2485cc60a2fd1fbd98ff7bfeaca413d}
+      \strng{fullhash}{a2485cc60a2fd1fbd98ff7bfeaca413d}
+      \strng{fullhashraw}{a2485cc60a2fd1fbd98ff7bfeaca413d}
+      \strng{bibnamehash}{a2485cc60a2fd1fbd98ff7bfeaca413d}
+      \strng{authorbibnamehash}{a2485cc60a2fd1fbd98ff7bfeaca413d}
+      \strng{authornamehash}{a2485cc60a2fd1fbd98ff7bfeaca413d}
+      \strng{authorfullhash}{a2485cc60a2fd1fbd98ff7bfeaca413d}
+      \strng{authorfullhashraw}{a2485cc60a2fd1fbd98ff7bfeaca413d}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{;login:}
+      \field{number}{6}
+      \field{title}{{BeyondCorp}: A New Approach to Enterprise Security}
+      \field{volume}{39}
+      \field{year}{2014}
+      \field{pages}{6\bibrangedash 11}
+      \range{pages}{6}
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

@@ -1,0 +1,52 @@
+==================================================================
+ PREUVE INTEGRITE
+ Effacements subis par la table des detections
+ ---
+ genere le : 2026-08-28 00:01:49 UTC
+ projet    : menal-zero-trust-staging
+ dataset   : menal_security_staging
+==================================================================
+
+Historique des effacements sur la table des detections
+Source : region-europe-west1.INFORMATION_SCHEMA.JOBS_BY_PROJECT
+
++---------------------+----------------+------------------------------+---------------------+
+|      quand_utc      | statement_type |          user_email          | partitions_touchees |
++---------------------+----------------+------------------------------+---------------------+
+| 2026-08-25 00:07:00 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-25 00:02:04 | DELETE         | mansour.cheikh2010@gmail.com |                   2 |
+| 2026-08-24 23:02:53 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 22:50:09 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 22:42:39 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 22:40:03 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 19:09:01 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 18:59:16 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 18:54:38 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 18:43:14 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 18:30:45 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 18:29:34 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 18:27:01 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 17:51:34 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 16:24:00 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 15:57:07 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 15:47:13 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 15:39:28 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 15:31:42 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 15:22:05 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 15:19:42 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 15:12:12 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 15:08:18 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 14:31:24 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 14:19:42 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 14:11:49 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 14:09:35 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 14:06:09 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 13:59:58 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
+| 2026-08-24 13:16:46 | DELETE         | mansour.cheikh2010@gmail.com |                  20 |
+| 2026-08-24 12:44:26 | DELETE         | mansour.cheikh2010@gmail.com |                   1 |
++---------------------+----------------+------------------------------+---------------------+
+
+------------------------------------------------------------------
+ code de retour : 0
+ fin            : 2026-08-28 00:01:56 UTC
+------------------------------------------------------------------

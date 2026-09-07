@@ -1,0 +1,51 @@
+---
+title: "Figure 16 — Séquence de la chaîne de détection"
+---
+sequenceDiagram
+    participant CR as ☁️ Cloud Run\n(app)
+    participant ALB as 🌐 ALB
+    participant LOG as 📋 Cloud Logging
+    participant BQ as 📊 BigQuery
+    participant SIGMA as 🔍 Règles Sigma/SQL
+    participant EJ as 🔄 enrich-job
+    participant ML as 🤖 ml-embed\n(ATT&CK-BERT)
+    participant API as ⚙️ api-platform
+    participant DASH as 📱 dash-secu
+
+    %% Phase 1: Collection
+    rect rgb(227, 242, 253)
+        Note over CR,LOG: F4 — Collecte filtrée
+        CR->>LOG: Logs applicatifs
+        ALB->>LOG: Logs requêtes + verdicts Cloud Armor
+        LOG->>BQ: Sink filtré → siem.raw_logs
+    end
+
+    %% Phase 2: Detection
+    rect rgb(255, 243, 224)
+        Note over BQ,SIGMA: F5 — Détection (fenêtre 15 min)
+        BQ->>SIGMA: Requête planifiée
+        SIGMA->>BQ: Écrit dans siem.detections
+        Note right of SIGMA: Règles normalisées\nsource → technique\n→ impact → severité
+    end
+
+    %% Phase 3: Enrichment
+    rect rgb(232, 245, 233)
+        Note over BQ,DASH: F5 — Enrichissement sémantique
+        EJ->>BQ: Lit siem.detections
+        EJ->>ML: POST /embed\n(texte de la détection)
+        ML-->>EJ: vecteur 768d\n(int8 quantifié)
+        EJ->>BQ: Recherche vectorielle\n(cosine similarity > 0.60)
+        EJ->>BQ: Écrit dans siem.alert_enrichment
+        Note right of EJ: Chaque inférence\nest journalisée
+    end
+
+    %% Phase 4: Scoring & Display
+    rect rgb(243, 229, 245)
+        Note over API,DASH: F6 — Score et priorisation
+        API->>BQ: Lecture alert_enrichment
+        API->>API: Calcul score incident\n(gravité × vraisemblance)
+        API-->>DASH: Incidents priorisés
+        DASH-->>DASH: Affichage analyste
+    end
+
+    Note over CR,DASH: Principe P3 : ml-embed ne peut PAS modifier raw_logs ni detections

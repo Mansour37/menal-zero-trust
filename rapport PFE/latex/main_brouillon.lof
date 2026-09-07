@@ -1,0 +1,49 @@
+\babel@toc {french}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {french}{}\relax 
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {1}{\ignorespaces Modèle de sécurité avant le projet : périmètre unique en entrée, confiance implicite à l'intérieur.}}{5}{figure.caption.11}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2}{\ignorespaces Diagramme de cas d'utilisation du socle}}{22}{figure.caption.13}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3}{\ignorespaces Vue de contexte : le socle, ses acteurs et les systèmes extérieurs dont il dépend}}{28}{figure.caption.14}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Modèle en couches : cinq couches empilées (L1, L3, L4, L5, L6) et deux plans transversaux (L2, L7). Pointillés : collecte F4 ; tirets : vérification d'identité à chaque saut.}}{29}{figure.caption.15}%
+\contentsline {figure}{\numberline {5}{\ignorespaces Vue de déploiement : composants, liens réseau et flux F1 à F5. Le tableau de bord n'atteint les données que par l'API, avec autorisation par rôles (JWT). Le trait tireté vers l'entrepôt ne traverse pas le réseau privé : il est autorisé par l'identité seule (écart É11). Le provisionnement de l'infrastructure (F7) et la boucle de priorisation (F6) sont traités au chapitre~5.}}{30}{figure.caption.16}%
+\contentsline {figure}{\numberline {6}{\ignorespaces Séquence du flux nominal F1--F2 et points de vérification d'identité (L2).}}{31}{figure.caption.19}%
+\contentsline {figure}{\numberline {7}{\ignorespaces De l'attaque à l'incident : cinq repères et budget de latence par segment}}{31}{figure.caption.20}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Plan d'identité : droits accordés et interdictions structurantes (cinq identités)}}{33}{figure.caption.22}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {9}{\ignorespaces Planification de l'infrastructure sans différence détectée sur l'environnement de recette, le 19/08/2026 : la configuration déclarée correspond à l'état réellement provisionné.}}{40}{figure.caption.25}%
+\contentsline {figure}{\numberline {10}{\ignorespaces Chaîne de livraison applicative : huit étapes et trois portes bloquantes}}{40}{figure.caption.26}%
+\contentsline {figure}{\numberline {11}{\ignorespaces Refus n°1 --- secret détecté à l'étape 2}}{41}{figure.caption.27}%
+\contentsline {figure}{\numberline {12}{\ignorespaces Refus n°2 --- défaut de code détecté à l'étape 3}}{42}{figure.caption.28}%
+\contentsline {figure}{\numberline {13}{\ignorespaces Refus n°3 --- vulnérabilité critique détectée à l'étape 5}}{42}{figure.caption.29}%
+\contentsline {figure}{\numberline {14}{\ignorespaces Refus n°4 --- configuration dangereuse bloquée avant provisionnement}}{43}{figure.caption.30}%
+\contentsline {figure}{\numberline {15}{\ignorespaces Chaîne de détection et d'enrichissement : deux cycles indépendants}}{45}{figure.caption.32}%
+\contentsline {figure}{\numberline {16}{\ignorespaces Architecture interne des deux logiciels écrits : composants, frontières de déploiement et points d'application du contrôle d'accès}}{47}{figure.caption.34}%
+\contentsline {figure}{\numberline {17}{\ignorespaces Vue des incidents de l'interface de supervision, sous un compte analyste, le 23/08/2026 : alerte de la règle R2 rattachée à la technique T1498 et attribuée au locataire concerné.}}{48}{figure.caption.35}%
+\contentsline {figure}{\numberline {18}{\ignorespaces Boucle F6 : rapprochement des vulnérabilités livrées et des techniques observées}}{50}{figure.caption.37}%
+\contentsline {figure}{\numberline {19}{\ignorespaces Contrôle d'isolation entre locataires exécuté en recette le 19/08/2026 : six vérifications sur six réussies et connexion croisée entre bases effectivement refusée.}}{51}{figure.caption.38}%
+\contentsline {figure}{\numberline {20}{\ignorespaces Chaîne d'intégration avant et après correction de la porte d'analyse statique, environnement de recette}}{53}{figure.caption.39}%
+\contentsline {figure}{\numberline {21}{\ignorespaces Planning consolidé du stage, du 03/03/2026{} au 07/09/2026{}. Les barres sont une reconstruction macroscopique ; les losanges signalent les jalons exactement datés.}}{53}{figure.caption.40}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {22}{\ignorespaces Refus obtenus au périmètre de l'environnement de recette, tests T1 et T2}}{57}{figure.caption.41}%
+\contentsline {figure}{\numberline {23}{\ignorespaces Cloisonnement de l'identité du second locataire, vérifié en direct le 23/08/2026 : deux rôles exactement attribués, et refus de l'usurpation d'identité depuis un compte d'administration.}}{57}{figure.caption.42}%
+\contentsline {figure}{\numberline {24}{\ignorespaces Test T4 --- inaccessibilité des données depuis Internet}}{58}{figure.caption.43}%
+\contentsline {figure}{\numberline {25}{\ignorespaces Test T11 --- intégrité de la chaîne de preuve}}{58}{figure.caption.44}%
+\contentsline {figure}{\numberline {26}{\ignorespaces Test T7 --- absence de clés de longue durée}}{58}{figure.caption.45}%
+\contentsline {figure}{\numberline {27}{\ignorespaces Test T16 --- détection de dérive et attribution}}{59}{figure.caption.46}%
+\contentsline {figure}{\numberline {28}{\ignorespaces Reconstruction complète chronométrée d'un environnement}}{63}{figure.caption.51}%
+\contentsline {figure}{\numberline {29}{\ignorespaces Scénario de bout en bout du 19/08/2026 : de l'attaque à l'alerte qualifiée}}{66}{figure.caption.55}%
+\contentsline {figure}{\numberline {30}{\ignorespaces Alerte de la règle R2 produite le 19/08/2026 à \hms {16:56:08} UTC : treize requêtes bloquées comptées sur la fenêtre de quinze minutes et attribuées au locataire.}}{67}{figure.caption.56}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {31}{\ignorespaces Indicateurs de l'enrichissement sémantique en recette, le 19/08/2026 : dernier rattachement automatique produit à \hms {12:16:15} UTC, technique T1556.003, similarité 0,698.}}{107}{figure.caption.77}%
+\contentsline {figure}{\numberline {32}{\ignorespaces Retour arrière applicatif par bascule de révision, mesuré le 07/08/2026 : 11,6~s pour la bascule vers la révision précédente, 16,5~s pour le retour vers la dernière révision.}}{108}{figure.caption.78}%

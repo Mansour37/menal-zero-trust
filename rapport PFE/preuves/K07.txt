@@ -1,0 +1,26 @@
+==================================================================
+ PREUVE K07
+ Controle d isolation entre locataires — 6/6 (rejeu direct)
+ ---
+ genere le : 2026-08-28 11:50:13 UTC
+ projet    : menal-zero-trust-staging
+ dataset   : menal_security_staging
+==================================================================
+
+Rejeu du controle d isolation : job elson-sql-isolation-check-staging
+
+Execution [elson-sql-isolation-check-staging-m29qj] has successfully completed.
+
+Resultat detaille (6 verifications) :
+  isolated = True   (6/6 verifications reussies)
+    [OK] api_user_not_cloudsqlsuperuser
+    [OK] elson_user_not_cloudsqlsuperuser
+    [OK] cross_connect_rejected_elson_user_menal_db
+    [OK] cross_connect_rejected_api_user_elson_db
+    [OK] self_connect_preserved
+    [OK] cross_connect_probe_rejected
+
+------------------------------------------------------------------
+ code de retour : 0
+ fin            : 2026-08-28 11:51:08 UTC
+------------------------------------------------------------------

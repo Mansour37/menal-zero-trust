@@ -1,0 +1,186 @@
+\babel@toc {french}{}\relax 
+\contentsline {chapter}{Dédicace}{i}{chapter*.1}%
+\contentsline {chapter}{Remerciements}{ii}{chapter*.2}%
+\contentsline {chapter}{Résumé}{iii}{chapter*.3}%
+\contentsline {chapter}{Abstract}{iii}{chapter*.3}%
+\babel@toc {english}{}\relax 
+\babel@toc {french}{}\relax 
+\contentsline {chapter}{Liste des acronymes}{iv}{chapter*.4}%
+\contentsline {chapter}{Conventions de notation}{v}{chapter*.5}%
+\contentsline {chapter}{Table des figures}{viii}{chapter*.7}%
+\contentsline {chapter}{Liste des tableaux}{ix}{chapter*.8}%
+\contentsline {chapter}{Introduction générale}{1}{chapter*.9}%
+\contentsline {chapter}{\numberline {1}Contexte du projet, étude de l'existant et problématique}{4}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Cadre du projet et entreprise d'accueil}{4}{section.1.1}%
+\contentsline {subsection}{\numberline {1.1.1}Fiche signalétique, activités et positionnement}{4}{subsection.1.1.1}%
+\contentsline {subsection}{\numberline {1.1.2}Organisation, gouvernance et périmètre d'accueil}{5}{subsection.1.1.2}%
+\contentsline {subsection}{\numberline {1.1.3}Mission confiée et positionnement stratégique}{5}{subsection.1.1.3}%
+\contentsline {section}{\numberline {1.2}L'application pilote}{6}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}Nature, publics et modèle fonctionnel}{6}{subsection.1.2.1}%
+\contentsline {subsection}{\numberline {1.2.2}Sensibilité des données traitées}{7}{subsection.1.2.2}%
+\contentsline {subsection}{\numberline {1.2.3}Trois actifs, trois adversaires}{8}{subsection.1.2.3}%
+\contentsline {subsection}{\numberline {1.2.4}L'hébergement initial et son modèle de sécurité}{8}{subsection.1.2.4}%
+\contentsline {section}{\numberline {1.3}Audit de l'existant et critique}{9}{section.1.3}%
+\contentsline {subsection}{\numberline {1.3.1}Méthode et résultats de l'audit}{9}{subsection.1.3.1}%
+\contentsline {subsection}{\numberline {1.3.2}Cinq carences structurantes et positionnement du socle}{9}{subsection.1.3.2}%
+\contentsline {section}{\numberline {1.4}Problématique et objectifs}{10}{section.1.4}%
+\contentsline {subsection}{\numberline {1.4.1}Problématique et questions dérivées}{10}{subsection.1.4.1}%
+\contentsline {subsection}{\numberline {1.4.2}Objectifs et critères de succès}{11}{subsection.1.4.2}%
+\contentsline {section}{\numberline {1.5}Périmètre, contraintes et démarche}{12}{section.1.5}%
+\contentsline {subsection}{\numberline {1.5.1}Périmètre et hypothèses assumées}{12}{subsection.1.5.1}%
+\contentsline {subsection}{\numberline {1.5.2}Contraintes du projet}{12}{subsection.1.5.2}%
+\contentsline {subsection}{\numberline {1.5.3}Démarche méthodologique}{12}{subsection.1.5.3}%
+\contentsline {section}{Conclusion du chapitre}{13}{subsection.1.5.3}%
+\contentsline {chapter}{\numberline {2}État de l'art et choix technologiques}{14}{chapter.2}%
+\contentsline {section}{\numberline {2.1}L'architecture Zero Trust}{14}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}Du modèle périmétrique au Zero Trust}{14}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}Les sept principes directeurs}{14}{subsection.2.1.2}%
+\contentsline {subsection}{\numberline {2.1.3}Modèle de maturité et limites reconnues}{15}{subsection.2.1.3}%
+\contentsline {section}{\numberline {2.2}L'approche DevSecOps}{15}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Principe et portes de contrôle automatisées}{15}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Provenance, intégrité et référentiels}{16}{subsection.2.2.2}%
+\contentsline {section}{\numberline {2.3}Supervision et ingénierie de la détection}{16}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}Modèle de supervision et détection comme code}{16}{subsection.2.3.1}%
+\contentsline {subsection}{\numberline {2.3.2}La matrice des techniques d'attaque}{16}{subsection.2.3.2}%
+\contentsline {subsection}{\numberline {2.3.3}Étude comparative et solution retenue}{17}{subsection.2.3.3}%
+\contentsline {section}{\numberline {2.4}Enrichissement sémantique des alertes}{17}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Approches disponibles}{17}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Modèles spécialisés et travail le plus proche}{18}{subsection.2.4.2}%
+\contentsline {section}{\numberline {2.5}Choix de la plateforme d'hébergement}{18}{section.2.5}%
+\contentsline {section}{\numberline {2.6}Inventaire technologique du socle}{19}{section.2.6}%
+\contentsline {subsection}{\numberline {2.6.1}Le critère de sélection}{20}{subsection.2.6.1}%
+\contentsline {subsection}{\numberline {2.6.2}Les trente-trois briques structurantes}{20}{subsection.2.6.2}%
+\contentsline {subsection}{\numberline {2.6.3}Les sept composants évalués puis écartés}{24}{subsection.2.6.3}%
+\contentsline {subsection}{\numberline {2.6.4}Deux lectures transverses de l'inventaire}{24}{subsection.2.6.4}%
+\contentsline {paragraph}{Première lecture : le fil conducteur.}{24}{paragraph*.16}%
+\contentsline {paragraph}{Seconde lecture : ce qu'enseigne la colonne \@FB@og prix payé \@FB@fg \relax {}.}{25}{paragraph*.17}%
+\contentsline {paragraph}{Un fait que ces trois natures ne classent pas.}{25}{paragraph*.18}%
+\contentsline {section}{\numberline {2.7}Référentiels et méthodes mobilisés}{25}{section.2.7}%
+\contentsline {section}{Conclusion du chapitre}{26}{section.2.7}%
+\contentsline {chapter}{\numberline {3}Analyse des besoins et modélisation des menaces}{27}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Acteurs et cas d'utilisation}{27}{section.3.1}%
+\contentsline {subsection}{\numberline {3.1.1}Acteurs légitimes et acteurs hostiles}{27}{subsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.1.2}Cas d'utilisation du socle}{28}{subsection.3.1.2}%
+\contentsline {section}{\numberline {3.2}Spécification des besoins}{28}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Besoins fonctionnels}{28}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Besoins non fonctionnels}{29}{subsection.3.2.2}%
+\contentsline {section}{\numberline {3.3}Flux de données et frontières de confiance}{29}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Le diagramme de flux de données du socle}{29}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}TB5, frontière sans contrôle réseau}{31}{subsection.3.3.2}%
+\contentsline {section}{\numberline {3.4}Analyse de risque}{31}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Valeurs métier, sources de risque et scénarios stratégiques}{31}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Scénarios opérationnels}{32}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}Appréciation et traitement du risque}{33}{subsection.3.4.3}%
+\contentsline {section}{\numberline {3.5}Exigences de sécurité et traçabilité}{33}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Les vingt exigences de sécurité}{33}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Matrice de traçabilité}{34}{subsection.3.5.2}%
+\contentsline {section}{\numberline {3.6}Rattachement aux référentiels}{35}{section.3.6}%
+\contentsline {section}{Conclusion du chapitre}{35}{table.3.16}%
+\contentsline {chapter}{\numberline {4}Conception de l'architecture}{36}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Principes directeurs de conception}{36}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Vues d'architecture}{36}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Vue de contexte}{36}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Modèle en couches et justification des deux plans transversaux}{37}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Vue de déploiement et chemins réseau effectifs}{37}{subsection.4.2.3}%
+\contentsline {subsection}{\numberline {4.2.4}Topologie réseau avant la refonte}{38}{subsection.4.2.4}%
+\contentsline {subsection}{\numberline {4.2.5}Refonte du plan réseau appliquée (D15)}{38}{subsection.4.2.5}%
+\contentsline {subsection}{\numberline {4.2.6}Isolation des données entre locataires (D16)}{44}{subsection.4.2.6}%
+\contentsline {section}{\numberline {4.3}Vue dynamique : les sept flux et le cycle de la donnée}{47}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Cycle de vie de la donnée de sécurité}{48}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Modèle de données des deux systèmes de stockage}{48}{subsection.4.3.2}%
+\contentsline {section}{\numberline {4.4}De l'attaque à l'incident : fonctionnement de bout en bout}{48}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Conception détaillée par couche}{49}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Couverture des exigences de sécurité}{53}{subsection.4.5.1}%
+\contentsline {section}{\numberline {4.6}Le plan d'identité : la segmentation réelle}{54}{section.4.6}%
+\contentsline {subsection}{\numberline {4.6.1}Matrice des identités et des droits}{54}{subsection.4.6.1}%
+\contentsline {subsection}{\numberline {4.6.2}Chaînes de délégation d'identité}{54}{subsection.4.6.2}%
+\contentsline {subsection}{\numberline {4.6.3}Fédération de la chaîne de livraison, secrets et chiffrement}{55}{subsection.4.6.3}%
+\contentsline {subsection}{\numberline {4.6.4}Authentification à deux facteurs et cycle de la session}{56}{subsection.4.6.4}%
+\contentsline {section}{\numberline {4.7}Décisions d'architecture et écarts d'implémentation}{57}{section.4.7}%
+\contentsline {subsection}{\numberline {4.7.1}Registre des décisions}{57}{subsection.4.7.1}%
+\contentsline {subsection}{\numberline {4.7.2}Composants évalués puis écartés}{58}{subsection.4.7.2}%
+\contentsline {subsection}{\numberline {4.7.3}Écarts entre la conception et l'implémentation}{58}{subsection.4.7.3}%
+\contentsline {section}{Conclusion du chapitre}{60}{table.caption.36}%
+\contentsline {chapter}{\numberline {5}Réalisation et industrialisation}{61}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Environnement de travail et description en code}{61}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Frontière entre le code et l'exploitation}{61}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}État d'infrastructure : sécurité et détection de dérive}{62}{subsection.5.1.2}%
+\contentsline {section}{\numberline {5.2}Chaîne de livraison applicative}{63}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Déclenchement, permissions, graphe des tâches et portes bloquantes}{63}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Les huit familles de contrôles}{64}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Authentification sans secret permanent}{65}{subsection.5.2.3}%
+\contentsline {subsection}{\numberline {5.2.4}Déploiement, retour arrière et frontière avec l'infrastructure}{66}{subsection.5.2.4}%
+\contentsline {subsection}{\numberline {5.2.5}Boucle entre livraison et détection : la huitième étape}{66}{subsection.5.2.5}%
+\contentsline {subsection}{\numberline {5.2.6}Refus vérifiés}{67}{subsection.5.2.6}%
+\contentsline {section}{\numberline {5.3}Chaîne de provisionnement de l'infrastructure}{67}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}La revue du plan comme porte humaine}{68}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}Protection contre les destructions}{69}{subsection.5.3.2}%
+\contentsline {subsection}{\numberline {5.3.3}Conduite d'une migration sur un système en service}{69}{subsection.5.3.3}%
+\contentsline {section}{\numberline {5.4}Chaîne de détection}{70}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Couche d'enrichissement sémantique}{72}{section.5.5}%
+\contentsline {subsection}{\numberline {5.5.1}État d'avancement réel de la couche}{72}{subsection.5.5.1}%
+\contentsline {section}{\numberline {5.6}Tableau de bord et API de supervision}{73}{section.5.6}%
+\contentsline {subsection}{\numberline {5.6.1}La chaîne de données d'une vue}{73}{subsection.5.6.1}%
+\contentsline {subsection}{\numberline {5.6.2}Cartographie des vues}{75}{subsection.5.6.2}%
+\contentsline {subsection}{\numberline {5.6.3}Authentification, second facteur et contrôle d'accès}{76}{subsection.5.6.3}%
+\contentsline {subsection}{\numberline {5.6.4}Le logiciel écrit : structure, tests et dette assumée}{77}{subsection.5.6.4}%
+\contentsline {section}{\numberline {5.7}Accueil d'un locataire et frontière de responsabilité}{78}{section.5.7}%
+\contentsline {subsection}{\numberline {5.7.1}La procédure d'accueil et la portée de l'isolation}{79}{subsection.5.7.1}%
+\contentsline {subsection}{\numberline {5.7.2}La frontière de responsabilité}{81}{subsection.5.7.2}%
+\contentsline {section}{\numberline {5.8}Conduite du projet}{82}{section.5.8}%
+\contentsline {subsection}{\numberline {5.8.1}Difficultés rencontrées}{82}{subsection.5.8.1}%
+\contentsline {subsection}{\numberline {5.8.2}Planning de travail}{84}{subsection.5.8.2}%
+\contentsline {section}{Conclusion du chapitre}{84}{figure.caption.47}%
+\contentsline {chapter}{\numberline {6}Validation, résultats et démonstration}{86}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Stratégie de validation}{86}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Résultats de la campagne de tests}{87}{section.6.2}%
+\contentsline {subsection}{\numberline {6.2.1}Les deux non-conformités assumées : T1 et T14}{88}{subsection.6.2.1}%
+\contentsline {subsection}{\numberline {6.2.2}Deux preuves déterminantes et deux réserves levées}{89}{subsection.6.2.2}%
+\contentsline {subsection}{\numberline {6.2.3}Plan de validation continue}{90}{subsection.6.2.3}%
+\contentsline {section}{\numberline {6.3}Évaluation de la chaîne de détection et de l'enrichissement}{90}{section.6.3}%
+\contentsline {subsection}{\numberline {6.3.1}Couverture obtenue}{90}{subsection.6.3.1}%
+\contentsline {subsection}{\numberline {6.3.2}Ce que le système ne détecte pas}{91}{subsection.6.3.2}%
+\contentsline {subsection}{\numberline {6.3.3}Qualité du signal, délai, et enrichissement sémantique}{91}{subsection.6.3.3}%
+\contentsline {section}{\numberline {6.4}Performance, résilience et coût}{93}{section.6.4}%
+\contentsline {subsection}{\numberline {6.4.1}Objectifs de service}{93}{subsection.6.4.1}%
+\contentsline {subsection}{\numberline {6.4.2}Reproductibilité et résilience}{94}{subsection.6.4.2}%
+\contentsline {subsection}{\numberline {6.4.3}Coût réel}{95}{subsection.6.4.3}%
+\contentsline {section}{\numberline {6.5}Démonstration de bout en bout et conformité aux référentiels}{96}{section.6.5}%
+\contentsline {subsection}{\numberline {6.5.1}Correspondance avec les preuves de soutenance, et bornes du scénario}{96}{subsection.6.5.1}%
+\contentsline {subsection}{\numberline {6.5.2}Conformité aux référentiels et maturité Zero Trust}{97}{subsection.6.5.2}%
+\contentsline {section}{\numberline {6.6}Ce que le filtrage applicatif ne protège pas}{98}{section.6.6}%
+\contentsline {subsection}{\numberline {6.6.1}Invisibilité d'une faille de logique métier}{98}{subsection.6.6.1}%
+\contentsline {subsection}{\numberline {6.6.2}Portée de la limitation de débit au bord}{98}{subsection.6.6.2}%
+\contentsline {section}{\numberline {6.7}Du socle au service}{99}{section.6.7}%
+\contentsline {subsection}{\numberline {6.7.1}Apport du socle et charge de l'éditeur}{99}{subsection.6.7.1}%
+\contentsline {subsection}{\numberline {6.7.2}Coût d'accueil d'une application supplémentaire}{100}{subsection.6.7.2}%
+\contentsline {subsection}{\numberline {6.7.3}Maturité multi-locataire, axe par axe}{100}{subsection.6.7.3}%
+\contentsline {subsection}{\numberline {6.7.4}Modèle cible et seuils d'engagement}{101}{subsection.6.7.4}%
+\contentsline {section}{\numberline {6.8}Conditions de validité et réponse aux objectifs}{102}{section.6.8}%
+\contentsline {subsection}{\numberline {6.8.1}Conditions de validité des résultats}{102}{subsection.6.8.1}%
+\contentsline {subsection}{\numberline {6.8.2}Réponse aux objectifs du projet}{102}{subsection.6.8.2}%
+\contentsline {section}{Conclusion du chapitre}{104}{table.6.41}%
+\contentsline {chapter}{Conclusion générale}{105}{chapter*.57}%
+\contentsline {chapter}{Bibliographie/Netographie}{107}{chapter*.58}%
+\contentsline {chapter}{\numberline {A}Études comparatives détaillées}{110}{appendix.A}%
+\contentsline {section}{\numberline {A.1}Audit de l'existant et positionnement (issus du chapitre 1)}{110}{section.A.1}%
+\contentsline {subsection}{\numberline {A.1.1}Positionnement complet à quinze critères}{110}{subsection.A.1.1}%
+\contentsline {section}{\numberline {A.2}État de l'art et choix technologiques (issus du chapitre 2)}{111}{section.A.2}%
+\contentsline {subsection}{\numberline {A.2.1}Comparaison des modes d'exécution}{111}{subsection.A.2.1}%
+\contentsline {subsection}{\numberline {A.2.2}Alternatives évaluées puis écartées, couche par couche}{111}{subsection.A.2.2}%
+\contentsline {subsection}{\numberline {A.2.3}Sources et réserves de la comparaison d'hébergement}{112}{subsection.A.2.3}%
+\contentsline {section}{\numberline {A.3}Fiche de version de chaque brique}{112}{section.A.3}%
+\contentsline {chapter}{\numberline {B}Extraits techniques de la réalisation}{115}{appendix.B}%
+\contentsline {section}{\numberline {B.1}Dépôt d'infrastructure et protection des ressources}{115}{section.B.1}%
+\contentsline {section}{\numberline {B.2}Détection, livraison et fédération d'identité}{116}{section.B.2}%
+\contentsline {section}{\numberline {B.3}Provisionnement, isolation et tableau de bord}{117}{section.B.3}%
+\contentsline {chapter}{\numberline {C}Modèle de menaces détaillé}{119}{appendix.C}%
+\contentsline {section}{\numberline {C.1}Codification, scénarios stratégiques et échelles de cotation}{119}{section.C.1}%
+\contentsline {section}{\numberline {C.2}Scénarios opérationnels}{120}{section.C.2}%
+\contentsline {section}{\numberline {C.3}Cartographie et traitement du risque}{121}{section.C.3}%
+\contentsline {chapter}{\numberline {D}Conception détaillée}{123}{appendix.D}%
+\contentsline {section}{\numberline {D.1}Registre complet des décisions d'architecture}{123}{section.D.1}%
+\contentsline {section}{\numberline {D.2}Composants évalués puis écartés}{124}{section.D.2}%
+\contentsline {section}{\numberline {D.3}Prise en charge des vingt exigences par la conception}{125}{section.D.3}%
+\contentsline {chapter}{\numberline {E}Protocoles et preuves de validation}{126}{appendix.E}%
+\contentsline {chapter}{\numberline {F}Jeu d'évaluation de l'enrichissement sémantique}{132}{appendix.F}%

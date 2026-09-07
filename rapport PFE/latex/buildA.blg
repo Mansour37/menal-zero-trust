@@ -1,0 +1,15 @@
+[0] Config.pm:328> INFO - This is Biber 2.21
+[1] Config.pm:331> INFO - Logfile is 'buildA.blg'
+[155] biber-MSWIN64:342> INFO - === 
+[208] Biber.pm:421> INFO - Reading 'buildA.bcf'
+[353] Biber.pm:1002> INFO - Found 33 citekeys in bib section 0
+[376] Biber.pm:4487> INFO - Processing section 0
+[392] Biber.pm:4678> INFO - Looking for bibtex file 'bibliography/references.bib' for section 0
+[460] bibtex.pm:1713> INFO - LaTeX decoding ...
+[501] bibtex.pm:1519> INFO - Found BibTeX data source 'bibliography/references.bib'
+[737] UCollate.pm:68> INFO - Overriding locale 'fr-FR' defaults 'variable = shifted' with 'variable = non-ignorable'
+[737] UCollate.pm:68> INFO - Overriding locale 'fr-FR' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[737] Biber.pm:4307> INFO - Sorting list 'nyt/global//global/global/global' of type 'entry' with template 'nyt' and locale 'fr-FR'
+[737] Biber.pm:4313> INFO - No sort tailoring available for locale 'fr-FR'
+[788] bbl.pm:676> INFO - Writing 'buildA.bbl' with encoding 'UTF-8'
+[812] bbl.pm:779> INFO - Output to buildA.bbl

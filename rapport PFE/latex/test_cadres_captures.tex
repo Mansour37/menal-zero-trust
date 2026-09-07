@@ -1,0 +1,156 @@
+% =============================================================
+% test_cadres_captures.tex — FICHIER DE TEST, hors main.tex.
+% Écrit le 29/08/2026 par l'équipe « preuves visuelles » pour compiler
+% et vérifier le code des quatre cadres de capture proposés dans
+% RAPPORT_CAPTURES.md AVANT toute insertion dans les chapitres.
+% Ne rien inclure d'ici dans main.tex : ce fichier n'est qu'un banc d'essai.
+% Compilation : xelatex -interaction=nonstopmode -jobname=testcadres test_cadres_captures.tex
+% =============================================================
+\documentclass[12pt,twoside,openany]{report}
+
+\input{config/packages}
+\input{config/formatting}
+\input{config/commands}
+\input{config/metadata}
+
+\begin{document}
+
+\chapter{Banc d'essai des cadres de capture}
+
+Texte d'amorce pour que les flottants aient de la matière autour d'eux et que la
+compilation exerce réellement le placement, la légende courte et le renvoi.
+Les quatre cadres ci-dessous sont \cref{fig:capture-K05}, \cref{fig:capture-K33},
+\cref{fig:capture-K23} et \cref{fig:capture-K34}.
+
+% =============================================================
+% CADRE 1 — K05 — ch5, §5.6.3, après le paragraphe « L'interface a été servie… »
+% =============================================================
+\begin{figure}[!htbp]
+\centering
+\IfFileExists{figures/K05.png}{%
+  \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+  \fcolorbox{black!30}{white}{\includegraphics[width=0.82\textwidth]{figures/K05.png}}%
+}{%
+  \begin{minipage}{0.82\textwidth}
+  \begin{extraitconf}[breakable=false, fontupper=\footnotesize,
+      title={Emplacement réservé --- capture K05, à produire}]
+  \textbf{Vue :} tableau de bord de supervision, page \emph{Détections}, session ouverte
+  sous un compte portant le rôle analyste. \textbf{Date de prise :} 23/08/2026.\par\smallskip
+  \textbf{Ce que le cadre prouvera :} que l'interface décrite est servie à un rôle analyste
+  sur des détections réelles de la recette --- au moins une ligne de la règle R2 rattachée à la
+  technique T1498 et portant le locataire dans sa colonne de service, l'horodatage de la
+  détection et l'indicateur de fraîcheur visibles dans le cadre, et le sélecteur de locataire
+  affichant lui-même la portée partielle de son filtre.\par\smallskip
+  \textbf{Masquage :} identifiant de projet, domaines de comptes, adresses réelles.
+  \end{extraitconf}
+  \end{minipage}%
+}
+\caption[Tableau de bord servi à un compte analyste, 23/08/2026]{Tableau de bord de
+supervision servi à un compte de rôle analyste le 23/08/2026, page des détections. À y
+lire : une détection de la règle R2 rattachée à la technique T1498 et attribuée au
+locataire, l'horodatage de la détection, et le sélecteur de locataire qui énonce lui-même
+la portée partielle de son filtre.}
+\label{fig:capture-K05}
+\end{figure}
+
+% =============================================================
+% CADRE 2 — K33 — ch6, §6.3.3
+% =============================================================
+\begin{figure}[!htbp]
+\centering
+\IfFileExists{figures/K33.png}{%
+  \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+  \fcolorbox{black!30}{white}{\includegraphics[width=0.78\textwidth]{figures/K33.png}}%
+}{%
+  \begin{minipage}{0.78\textwidth}
+  \begin{extraitconf}[breakable=false, fontupper=\footnotesize,
+      title={Emplacement réservé --- capture K33, à produire}]
+  \textbf{Vue :} fiche d'incident du tableau de bord, une entité agrégée sélectionnée depuis
+  la page \emph{Incidents}. \textbf{Date de prise :} à relever au rejeu, la date effective
+  remplaçant celle de la légende.\par\smallskip
+  \textbf{Ce que le cadre prouvera :} ce que l'enrichissement rend réellement à l'analyste ---
+  la technique candidate et son score de similarité affichés à côté de l'alerte, la jauge de
+  score d'incident et la chronologie. Il montrera aussi, sans le dire, la borne rapportée au
+  même endroit : le score de la jauge ne dépend pas du candidat sémantique affiché.
+  \par\smallskip
+  \textbf{Masquage :} identifiant de projet, adresses réelles.
+  \end{extraitconf}
+  \end{minipage}%
+}
+\caption[Fiche d'incident : le candidat sémantique rendu à l'analyste]{Fiche d'incident du
+tableau de bord. À y lire : la technique candidate et sa similarité affichées à côté de
+l'alerte --- c'est la seule forme sous laquelle l'enrichissement atteint l'analyste --- et
+la jauge de score, calculée sans ce candidat, qui rend visible l'écart d'architecture
+énoncé au même endroit.}
+\label{fig:capture-K33}
+\end{figure}
+
+% =============================================================
+% CADRE 3 — K23 — ch5, §5.8.1
+% =============================================================
+\begin{figure}[!htbp]
+\centering
+\IfFileExists{figures/K23.png}{%
+  \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+  \fcolorbox{black!30}{white}{\includegraphics[width=0.86\textwidth]{figures/K23.png}}%
+}{%
+  \begin{minipage}{0.86\textwidth}
+  \begin{extraitconf}[breakable=false, fontupper=\footnotesize,
+      title={Emplacement réservé --- capture K23, à produire}]
+  \textbf{Vue :} historique des exécutions de la chaîne de livraison applicative, filtré sur
+  le flux qui porte la porte d'analyse statique, cadré sur deux lignes voisines.
+  \textbf{Dates portées par la capture :} 16/08/2026 et 19/08/2026.\par\smallskip
+  \textbf{Ce que le cadre prouvera :} la seule chose que ce chapitre ne peut pas écrire ---
+  qu'une porte inerte \emph{a l'air} de fonctionner. Ligne du 16/08 : toutes les tâches en
+  succès, alors qu'aucune règle n'a été évaluée. Ligne du 19/08 : la même chaîne en échec
+  après remise en service, exécution 32264602112.\par\smallskip
+  \textbf{Masquage :} nom du dépôt et de l'organisation, courriels des auteurs de
+  \emph{commit}.
+  \end{extraitconf}
+  \end{minipage}%
+}
+\caption[Porte d'analyse statique : le faux vert du 16/08 et l'échec du 19/08]{Historique des
+exécutions de la chaîne de livraison applicative. À y lire, sur deux lignes voisines : le
+16/08/2026, toutes les tâches en succès alors que la porte d'analyse statique n'évaluait
+aucune règle ; le 19/08/2026, la même chaîne en échec après remise en service. Le vert de la
+première ligne est l'objet de la preuve : c'est lui, et non un journal, qui montre qu'un
+contrôle inerte est indiscernable d'un contrôle qui passe.}
+\label{fig:capture-K23}
+\end{figure}
+
+% =============================================================
+% CADRE 4 — K34 — ch6, §6.7
+% =============================================================
+\begin{figure}[!htbp]
+\centering
+\IfFileExists{figures/K34.png}{%
+  \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+  \fcolorbox{black!30}{white}{\includegraphics[width=0.72\textwidth]{figures/K34.png}}%
+}{%
+  \begin{minipage}{0.72\textwidth}
+  \begin{extraitconf}[breakable=false, fontupper=\footnotesize,
+      title={Emplacement réservé --- capture K34, à produire}]
+  \textbf{Vue :} page \emph{Vue d'ensemble} du tableau de bord, cadrée sur le bandeau
+  supérieur et la bande des cinq indicateurs, un locataire sélectionné dans le sélecteur.
+  \textbf{Date de prise :} à relever, sur la révision de recette en service.\par\smallskip
+  \textbf{Ce que le cadre prouvera :} le premier des trois seuils qui séparent un socle d'un
+  service --- la chaîne de sécurité se termine par un écran. Aucune file d'incidents à
+  traiter, aucun accusé de prise en charge, aucun canal de notification : ce qui manque est
+  ce que le cadre doit rendre visible, et c'est la raison pour laquelle il est ici plutôt
+  qu'une phrase.\par\smallskip
+  \textbf{Masquage :} identifiant de projet, courriel du compte connecté.
+  \end{extraitconf}
+  \end{minipage}%
+}
+\caption[Vue d'ensemble : la chaîne de sécurité se termine par un écran]{Vue d'ensemble du
+tableau de bord. À y lire ce qui \emph{n'y est pas} : ni file d'incidents à traiter, ni
+accusé de prise en charge, ni départ de notification. La chaîne de détection se termine par
+cet écran, et le délai perçu par un analyste dépend donc de sa présence devant lui.}
+\label{fig:capture-K34}
+\end{figure}
+
+\subsection{Sous-section d'ancrage}
+\label{subsec:test-vues}
+Cette sous-section n'existe que pour que le renvoi du cadre K05 se résolve dans ce banc d'essai.
+
+\end{document}

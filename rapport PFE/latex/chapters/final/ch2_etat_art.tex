@@ -1,0 +1,704 @@
+% =============================================================
+% Chapitre 2 : Etat de l'art et choix technologiques (~12 pages)
+% Source : ../../CH2_Etat_de_l_art_et_positionnement.md
+%          ../../DOSSIER_TECHNIQUE_MENAL.md (inventaire technologique, 28/08/2026)
+% =============================================================
+\chapter{État de l'art et choix technologiques}
+\label{ch:etat-art}
+\soustitrechapitre{Zero Trust, DevSecOps, ingénierie de la détection, enrichissement sémantique
+et inventaire du socle}
+
+Aux carences du chapitre précédent, des réponses existent : normes, outils, travaux de recherche.
+Ce chapitre les expose, justifie par comparaison les choix retenus et identifie ce que l'état de
+l'art \textbf{ne résout pas} --- c'est là que se situe la contribution du mémoire. Il le convertit
+en un \textbf{inventaire des trente-trois briques structurantes du socle}, chacune portant son
+critère décisif \emph{et} son prix.
+
+\section{L'architecture Zero Trust}
+\label{sec:zt}
+
+\subsection{Du modèle périmétrique au Zero Trust}
+\label{sec:zt-origine}
+
+Le modèle de sécurité traditionnel repose sur une frontière : intérieur réputé sûr, extérieur
+hostile, filtrage entre les deux. Trois raisons structurelles l'ont dégradé --- ressources
+dispersées, utilisateurs connectés depuis n'importe où, attaques les plus coûteuses issues d'un
+accès légitime détourné ---, et la question n'est plus \og comment empêcher d'entrer ? \fg{} mais
+\og que peut faire un intrus une fois entré ? \fg{} Le terme \emph{Zero Trust},
+popularisé par Forrester Research dès 2010 \cite{kindervag2010} et mis en œuvre à grande échelle
+par Google sous le nom \emph{BeyondCorp} à partir de 2014 \cite{beyondcorp2014}, est formalisé en
+2020 par le NIST (\textbf{SP~800-207} \cite{nist800207}), aujourd'hui la référence normative : la
+confiance n'est jamais accordée implicitement, elle est évaluée à chaque accès selon l'identité
+du demandeur, l'état de son équipement et le contexte.
+
+\subsection{Les sept principes directeurs}
+\label{sec:zt-principes}
+
+La publication \cite{nist800207} énonce sept principes directeurs --- trois sur les ressources et
+les échanges, deux sur la décision d'accès, deux sur la vérification et l'observation --- que le
+\cref{tab:zt-principes} reprend avec leur traduction pour le projet : c'est la grille d'exigences
+que le \cref{ch:validation} confronte à des mesures, et le premier engagement vérifiable du
+mémoire.
+
+\begingroup
+\centering
+\captionof{table}{Les sept principes du NIST SP 800-207 et leur traduction pour le projet}
+\label{tab:zt-principes}
+\scriptsize
+\begin{tabular}{|P{0.85cm}|P{6.90cm}|P{7.55cm}|}
+\hline
+\textbf{\#} & \textbf{Principe (reformulé)} & \textbf{Traduction pour le projet} \\
+\hline
+P1 & Toute ressource de données ou de calcul est une ressource à protéger &
+Base de données, journaux, images et secrets sont des ressources contrôlées \\ \hline
+P2 & Toute communication est sécurisée, quelle que soit sa position réseau &
+Le chiffrement en transit ne dépend pas d'être \og à l'intérieur \fg{} \\ \hline
+P3 & L'accès est accordé par session, jamais définitivement &
+Jetons à durée courte, jamais de clé permanente \\ \hline
+P4 & L'accès est déterminé par une politique dynamique (identité, contexte) &
+Une identité par charge de travail, droits au cas par cas \\ \hline
+P5 & L'organisation mesure et surveille en continu ses ressources &
+Journalisation centralisée, analyse de posture \\ \hline
+P6 & Authentification et autorisation appliquées avant chaque accès &
+Vérification à chaque requête, jamais une seule fois à l'entrée \\ \hline
+P7 & L'organisation collecte le plus d'informations possible &
+Détection, mesure et amélioration à partir des observations \\
+\hline
+\end{tabular}
+\endgroup
+\medskip
+
+\subsection{Modèle de maturité et limites reconnues}
+\label{sec:zt-limites}
+
+Les principes disent ce qu'il faut atteindre, non où l'on en est. Le \textbf{modèle de maturité}
+de la CISA \cite{cisa_zt_maturity_model} comble cet écart, et il est retenu pour une raison
+unique : c'est le seul modèle public qui distingue les \emph{piliers}
+fonctionnels --- identités, équipements, réseaux, applications et charges de travail, données ---
+des \emph{capacités transverses} --- visibilité et analyse, automatisation et orchestration,
+gouvernance ---, qui traversent tous les piliers au lieu d'en constituer un. La distinction évite
+le biais le plus commun d'une auto-évaluation : compenser un pilier vide par un autre
+particulièrement mûr.
+
+\textbf{Aucun niveau n'est attribué ici} : la présente section installe la grille, l'évaluation
+pilier par pilier relevant du \cref{ch:validation}. Deux précautions accompagnent son emploi :
+conçu pour des agences fédérales américaines, ses niveaux ne sont pas des seuils opposables et
+l'évaluation qui en découle reste \textbf{déclarative} ; et il évalue une architecture, non un
+produit, de sorte qu'un pilier noté bas peut l'être par une contrainte de périmètre plutôt que
+par une carence de conception.
+
+Trois limites du modèle lui-même doivent être mentionnées : le \textbf{coût de mise en œuvre}
+(composants supplémentaires, latence, points de défaillance additionnels) ; le \textbf{déplacement
+du risque vers le fournisseur d'identité}, dont la compromission devient l'unique point de
+défaillance majeur ; l'\textbf{écart entre discours commercial et contenu technique}, un produit
+portant le nom \og Zero Trust \fg{} ne rendant pas un système Zero Trust --- une déclinaison
+pratique de 2025 \cite{nist180035} confirmant qu'aucune mise en œuvre n'est valable pour tous les
+contextes. Le projet retient l'approche progressive et la limite du point de défaillance unique,
+que le \cref{ch:validation} éprouve par un test de compromission d'identité de service.
+
+\section{L'approche DevSecOps}
+\label{sec:devsecops}
+
+\subsection{Principe et portes de contrôle automatisées}
+\label{sec:devsecops-portes}
+
+Le DevOps a réduit le délai entre écriture du code et mise en production, au prix d'un goulot
+d'étranglement : la sécurité, vérifiée jusque-là par audit. Le DevSecOps déplace les contrôles vers
+l'amont (\emph{shift-left} \cite{shiftleft_smith2001}) et les automatise. Le point souvent négligé
+est le caractère \textbf{bloquant} du contrôle : un avertissement qui n'empêche pas le déploiement
+ne change rien au comportement des équipes \cite{owasp_cicd_top10}.
+
+Quatre familles de contrôles sont couramment intégrées à une chaîne de livraison, chacune posant
+une question distincte. La \textbf{détection de secrets} (Gitleaks, TruffleHog) demande si un
+secret a été versionné \cite{gitguardian_sprawl} ; l'\textbf{analyse statique} ou SAST (Semgrep,
+CodeQL, SonarQube), si le code contient une vulnérabilité connue ; l'\textbf{analyse de
+composition et d'images} ou SCA (Trivy, Grype, Dependency-Check), si un composant vulnérable est
+utilisé ; l'\textbf{analyse de l'infrastructure en code} (Checkov, tfsec, Terrascan), si la
+ressource sera créée de façon non sécurisée --- famille qui n'existe que parce que
+l'infrastructure est décrite en code \cite{iac_morris2020}, donc analysable avant existence
+(\cref{ch:realisation}). Ces quatre questions commandent le choix des quatre briques de la chaîne
+de livraison (\cref{sec:inventaire}). La grille complète en compte huit, dont le
+\cref{ch:realisation} dresse l'état ; les deux familles de provenance relèvent du
+\cref{sec:provenance-artefacts}.
+
+\subsection{Provenance, intégrité et référentiels}
+\label{sec:provenance-artefacts}
+\label{sec:referentiels}
+
+La \textbf{provenance} des artefacts --- prouver qu'un artefact déployé provient du code et de la
+chaîne attendus --- est une préoccupation récente, rendue concrète par des compromissions
+documentées \cite{cisa_aa20_352a}. Trois réponses coexistent : la \textbf{nomenclature logicielle}
+(SPDX, CycloneDX), la \textbf{signature d'artefacts} (Sigstore) et le cadre \textbf{SLSA}
+\cite{slsa_framework} ; toutes trois ont été évaluées puis écartées (décision D07) au profit d'un
+chemin moins coûteux --- étiquette liée à l'empreinte du commit et registre unique ; motif et
+condition de réévaluation au \cref{sec:composants-ecartes}.
+
+Pour les risques applicatifs, la référence est le classement de l'OWASP \cite{owasp2025} : sa
+dernière édition place le contrôle d'accès défaillant en tête et la mauvaise configuration en
+deuxième position, contre la cinquième en 2021 --- ce qui valide le constat du
+\cref{ch:cadre-existant} ---, et ajoute une catégorie pour la chaîne d'approvisionnement
+logicielle, faisant des contrôles du \cref{sec:devsecops-portes} une exigence de référentiel.
+Pour la plateforme, c'est le \textbf{CIS GCP Foundation Benchmark}
+\cite{cis_gcp_benchmark,gcp_container_best_practices} : plus de cent contrôles en sept domaines,
+mobilisés comme \textbf{grille de configuration} et non de certification. Le mémoire publie des
+écarts nommés, datés et justifiés plutôt qu'un taux de conformité, qui supposerait une grille
+figée et un audit exhaustif hors périmètre. C'est ce que le projet attend d'un référentiel :
+documenté et justifié, un écart est une décision d'ingénierie ; non documenté, une négligence.
+
+\section{Supervision et ingénierie de la détection}
+\label{sec:detection}
+
+\subsection{Modèle de supervision et détection comme code}
+\label{sec:supervision-modele}
+\label{sec:detection-code}
+
+Un SIEM remplit historiquement quatre fonctions : collecter des journaux hétérogènes, les
+normaliser, y appliquer des règles, présenter les alertes. Son modèle économique facture le volume
+ingéré, ce qui \textbf{incite à collecter moins} --- incitation qui contredit le septième principe
+du Zero Trust (\cref{sec:zt-principes}) --- et son coût reste inaccessible à un budget
+contraint. D'où le \emph{SIEM sur entrepôt de données} : dissocier \textbf{stockage et
+interrogation} (entrepôt généraliste) de la \textbf{logique de détection} (code versionné). Il
+apporte un coût aligné au volume, un langage standard, une rétention longue et aucune dépendance
+à un éditeur ; il ne fournit ni règle, ni interface, ni corrélation, ni support. Un compromis,
+non une supériorité.
+
+Le format \textbf{Sigma} \cite{sigma_spec} est à la détection ce que SQL est aux bases : une
+manière neutre d'exprimer une règle, indépendante du moteur, en YAML lisible (source, condition,
+faux positifs, criticité, techniques associées), qui permet de traiter les règles comme du code
+source. Mais \textbf{aucun moteur pris en charge ne cible l'entrepôt retenu ici} : le format a été
+évalué puis écarté au titre du principe de justification (PR1), une dépendance de conversion pour
+sept règles coûtant davantage qu'elle ne rapporte. Le socle conserve la propriété recherchée ---
+une règle est un objet versionné, revu et testé --- et paie ce choix par l'absence de portabilité,
+l'impossibilité d'importer une règle du corpus communautaire et un plafond de couverture lié au
+volume traduisible à la main, mesuré au \cref{ch:validation}.
+
+\subsection{La matrice des techniques d'attaque}
+\label{sec:attck-matrice}
+
+La matrice \textbf{MITRE ATT\&CK} \cite{mitre_attack,mitre_attack_design2018} recense les
+comportements d'attaquants en tactiques (l'objectif) et techniques (le moyen) : vocabulaire commun
+conception-détection, grille de couverture, cible de l'enrichissement
+(\cref{sec:enrichissement}). Précaution méthodologique : la version~19 (28/04/2026) a scindé
+la tactique d'évasion des défenses en deux, portant la matrice Entreprise à quinze tactiques,
+222~techniques et 475~sous-techniques --- \textbf{toute mesure de couverture sans version indiquée
+n'est donc pas comparable}, et la version employée est consignée en
+annexe~\ref{ann:fiche-versions}. Le mémoire publie \textbf{l'inventaire nominatif des techniques
+couvertes} plutôt qu'un taux : le dénominateur pertinent étant le référentiel intégral, un
+pourcentage serait exact et sans valeur comparative.
+
+\subsection{Étude comparative et solution retenue}
+\label{sec:supervision-comparatif}
+
+Cinq options ont été comparées (\cref{tab:supervision-cinq}) : produit SIEM commercial, service
+SIEM cloud, pile de recherche libre auto-hébergée, solution libre intégrée, entrepôt de données
+couplé à une détection en code. Les cinq sont réellement accessibles au projet, les deux premières
+étant écartées par leur modèle économique et non par leur indisponibilité. La grille retient huit
+des neuf critères évalués : le neuvième, l'absence de dépendance à un éditeur, laisse les trois
+options restantes à égalité, et un critère qui ne discrimine pas n'a pas tranché.
+
+\begingroup
+\setlength{\tabcolsep}{3pt}
+\footnotesize
+\setlength{\LTpre}{4pt}
+\setlength{\LTpost}{4pt}
+\begin{longtable}{|P{6.6cm}|P{1.6cm}|P{1.6cm}|P{1.6cm}|P{1.6cm}|P{1.6cm}|}
+\caption[Comparaison des cinq options de supervision sur huit critères]{Comparaison des cinq options de supervision sur les huit critères discriminants.
+Légende : \pictoPleinAudit~favorable, \pictoPartielAudit~intermédiaire,
+\pictoVideAudit~défavorable.}
+\label{tab:supervision-cinq}\\
+\hline
+\textbf{Critère} & \textbf{SIEM comm.} & \textbf{SIEM cloud} & \textbf{Pile libre} &
+\textbf{Libre intégrée} & \textbf{Entrepôt + code} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Critère} & \textbf{SIEM comm.} & \textbf{SIEM cloud} & \textbf{Pile libre} &
+\textbf{Libre intégrée} & \textbf{Entrepôt + code} \\
+\hline
+\endhead
+\hline
+\endfoot
+Coût pour un faible volume & \pictoVideAudit & \pictoVideAudit & \pictoPartielAudit & \pictoPleinAudit & \pictoPleinAudit \\ \hline
+Coût d'exploitation courante & \pictoPleinAudit & \pictoPleinAudit & \pictoVideAudit & \pictoPartielAudit & \pictoPartielAudit \\ \hline
+Règles fournies au départ & \pictoPleinAudit & \pictoPleinAudit & \pictoPartielAudit & \pictoPleinAudit & \pictoVideAudit \\ \hline
+Interface d'analyste fournie & \pictoPleinAudit & \pictoPleinAudit & \pictoPleinAudit & \pictoPleinAudit & \pictoVideAudit \\ \hline
+Détection versionnée et testable & \pictoPartielAudit & \pictoPartielAudit & \pictoPartielAudit & \pictoPartielAudit & \pictoPleinAudit \\ \hline
+Rétention longue maîtrisée & \pictoVideAudit & \pictoPartielAudit & \pictoVideAudit & \pictoPartielAudit & \pictoPleinAudit \\ \hline
+Analyse exécutée sur les données stockées & \pictoVideAudit & \pictoPartielAudit & \pictoPartielAudit & \pictoVideAudit & \pictoPleinAudit \\ \hline
+Maturité et support & \pictoPleinAudit & \pictoPleinAudit & \pictoPleinAudit & \pictoPartielAudit & \pictoVideAudit \\
+\end{longtable}
+\endgroup
+
+La contrainte budgétaire du \cref{ch:cadre-existant} élimine les deux premières colonnes. Le
+\textbf{critère décisif} entre les trois restantes est \textbf{unique} : appliquer un
+rapprochement automatique aux alertes \emph{là où elles sont stockées}, sans les exporter ---
+seule la dernière option le permet. Son prix se lit sur les quatre lignes perdues : ni règles, ni
+interface d'analyste, ni support, et un coût d'exploitation à la charge du projet --- trois
+chantiers du \cref{ch:realisation} et trois risques du \cref{ch:validation}. Le mode d'exécution
+des charges a fait l'objet d'une comparaison de même forme (\cref{ann:modes-execution}).
+
+\section{Enrichissement sémantique des alertes}
+\label{sec:enrichissement}
+
+Une règle de détection produit une alerte : horodatage, adresse, ressource, message. L'analyste
+doit répondre à trois questions qu'elle ne contient pas --- \emph{quel comportement d'attaquant ?
+est-ce grave ? que faire ?} ---, premier poste de charge à disparaître quand l'équipe se réduit à
+une personne. L'automatiser, c'est associer chaque alerte à une technique ATT\&CK et afficher la
+conduite à tenir.
+
+\subsection{Approches disponibles}
+\label{sec:enrichissement-approches}
+
+Quatre familles permettent cette association ; le \cref{tab:enrichissement-approches} les oppose
+par leur \emph{limite décisive} plutôt que par leurs mérites, car c'est la limite qui a tranché.
+
+\begingroup
+\centering
+\captionof{table}{Approches d'association alerte \texorpdfstring{$\rightarrow$}{->} technique ATT\&CK}
+\label{tab:enrichissement-approches}
+\scriptsize
+\begin{tabular}{|P{3.7cm}|P{5.0cm}|P{6.6cm}|}
+\hline
+Approche & Principe & Limite décisive \\
+\hline
+Mots-clés / regex & Table écrite à la main &
+Ignore les reformulations ; maintenance manuelle \\ \hline
+Similarité vectorielle (TF-IDF) & Statistique du texte &
+Ignore le sens ; formulations équivalentes éloignées \\ \hline
+Modèles de langue spécialisés & Proximité vectorielle = proximité de sens &
+Déterministe, exécution locale ; pas d'explication en langue naturelle \\ \hline
+Modèles génératifs & Le modèle rédige l'interprétation &
+Non déterministe, coût par appel, injection d'instructions \\
+\hline
+\end{tabular}
+\endgroup
+\medskip
+
+La troisième est retenue. Le dernier point de la quatrième ligne est un argument de
+\textbf{sécurité} et non de performance : les journaux portent par construction du texte de tiers
+non fiables, et les soumettre à un modèle génératif transmet une entrée contrôlée par l'attaquant
+à un composant qui suit des instructions, là où un modèle produisant un vecteur numérique n'en
+exécute aucune. C'est la seule décision de l'inventaire dont la condition de réévaluation est
+\emph{aucune} (\cref{sec:composants-ecartes}).
+
+\subsection{Modèles spécialisés et travail le plus proche}
+\label{sec:smet-travail-proche}
+
+Les modèles généralistes fondés sur l'architecture Transformer \cite{devlin_bert2019} traitent
+mal le vocabulaire de la cybersécurité, d'où des modèles spécialisés comme \textbf{SecureBERT}
+\cite{securebert2022} ; et rapprocher deux descriptions d'attaque exige une représentation par
+\textbf{phrase}, l'architecture Sentence-BERT \cite{sbert2019}. \textbf{ATT\&CK-BERT} combine les
+deux \cite{attackbert_model,smet2023} : un modèle de phrases entraîné pour que deux descriptions
+d'une même action soient proches dans l'espace vectoriel, exécutable localement et sans appel
+externe --- essentiel vu le coût et la nature des données traitées.
+
+Le travail le plus proche est \textbf{SMET} (\emph{Semantic Mapping of CVE to ATT\&CK}), IFIP
+DBSec 2023, étendu en 2024 \cite{smet2024} : il associe une vulnérabilité publiée à des techniques
+d'attaque via ATT\&CK-BERT et une régression logistique. L'idée n'est donc pas nouvelle, et trois
+différences précises séparent SMET de ce projet. L'\textbf{entrée} : une description de
+vulnérabilité rédigée et structurée pour SMET, une alerte courte et bruitée ici. Le
+\textbf{régime} : hors ligne sur un corpus constitué pour SMET, périodique en recette et sous
+contrainte de latence et de coût ici. La \textbf{finalité} : SMET enrichit la connaissance d'une
+vulnérabilité, ce projet \textbf{prototype le réordonnancement des vulnérabilités détectées à la
+livraison selon les menaces observées}. Cette dernière différence est l'hypothèse d'apport du
+mémoire --- \textbf{réintroduire l'observation d'exploitation dans la décision de développement}
+---, objet de la question Q6 du \cref{ch:cadre-existant}.
+
+\section{Choix de la plateforme d'hébergement}
+\label{sec:choix-plateforme}
+
+\label{sec:plateforme-criteres}
+\label{sec:plateforme-decision}
+
+La plateforme qui héberge les méthodes et les outils comparés jusqu'ici appelle la même
+justification. L'application pilote tournait avant le projet sur un serveur unique loué chez un
+hébergeur européen : la migration vers un fournisseur de cloud est une décision, non un préalable,
+argumentée ici et enregistrée au \cref{ch:conception} sous la référence D00.
+
+Six options ont été examinées (\cref{tab:plateforme-10-criteres}) : trois grands fournisseurs de
+cloud, un fournisseur européen généraliste, un hébergeur européen à forfait comparable à
+l'existant, et un hébergeur mauritanien. Les six sont réellement accessibles au projet, par le
+budget comme par les compétences déclarées par l'entreprise d'accueil : comparer une option hors
+de portée serait une comparaison de façade. Sur les dix critères évalués, la grille publiée en
+retient sept, un critère qui ne discrimine pas n'ayant pas participé à la décision --- sont
+retirées la région unique et documentée, la fédération d'identité sans secret permanent (reprise
+comme brique au \cref{sec:trente-trois-briques}) et la maturité de l'infrastructure en code,
+sur lesquelles les grands fournisseurs sont à égalité.
+
+\begingroup
+\centering
+\captionof{table}{Comparaison des six options d'hébergement sur les sept critères discriminants}
+\label{tab:plateforme-10-criteres}
+{\small Légende : \pictoPleinAudit~favorable, \pictoPartielAudit~intermédiaire,
+\pictoVideAudit~défavorable. \og{}Forfait\fg{} désigne un serveur loué à prix fixe chez un
+hébergeur européen, comparable à l'existant ; \og{}Local\fg{} un hébergeur mauritanien.
+\par\medskip}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|P{0.5cm}|P{8.9cm}|c|c|c|c|c|c|}
+\hline
+\textbf{\#} & \textbf{Critère} & \textbf{GCP} & \textbf{AWS} & \textbf{Azure} &
+\textbf{OVH} & \textbf{Forfait} & \textbf{Local} \\
+\hline
+1 & Palier gratuit couvrant l'entrepôt de supervision &
+\pictoPleinAudit & \pictoPartielAudit & \pictoPartielAudit & \pictoVideAudit &
+\pictoVideAudit & \pictoVideAudit \\ \hline
+2 & Coût direct à périmètre de calcul comparable &
+\pictoVideAudit & \pictoVideAudit & \pictoVideAudit & \pictoPartielAudit &
+\pictoPleinAudit & \pictoPartielAudit \\ \hline
+3 & Facturation nulle en l'absence de trafic &
+\pictoPleinAudit & \pictoPleinAudit & \pictoPleinAudit & \pictoVideAudit &
+\pictoVideAudit & \pictoVideAudit \\ \hline
+4 & Proximité géographique de la Mauritanie &
+\pictoVideAudit & \pictoVideAudit & \pictoVideAudit & \pictoPartielAudit &
+\pictoPartielAudit & \pictoPleinAudit \\ \hline
+5 & Briques de sécurité managées &
+\pictoPleinAudit & \pictoPleinAudit & \pictoPleinAudit & \pictoVideAudit &
+\pictoVideAudit & \pictoVideAudit \\ \hline
+6 & Charge d'apprentissage pour une personne seule &
+\pictoPartielAudit & \pictoVideAudit & \pictoVideAudit & \pictoPartielAudit &
+\pictoPleinAudit & \pictoPleinAudit \\ \hline
+7 & Réversibilité et absence d'enfermement &
+\pictoVideAudit & \pictoVideAudit & \pictoVideAudit & \pictoPartielAudit &
+\pictoPleinAudit & \pictoPartielAudit \\
+\hline
+\end{tabular}
+\endgroup
+\medskip
+
+\textbf{Élimination.} La contrainte humaine du \cref{ch:cadre-existant} écarte les deux dernières
+colonnes (critère~5) : une personne seule ne peut exploiter et maintenir à jour en même temps un
+filtrage applicatif, un gestionnaire de clés, un annuaire d'identités par charge de travail et un
+entrepôt de journaux, briques dont dépend la faisabilité des vingt exigences du
+\cref{ch:besoins-menaces}. La contrainte économique écarte les modèles facturés au forfait
+(critère~3) : le socle doit pouvoir ne rien coûter lorsqu'il ne sert pas. Deux réserves encadrent
+la lecture : le critère~6 est une appréciation et non une mesure, et le critère~2 est apprécié à
+partir des modèles de facturation --- usage contre forfait --- et non de prix relevés à une date
+unique, de sorte qu'aucun montant comparatif n'est publié. Sources et dates de consultation
+figurent en annexe~\ref{ann:etudes-comparatives},
+\cref{ann:etudes-comparatives-plateforme}.
+
+\textbf{Critère décisif.} Entre les trois fournisseurs restants, il est \textbf{unique} et découle
+du \cref{sec:supervision-comparatif} : la recherche de similarité doit s'exécuter dans
+l'entrepôt de supervision plutôt que dans une base spécialisée. Un seul des trois réunit dans un
+même service le stockage, le langage de détection, la recherche vectorielle et un palier gratuit
+couvrant le volume du projet ; les deux autres imposeraient un composant supplémentaire, ce que le
+principe de justification (PR1) interdit. Google Cloud est retenu sur ce critère, et sur lui seul.
+
+\textbf{Prix payé.} Trois critères sont perdus. Le \textbf{coût direct} (ligne~2) : un serveur à
+forfait chez un hébergeur européen reste moins cher, à périmètre de calcul comparable. La
+\textbf{réversibilité} (ligne~7) : l'architecture d'origine, faite de conteneurs et d'un fichier
+de composition, était portable d'un hébergeur à l'autre ; le socle retenu ne l'est plus. La
+\textbf{proximité géographique} (ligne~4) : aucun des fournisseurs examinés n'exploite de région
+en Afrique de l'Ouest, et l'hébergeur mauritanien serait le seul à satisfaire ce critère comme le
+seul à n'en satisfaire aucun des six autres. Conserver l'hébergeur à forfait aurait maintenu ce
+coût et cette portabilité, au prix d'exploiter à la main les quatre briques ci-dessus : c'est la
+contrainte d'une seule personne, non une préférence technique, qui a fermé cette voie. \textbf{Le
+projet échange de la réversibilité et du coût direct contre des briques de sécurité qu'une
+personne seule n'aurait pas pu exploiter} --- le \cref{ch:validation} en mesure la part
+vérifiable.
+
+\section{Inventaire technologique du socle}
+\label{sec:inventaire}
+
+La plateforme étant choisie, cette section énonce ce qui a été construit dessus. Un inventaire
+technologique ne vaut que s'il résiste à deux dérives symétriques : la liste de dépendances, qui
+noie la décision dans l'outillage, et la plaquette commerciale, qui énumère des avantages sans
+nommer de contrepartie. \textbf{L'état décrit est celui relevé le 28/08/2026} sur la branche
+principale du dépôt et l'environnement de recette, donc \textbf{postérieurement à la refonte du
+plan réseau} appliquée en douze étapes du 11 au 25/08/2026 au titre de la décision D15
+(\cref{ch:conception}).
+
+\subsection{Le critère de sélection}
+\label{sec:critere-selection}
+
+Un mémoire d'ingénieur ne recense pas ses bibliothèques ; il recense ses \textbf{décisions
+d'architecture matérialisées par un composant}. Un composant est une \textbf{brique structurante}
+s'il satisfait \textbf{au moins deux des trois critères} suivants ; à défaut, il relève de la
+sous-technologie.
+
+\begin{enumerate}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
+  \item \textbf{Arbitrage} : au moins une alternative sérieuse a été évaluée puis écartée, et le
+  motif du rejet est écrit.
+  \item \textbf{Portée architecturale} : son retrait modifierait l'\textbf{architecture} et non
+  une seule implémentation --- retirer l'entrepôt de supervision change le système, retirer une
+  bibliothèque de graphiques change une page.
+  \item \textbf{Propriété portée} : elle porte une \textbf{propriété du système} --- sécurité,
+  coût, disponibilité, reproductibilité --- que le mémoire revendique et devra démontrer.
+\end{enumerate}
+
+Le \cref{tab:critere-application} l'applique à cinq technologies du dépôt : les deux rejets y
+sont plus instructifs que les deux admissions, et le cas frontière montre où passe la limite.
+
+\begingroup
+\centering
+\captionof{table}{Application du critère de sélection : deux admissions, deux rejets et un cas
+frontière}
+\label{tab:critere-application}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|P{4.7cm}|P{2.0cm}|P{8.6cm}|}
+\hline
+\textbf{Technologie} & \textbf{Brique ?} & \textbf{Pourquoi} \\
+\hline
+Entrepôt de données comme système de supervision & \textbf{Oui} &
+Arbitrage documenté (D04) sur cinq options ; porte le coût \emph{et} la capacité de détection.
+Trois critères sur trois \\ \hline
+Fédération d'identité de la chaîne de livraison & \textbf{Oui} &
+Supprime une classe de risque entière plutôt que de la gérer (D08) ; son retrait réintroduirait une
+clé permanente dans le chemin de déploiement \\ \hline
+Bibliothèque de graphiques du tableau de bord & \textbf{Non} &
+Aucune alternative évaluée, aucune propriété du système n'en dépend, aucune couche touchée par son
+remplacement. Très visible sur chaque capture, et pourtant zéro critère sur trois \\ \hline
+Bibliothèque de génération de codes temporels & \textbf{Non} &
+Implémentation d'un standard ouvert : \emph{le standard est la brique, pas la bibliothèque}. La
+substituer ne changerait ni le protocole d'authentification ni sa surface \\ \hline
+Pilote d'accès à la base de données & \textbf{Frontière} &
+Sous-technologie : aucun arbitrage documenté, aucune couche modifiée par son remplacement. Mais son
+caractère synchrone \emph{est} cité au \cref{ch:realisation}, car il justifie un choix de
+conception de l'API \\
+\hline
+\end{tabular}
+\endgroup
+\medskip
+
+Ce critère est ce qui empêche l'inventaire de dériver : \textbf{trente-trois composants le
+franchissent, quand le dépôt en compte plusieurs centaines}.
+
+\subsection{Les trente-trois briques structurantes}
+\label{sec:trente-trois-briques}
+
+L'inventaire se lit par couche, du socle vers la chaîne de livraison. Le
+\cref{tab:synthese-couches} en donne la lecture d'ensemble : pour chacune des six couches, les
+briques retenues et le critère qui a décidé de la couche entière. Le détail brique par brique ---
+libellé, rôle, critère décisif et prix payé --- est publié en \cref{ann:fiche-versions}, suivi
+dans le même ordre de la version retenue et du mode de verrouillage : les deux tableaux s'y lisent
+ligne pour ligne. Le produit qui réalise chaque capacité y est nommé entre parenthèses à sa
+première occurrence. \textbf{L'inventaire nominatif des alternatives évaluées puis écartées,
+couche par couche}, figure en annexe~\ref{ann:etudes-comparatives},
+\cref{ann:alternatives-couches}, avec les deux comparaisons formalisées.
+
+\begingroup
+\setlength{\tabcolsep}{2.5pt}
+\renewcommand{\arraystretch}{1.0}
+\begin{longtable}{|P{2.7cm}|P{6.3cm}|P{6.1cm}|}
+\caption[Les trente-trois briques, par couche]{Les trente-trois briques structurantes, couche par
+couche : ce que chaque couche apporte et le critère qui l'a décidée. Le détail brique par brique
+figure en \cref{ann:fiche-versions}.}
+\label{tab:synthese-couches}\\
+\hline
+\textbf{Couche} & \textbf{Briques retenues} & \textbf{Critère décisif de la couche} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Couche} & \textbf{Briques retenues} & \textbf{Critère décisif de la couche} \\
+\hline
+\endhead
+\hline
+\endfoot
+\textbf{N1a} --- Socle et infrastructure \emph{(huit)} &
+Fournisseur de cloud public unique ; infrastructure décrite en code ; exécution de conteneurs sans
+serveur ; réseau privé virtuel en mode personnalisé ; sortie réseau directe ; accès privé aux
+services managés ; répartiteur de charge global ; filtrage applicatif managé au bord &
+Aucun système d'exploitation à durcir ni cluster à exploiter --- décisif sous contrainte
+mono-opérateur --- et un point d'entrée public unique, donc un point de contrôle unique \\ \hline
+\textbf{N1b} --- Identité, secrets et chiffrement \emph{(six)} &
+Gestion des identités et des accès ; fédération d'identité de la chaîne de livraison (D08) ; coffre
+de secrets managé ; service de gestion de clés ; authentification par jeton signé et rôles (D10) ;
+second facteur par code temporel &
+Une identité par charge de travail : c'est ce qui remplace les pare-feux internes (PR2). La
+fédération supprime la classe de risque de la clé permanente au lieu de la gérer \\ \hline
+\textbf{N1c} --- Exécution, conteneurisation et applications \emph{(six)} &
+Conteneurisation multi-étage ; registre d'images privé (D07) ; cadre applicatif à validation typée ;
+cadre web à rendu serveur (D14) ; connecteur applicatif chiffré vers la base ; outil de migration de
+schéma versionné &
+Le contrôle d'accès devient visible dans la signature de chaque point d'entrée, donc auditable en
+lecture ; et le schéma redevient reconstructible depuis le dépôt --- réponse au constat bloquant
+B5 \\ \hline
+\textbf{N1d} --- Données et entrepôt de supervision \emph{(cinq)} &
+Base relationnelle managée en haute disponibilité (D03, D13) ; entrepôt de données généraliste
+comme système de supervision (D04) ; requêtes planifiées de l'entrepôt comme ordonnanceur ;
+stockage objet à clés gérées ; collecte de journaux et exports &
+Un seul service réunit le stockage, le langage de détection et la recherche vectorielle, sans base
+spécialisée (D06) ; et le filtrage \emph{au moment de la collecte} porte le levier de coût
+principal (BNF3) \\ \hline
+\textbf{N1e} --- Détection et enrichissement sémantique \emph{(quatre)} &
+Règles de détection versionnées R1 à R7 ; référentiel de techniques d'attaque MITRE ATT\&CK ;
+modèle de représentation de phrases spécialisé (D05) ; moteur d'inférence embarqué &
+Un modèle qui produit un vecteur \textbf{n'exécute aucune instruction} : la chaîne de preuve ne
+soumet jamais une entrée contrôlée par l'attaquant à un composant qui suit des instructions \\
+\hline
+\textbf{N1f} --- Chaîne de livraison et chaîne de provisionnement \emph{(quatre)} &
+Forge logicielle et son moteur d'exécution ; détection de secrets versionnés (D09) ; analyse
+statique du code ; analyse de vulnérabilité des images et de la configuration &
+Trois portes bloquantes, dont \textbf{une seule couvre à la fois les images et la description
+d'infrastructure} : un composant en moins, application directe de PR1 \\
+\hline
+\end{longtable}
+\endgroup
+
+
+\textbf{Une brique a quitté l'inventaire sans successeur.} La \emph{traduction d'adresses de
+sortie} y figurait jusqu'à la refonte du réseau ; elle n'a pas été corrigée, elle est devenue
+\textbf{sans objet} --- les interfaces de sortie directe n'ont pas d'adresse externe, l'accès
+privé leur donne tout ce qu'elles doivent joindre, et le refus par défaut en sortie interdit toute
+autre destination : \textbf{il ne reste aucun trafic qu'une passerelle de traduction aurait à
+traiter}. La suppression a été prononcée sur mesure : le critère posé avant l'observation était
+\emph{aucune connexion enregistrée par la passerelle}, la journalisation a été portée à
+\texttt{ALL} du 15 au 22/08/2026, elle n'en a relevé aucune, et la suppression a suivi le
+24/08/2026. La distinction n'est pas de vocabulaire : \textbf{corriger un composant mal réglé le
+laisse dans l'inventaire} --- avec son coût, sa charge d'exploitation et sa surface ---
+\textbf{tandis qu'établir qu'il est sans objet l'en retire}, ce que demande le principe de
+justification (PR1). L'inventaire passe de trente-quatre à trente-trois briques, et la couche N1a
+de neuf à huit.
+
+\textbf{Le service de noms de domaine n'est pas une brique du socle}, et son absence est
+délibérée. Les enregistrements qui font pointer les trois domaines vers le point d'entrée sont
+créés à la main chez le bureau d'enregistrement, sans ressource correspondante dans la
+description en code : c'est le \textbf{seul maillon de la chaîne d'exposition qui échappe au
+principe de description en code} (PR4), écart enregistré sous la référence \textbf{É10}. Sa
+conséquence est opérationnelle et vérifiée : une bascule de nom faite à la main a rompu une porte
+de la chaîne de livraison, sans qu'aucun contrôle ne la signale.
+
+\subsection{Les sept composants évalués puis écartés}
+\label{sec:composants-ecartes}
+
+Un inventaire qui n'énumère que ce qu'il contient laisse penser que tout ce qui n'y figure pas a
+été oublié. Sept composants de l'état de l'art ont été évalués puis écartés au titre du principe
+de justification (PR1), et \textbf{six le sont par arbitrage de coût}. Le \emph{périmètre de
+service anti-exfiltration} : disproportionné pour un projet
+unique, et sa pose exige un périmètre administratif indisponible. L'\emph{orchestrateur de
+conteneurs et maillage de services} : une souplesse inutile ici, au prix d'un cluster à exploiter,
+la plateforme fournissant déjà le chiffrement interne et l'identité par service. Le \emph{cache
+distribué} : utile aux seules limitations de débit distribuées, mise à l'échelle hors objectif
+(BNF7). Le \emph{déploiement multi-région} : hors périmètre déclaré au \cref{ch:cadre-existant},
+coût doublé, perte de données déjà couverte par les sauvegardes. La \emph{signature d'artefacts
+et la nomenclature logicielle} : remplacées par l'étiquette liée à l'empreinte du commit et le
+registre unique. La \emph{passerelle d'authentification du fournisseur} : elle exige un annuaire
+d'entreprise indisponible, le besoin étant couvert par l'autorisation applicative par rôles.
+
+Le septième est le \textbf{modèle de langue génératif pour l'enrichissement}, \textbf{seul rejet
+motivé par la sécurité} : sortie non déterministe et surface d'injection par instruction, toutes
+deux rédhibitoires pour une chaîne de preuve. La \textbf{condition de réévaluation} de chacun est
+enregistrée, avec le motif complet, en annexe~\ref{ann:conception-detaillee},
+\cref{ann:composants-ecartes} : datable pour les six premiers, \textbf{\emph{aucune} pour le
+septième}. Les deux natures ne se confondent pas --- un arbitrage de coût se rouvre avec le
+contexte, un principe non --- et \textbf{un socle qui les traite de la même façon ne sait plus
+laquelle de ses décisions est négociable}.
+
+\subsection{Deux lectures transverses de l'inventaire}
+\label{sec:lectures-transverses}
+
+\paragraph{Première lecture : le fil conducteur.} Les trente-trois briques ne résultent pas de
+trente-trois décisions indépendantes : \textbf{deux contraintes} du \cref{ch:cadre-existant} ---
+une personne, quelques dizaines d'euros par mois --- et \textbf{un principe}, celui de
+justification (PR1), agissent comme trois filtres successifs. L'\emph{humaine} écarte ce qui
+demande une exploitation permanente : orchestrateur, maillage de services, filtrage, coffre de
+secrets et pile de recherche auto-hébergés. L'\emph{économique} écarte les modèles au forfait et
+la supervision commerciale. Le \emph{principe} écarte les doublons : base vectorielle séparée,
+second registre d'images, ordonnanceur externe, analyseur de configuration distinct de l'analyseur
+d'images. \textbf{Trois filtres, et il reste trente-trois briques : c'est peu pour un système qui
+couvre le bord, l'identité, l'exécution, le réseau, les données, la détection, l'enrichissement,
+l'observabilité et deux chaînes de livraison.}
+
+\paragraph{Seconde lecture : ce qu'enseigne la colonne \og prix payé \fg{}.} Lue verticalement,
+elle se répartit en trois natures, et la distinction n'est pas cosmétique.
+
+\begin{itemize}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
+  \item \textbf{Des prix de performance, tous mesurés} et reportés au \cref{ch:validation} :
+  démarrage à froid, cadence plancher d'ordonnancement, délai de détection, durée de
+  reconstruction de la base. Ils sont acceptés \emph{parce qu'ils sont connus} : un coût mesuré
+  est gouvernable, un coût supposé ne l'est jamais.
+  \item \textbf{Des prix de couverture, tous nommés} : cinq familles de règles de filtrage sur
+  onze, aucune signature d'artefact, aucune nomenclature logicielle, aucune protection adaptative,
+  aucun index vectoriel. Ce ne sont pas des aveux : ils délimitent \emph{ce que le socle ne
+  prétend pas faire}, et c'est ce qui rend crédible ce qu'il prétend faire.
+  \item \textbf{Un prix structurel, et il est unique} : la \textbf{réversibilité}. Le socle n'est
+  plus portable d'un fournisseur à l'autre, et sa reconstruction ailleurs demanderait de remplacer
+  le filtrage, l'entrepôt, la gestion des clés et la fédération d'identité.
+\end{itemize}
+
+Le troisième est \textbf{le seul prix que le projet ne peut pas réduire par un travail
+supplémentaire} : les deux premières familles se referment avec du temps d'ingénieur --- on
+calibre un démarrage, on écrit des règles --- là où la réversibilité \emph{augmente} avec chaque
+brique ajoutée.
+
+\paragraph{Un fait que ces trois natures ne classent pas.} La refonte du plan réseau (D15) a
+\textbf{retiré deux briques du socle --- le connecteur d'accès sans serveur et la passerelle de
+traduction d'adresses avec son routeur --- sans en ajouter aucune} : la sortie réseau directe
+n'est pas un composant à exploiter, c'est un mode de rattachement d'instances existantes. Dans le
+même geste, le socle a gagné un refus par défaut en sortie, un sous-réseau par locataire et huit
+règles de pare-feu de plus, toutes ciblées par identité et par port : \textbf{une architecture qui
+se simplifie et se durcit dans le même mouvement est assez rare pour être relevée}. Le solde
+financier va dans le même sens : la suppression du connecteur retire un coût fixe permanent et
+indépendant du trafic, que la tarification publique situe autour de treize~euros par mois, contre
+un supplément d'ingestion de journaux de flux d'un à deux~euros. \textbf{Ce solde est un ordre de
+grandeur de tarification publique et non une facture relevée} ; le vérifier suppose de comparer
+les postes de facturation des mois encadrant la bascule, comparaison qui n'a pas été faite et
+dont le mode opératoire est publié ici pour qu'un tiers puisse l'exécuter.
+
+\section{Référentiels et méthodes mobilisés}
+\label{sec:referentiels-methodes}
+
+Les référentiels ne sont pas des ornements bibliographiques : ils subissent le même traitement que
+les briques techniques, avec alternatives évaluées, critère décisif et limite assumée. Sept sont
+mobilisés. Cinq l'ont déjà été là où ils servent --- référentiel normatif Zero Trust et modèle de
+maturité au \cref{sec:zt}, classement des risques applicatifs et référentiel de configuration
+de la plateforme au \cref{sec:provenance-artefacts} ---, et le sixième est le \textbf{règlement
+européen sur la protection des données}, applicable au moins par le lieu du traitement, dont la
+limite est que base légale, durées de conservation et droit d'effacement relèvent du responsable
+de traitement, hors périmètre du socle.
+
+Le septième --- la méthode d'analyse de risque --- appelle une justification propre, parce qu'il
+structure le chapitre suivant. \textbf{STRIDE} \cite{shostack2014} applique six catégories de
+menaces à chaque flux et à chaque composant : l'analyse technique est fine, mais ne traite ni les
+enjeux métier ni les sources de risque. \textbf{EBIOS Risk Manager} \cite{anssi_ebios_rm2018}
+déroule cinq ateliers, des valeurs métier au traitement du risque : il relie le risque technique
+à l'enjeu métier, au prix d'une mise en œuvre plus lourde, et ses cinq ateliers ne sont pas tous
+menés ici au même niveau de détail. \textbf{ISO/IEC~27005:2022} \cite{iso27005_2022} fournit un
+cadre général, sans méthode opératoire directement applicable. \textbf{Le choix retenu combine
+les deux premières}, sur un critère décisif unique : \emph{aucune des deux, seule, ne produit à la
+fois le lien au métier et le détail par flux} ; la matrice
+\emph{menace~$\rightarrow$~exigence~$\rightarrow$~contrôle~$\rightarrow$~test} qui en résulte
+relève du \cref{ch:besoins-menaces}.
+
+
+\section*{Conclusion du chapitre}
+\addcontentsline{toc}{section}{Conclusion du chapitre}
+
+Les réponses aux carences du \cref{ch:cadre-existant} existent, mais aucune ne s'applique telle
+quelle : le référentiel Zero Trust suppose des moyens que le projet n'a pas ; la détection comme
+code fournit un format neutre mais aucun moteur de conversion vers l'entrepôt retenu ; les modèles
+de rapprochement sémantique n'ont pas été éprouvés sur des alertes courtes et bruitées.
+L'inventaire des trente-trois briques a converti cet état de l'art en décisions, chacune avec son
+critère décisif et son prix. Quatre \textbf{verrous} en résultent.
+
+\begin{itemize}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
+  \item \textbf{V1} (origine \cref{sec:zt-limites} ; traité aux ch.~\ref{ch:conception}
+  et~\ref{ch:realisation}). Les architectures Zero Trust de référence supposent une équipe de
+  sécurité ; aucune n'est dimensionnée pour une exploitation par une seule personne.
+  \item \textbf{V2} (origine \cref{sec:detection-code} ; ch.~\ref{ch:realisation}
+  et~\ref{ch:validation}). La détection comme code ne dispose pas de moteur de conversion vers
+  l'entrepôt retenu : traduction manuelle, couverture plafonnée.
+  \item \textbf{V3} (origine \cref{sec:smet-travail-proche} ; ch.~\ref{ch:validation}). Les
+  modèles de rapprochement sémantique sont évalués sur des textes bien formés, non sur des alertes
+  courtes et bruitées issues d'un système en exploitation.
+  \item \textbf{V4} (origine \cref{sec:smet-travail-proche} ; ch.~\ref{ch:realisation}
+  et~\ref{ch:validation}). Aucun travail examiné ne traite la boucle entre vulnérabilités
+  détectées à la livraison et menaces observées en exploitation.
+\end{itemize}
+
+La contribution est d'ingénierie, un point par verrou : une \textbf{architecture Zero Trust
+dimensionnée pour la contrainte réelle} d'une entreprise émergente (V1) ; une \textbf{chaîne de
+détection versionnée} sur un entrepôt généraliste, limites publiées (V2) ; un \textbf{protocole
+d'évaluation} face à deux références simples (V3) ; un \textbf{prototype de boucle} entre
+livraison et détection (V4) --- les deux derniers restant à l'état de protocole publié, leurs
+conditions de publication, énoncées avant tout relevé, n'étant pas réunies à la date de remise.
+Le chapitre suivant construit la matrice qui relie chaque menace à un contrôle et au test qui en
+démontre l'efficacité.
+
+% --- Rétablissement des blancs par défaut autour des flottants : les chapitres
+%     suivants appartiennent à d'autres équipes et ne doivent pas être modifiés. ---
+\setlength{\textfloatsep}{20pt plus 2pt minus 4pt}
+\setlength{\intextsep}{12pt plus 2pt minus 2pt}
+\setlength{\floatsep}{12pt plus 2pt minus 2pt}

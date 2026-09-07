@@ -1,0 +1,25 @@
+==================================================================
+ PREUVE K16
+ Deux roles exactement pour le compte du locataire
+ ---
+ genere le : 2026-08-28 11:15:14 UTC
+ projet    : menal-zero-trust-staging
+ dataset   : menal_security_staging
+==================================================================
+
+Roles projet du compte de service du locataire
+Compte : sa-elson@menal-zero-trust-staging.iam.gserviceaccount.com
+
+roles/cloudsql.client
+roles/logging.logWriter
+
+Attendu : exactement deux roles — cloudsql.client et logging.logWriter.
+
+Second volet du protocole, A LANCER A LA MAIN (non automatise ici) :
+  gcloud auth print-access-token --impersonate-service-account=sa-elson@menal-zero-trust-staging.iam.gserviceaccount.com
+Il doit ECHOUER. S il reussit, ne capturez pas : un jeton s afficherait.
+
+------------------------------------------------------------------
+ code de retour : 0
+ fin            : 2026-08-28 11:15:18 UTC
+------------------------------------------------------------------

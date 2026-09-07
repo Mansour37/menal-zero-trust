@@ -47,14 +47,16 @@ function daysAgo(d: number): string { return new Date(Date.now() - d * 86_400_00
 
 // ── Catalogue de règles Sigma (R1-R7, convention déjà visible dans l'UI) ────
 
+// Aligné sur les VRAIES règles du socle (terraform/modules/detection) — pour que
+// le mode démo soit cohérent avec le système réel affiché dans Santé des règles.
 const RULES = [
-  { id: "R1", name: "Brute Force Login Détecté",            sev: "HIGH" as Severity,     tactic: "TA0006", technique: "T1110" },
-  { id: "R2", name: "Connexion Depuis Compte à Risque",     sev: "MEDIUM" as Severity,   tactic: "TA0001", technique: "T1078" },
-  { id: "R3", name: "Seuil de Limitation Dépassé",          sev: "LOW" as Severity,      tactic: "TA0040", technique: "T1499" },
-  { id: "R4", name: "Motif d'Injection SQL",                sev: "CRITICAL" as Severity, tactic: "TA0001", technique: "T1190" },
-  { id: "R5", name: "Tentative d'Escalade de Privilèges",   sev: "CRITICAL" as Severity, tactic: "TA0004", technique: "T1068" },
-  { id: "R6", name: "Volume d'Exfiltration Anormal",        sev: "CRITICAL" as Severity, tactic: "TA0010", technique: "T1041" },
-  { id: "R7", name: "Mouvement Latéral via API Interne",    sev: "HIGH" as Severity,     tactic: "TA0008", technique: "T1021" },
+  { id: "R1", name: "Force brute auth",           sev: "HIGH" as Severity,     tactic: "TA0006", technique: "T1110" },
+  { id: "R2", name: "Pic WAF",                     sev: "MEDIUM" as Severity,   tactic: "TA0040", technique: "T1498" },
+  { id: "R3", name: "Path traversal",              sev: "HIGH" as Severity,     tactic: "TA0001", technique: "T1190" },
+  { id: "R4", name: "User-agent suspect",          sev: "MEDIUM" as Severity,   tactic: "TA0007", technique: "T1046" },
+  { id: "R5", name: "Latence anormale > 5s",       sev: "LOW" as Severity,      tactic: "TA0040", technique: "T1499" },
+  { id: "R6", name: "Pattern injection detecte",   sev: "CRITICAL" as Severity, tactic: "TA0001", technique: "T1190" },
+  { id: "R7", name: "Acces fichier sensible",      sev: "HIGH" as Severity,     tactic: "TA0009", technique: "T1005" },
 ];
 
 // Plages IP RFC 5737 (documentation) uniquement — jamais une IP publique
@@ -91,27 +93,25 @@ function buildCanonicalDetections(): MockDetectionRow[] {
     });
   };
 
-  // Entité 0 (203.0.113.42) — chaînée : brute force -> mouvement latéral
-  push(0, "R1", 3.1, "16 échecs d'authentification en 90s sur /auth/token", "app");
-  push(0, "R1", 3.0, "Echec d'authentification répété (compte svc-elson)", "app");
-  push(0, "R1", 2.9, "Echec d'authentification répété (compte svc-elson)", "app");
-  push(0, "R7", 0.08, "Accès réussi à /internal/admin/users depuis une IP externe non provisionnée", "waf");
-  push(0, "R7", 0.15, "Requête vers /internal/api/config depuis une IP hors périmètre attendu", "waf");
-  push(0, "R5", 0.2, "Tentative d'appel avec un jeton élargi à un rôle non attribué", "app");
+  // Entité 0 (203.0.113.42) — INCIDENT VEDETTE : attaque web (injection + /etc/passwd)
+  // détectée il y a ~2 min. R6/R3 posent T1190 ; la qualification propose T1003.008.
+  push(0, "R6", 0.04, "Pattern injectif (bloqué par le WAF) sur /api/search?file=/etc/passwd", "waf");
+  push(0, "R6", 0.05, "Pattern injectif (bloqué par le WAF) sur /api/search?q=' UNION SELECT NULL--", "waf");
+  push(0, "R3", 0.05, "Tentative path traversal (bloquée par le WAF) sur /api/search?path=../../etc/passwd", "waf");
+  push(0, "R2", 0.06, "13 requêtes bloquées par Cloud Armor depuis 203.0.113.42 en 15 min", "waf");
 
-  // Entité 1 (198.51.100.17) — brute force bruyant, pas encore triagé
+  // Entité 1 (198.51.100.17) — force brute authentification (bruyant, pas triagé)
   for (let i = 0; i < 11; i++) {
     push(1, "R1", 2.5 + i * 0.4, "14 échecs d'authentification en 90s sur /auth/token", "app");
   }
 
-  // Entité 2 (203.0.113.88, Elson) — injection SQL
-  push(2, "R4", 14, "Payload ' OR '1'='1 détecté sur le paramètre 'id'", "waf");
-  push(2, "R4", 13.5, "Payload UNION SELECT détecté sur le paramètre 'search'", "waf");
-  push(2, "R4", 13.2, "Motif d'injection SQL bloqué en amont (Cloud Armor)", "waf");
-  push(2, "R2", 12, "Connexion depuis un compte marqué à risque", "app");
+  // Entité 2 (203.0.113.88, Elson) — reconnaissance : user-agent auto + fichiers sensibles
+  push(2, "R4", 0.5, "User-agent automatisé (python-requests) répété sur /api/", "cloudrun");
+  push(2, "R7", 0.6, "Accès tenté à /.env (fichier sensible) bloqué par le WAF", "waf");
+  push(2, "R7", 0.7, "Accès tenté à /.git/config (fichier sensible) bloqué par le WAF", "waf");
 
-  // Entité 3 (192.0.2.55) — isolé, faux positif attendu
-  push(3, "R3", 20, "Seuil de 300 req/min dépassé sur /api/public", "waf");
+  // Entité 3 (192.0.2.55) — faux positif attendu (latence sur pic de charge légitime)
+  push(3, "R5", 1.0, "Latence > 5s sur /api/health (pic de charge légitime)", "app");
 
   // Bruit additionnel réparti sur 30 jours, hors fenêtre 24h par défaut, pour
   // que les vues à fenêtre plus large (coverage sur 30j) aient de la matière.

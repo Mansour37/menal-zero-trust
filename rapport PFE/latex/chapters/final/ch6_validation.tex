@@ -1,0 +1,1201 @@
+% =============================================================
+% Chapitre 6 --- Validation, résultats et démonstration
+% Source : ../../CH6_Validation_mesures_et_evaluation.md
+% Ancrage des requalifications : ../../DOSSIER_TECHNIQUE_MENAL.md
+% Annexes associées : appendices/annexe_e_protocoles_tests.tex,
+%                     appendices/annexe_f_evaluation_semantique.tex
+% Huit sections (plafond respecté) :
+%   1. Stratégie de validation
+%   2. Résultats de la campagne
+%   3. Détection et enrichissement
+%   4. Performance, résilience et coût
+%   5. Démonstration de bout en bout et conformité aux référentiels
+%   6. Ce que le filtrage applicatif ne protège pas
+%   7. Du socle au service
+%   8. Conditions de validité et réponse aux objectifs
+% =============================================================
+\chapter{Validation, résultats et démonstration}
+\label{ch:validation}
+\soustitrechapitre{Campagne de tests adverses, évaluation de la détection et mesures}
+% Resserrement local du placement des flottants (chapitre dense en tableaux).
+%     Valeurs restaurees en fin de chapitre pour ne pas affecter la suite du document.
+\setcounter{topnumber}{3}\setcounter{bottomnumber}{2}\setcounter{totalnumber}{5}
+\renewcommand{\topfraction}{0.92}\renewcommand{\bottomfraction}{0.7}
+\renewcommand{\textfraction}{0.06}\renewcommand{\floatpagefraction}{0.78}
+\setlength{\LTpre}{6pt}\setlength{\LTpost}{6pt}
+
+Les chapitres précédents ont analysé, conçu et construit ; celui-ci mesure : une architecture Zero
+Trust ne se déclare pas, elle se démontre \cite{nist800207}. Les vingt tests de la
+\cref{sec:campagne} sont ceux dérivés de l'analyse de risque du \cref{ch:besoins-menaces}, et chaque mesure
+rapportée ici est soit une valeur relevée et datée, soit une propriété établie par une preuve
+nommée, jamais une estimation présentée comme mesurée. Le chapitre suit quatre axes --- sécurité,
+détection, performance et résilience --- puis énonce la frontière du service rendu.
+
+\section{Stratégie de validation}
+\label{sec:strategie}
+
+Chaque protocole reçoit l'un de quatre résultats, appliqués sans exception, y compris
+défavorables. \textbf{Conforme} : le critère d'acceptation est couvert \emph{intégralement} par
+une preuve nommée --- le plus souvent un refus effectivement observé, en direct ou par un test
+automatisé rejoué à chaque livraison ; par exception, un inventaire exhaustif lorsque le critère
+est lui-même un inventaire. \textbf{Partiellement conforme} : le critère est couvert en partie par
+une preuve nommée, la part non couverte étant écrite comme une borne du dispositif de mesure.
+\textbf{Non conforme} : le critère n'est pas tenu ; l'exigence associée redevient ouverte et le
+scénario de menace du \cref{ch:besoins-menaces} se rouvre avec elle. \textbf{Planifié} : le protocole relève du
+plan de validation continue (\cref{sec:plan-validation}). \textbf{Aucun protocole ne porte ce
+résultat} à la date de \dateref{} ; la convention est néanmoins conservée telle qu'elle a été
+publiée --- la retirer après coup reviendrait à ajuster la méthode au résultat obtenu.
+
+Cette convention repose sur une hiérarchie de preuves déclarée à l'avance, qui tranche les cas
+limites. Rang 1, le \textbf{test automatisé rejoué à chaque livraison} : il établit la propriété
+\emph{et} sa persistance, un tiers peut le contredire en relançant la chaîne, et il ne vaut que
+pour le chemin qu'il emprunte. Rang 2, le \textbf{refus réellement survenu en exploitation}, plus
+fort sur le fond puisque le contrôle a arrêté un cas non provoqué, mais non répétable à volonté.
+Rang 3, la \textbf{vérification en direct, datée}, qui établit un état à un instant et ne dit rien
+de la dérive ultérieure. Rang 4, la \textbf{configuration déclarée en code et vérifiée sur la
+plateforme}, qui établit ce que le système \emph{est}, non ce qu'il \emph{fait} sous contrainte. La
+capture d'écran ne figure pas dans cette échelle : elle restitue une preuve d'un des quatre rangs,
+elle n'en est jamais une. Les sept cadres de capture du mémoire ---
+\cref{fig:capture-K35,fig:capture-K36,fig:capture-K23,fig:capture-K14,fig:capture-K05,fig:capture-K33,fig:capture-K34}
+--- restituent visuellement des preuves de ces rangs, nommées et datées dans leur légende ;
+conformément à la hiérarchie ci-dessus, \textbf{ils illustrent des preuves nommées et n'en
+tiennent jamais lieu}. Chacun porte, tant que l'image n'est pas déposée, la spécification de la
+prise : la vue attendue, le contenu qui vaut preuve et ce qui doit être masqué.
+
+\begin{alertbox}
+Une preuve de rang 4 ne suffit jamais à prononcer « conforme », et le projet en a fait lui-même
+la démonstration : la porte d'analyse statique de la chaîne de livraison applicative était
+déclarée bloquante, correctement écrite, et n'évaluait plus aucune règle depuis au moins deux
+semaines sans jamais faire échouer la livraison (\cref{subsec:incidents}). Une porte déclarée n'est pas une porte
+vérifiée --- d'où plusieurs protocoles dont le dispositif est en place et qui restent ici
+\emph{partiellement} conformes.
+\end{alertbox}
+
+Les mesures sont réalisées sur l'environnement de recette, représentatif de la cible décrite mais
+sans trafic d'utilisateurs réels (\cref{sec:cloture}). Les preuves ponctuelles sont datées jusqu'au
+25/08/2026 ; les preuves automatisées sont rejouées à chaque livraison, sans date unique. Les
+protocoles, leurs critères d'acceptation formulés avant exécution et leurs réserves sont consignés
+en annexe~\ref{ann:protocoles-tests}.
+
+\section{Résultats de la campagne de tests}
+\label{sec:campagne}
+
+Les vingt tests dérivés du \cref{ch:besoins-menaces} couvrent les quatre axes, le protocole T\emph{n} validant
+l'exigence EX\emph{n} de même rang (\cref{tab:matrice-tracabilite}). Chaque ligne du
+\cref{tab:synthese-campagne} nomme la preuve invoquée et sa date, ou son mode d'exécution
+automatisée ; le protocole complet, son critère d'acceptation et la portée exacte de la preuve se
+lisent test par test en annexe~\ref{ann:protocoles-tests}.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|P{0.8cm}|P{1.55cm}|P{12.9cm}|}
+\caption[Synthèse de la campagne de vingt tests]{Synthèse de la campagne de vingt tests, à la date de \dateref{}. Le protocole
+T\emph{n} valide l'exigence EX\emph{n} de même rang ; « Partiel » : partiellement conforme}
+\label{tab:synthese-campagne} \\
+\hline
+\textbf{Test} & \textbf{Résultat} & \textbf{Preuve invoquée} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Test} & \textbf{Résultat} & \textbf{Preuve invoquée} \\
+\hline
+\endhead
+T1 & \textbf{Non conforme} & Injections SQL, script inter-sites et inclusion de fichier
+refusés en~403 le 23/08/2026 ; motif brut de traversée de chemin en~302, alors que le critère
+exige le refus de \emph{toutes} les requêtes (\cref{sec:non-conformite-t1}) \\ \hline
+T2 & Conforme & Refus observé le 19/08/2026 : dix réponses~422 puis une~429 à la onzième
+tentative \\ \hline
+T3 & Partiel & Balayage tracé, journaux du répartiteur collectés sans filtre.
+\emph{Réserve} : essai de charge non documenté \\ \hline
+T4 & Partiel & Inventaire : aucune adresse publique, accès par voie privée, transport
+chiffré imposé. \emph{Réserve} : échec de connexion externe déduit de l'absence de route \\ \hline
+T5 & Conforme & Deux rôles exacts et usurpation refusée le 23/08/2026 ; test automatisé de
+lecture interdite d'un secret rejoué à chaque livraison \\ \hline
+T6 & Partiel & Test automatisé d'appel sans jeton, en porte bloquante ; entrée interne
+exclusive et invocation nominative. \emph{Réserve} : l'appel vient de l'extérieur du réseau
+privé \\ \hline
+T7 & Conforme & Le critère est un inventaire, et il est vide : aucune clé de compte de
+service, fédération contrainte sur le dépôt \emph{et} la branche. Garantie vérifiée, non
+préventive (écart É7) \\ \hline
+T8 & \textbf{Conforme} & \textbf{Refus réellement survenu} : la porte d'analyse a bloqué une
+livraison sur une vulnérabilité critique de \texttt{node-tar} 6.2.1, embarquée par l'image de base
+(\cref{sec:preuve-t11}) \\ \hline
+T9 & Partiel & Registre unique, résolution par empreinte sur le chemin de description en
+code. \emph{Réserve} : aucun refus opposé ; application hébergée déployée par étiquette flottante
+(écart É8) \\ \hline
+T10 & Partiel & Porte de détection de secrets bloquante à chaque livraison, sur
+l'historique complet ; indépendance des secrets établie par inventaire. \emph{Réserve} : aucun
+refus observé \\ \hline
+T11 & \textbf{Conforme} & \textbf{Test de bout en bout automatisé} tentant réellement
+l'écriture interdite dans la table de preuves sous l'identité d'enrichissement, rejoué à chaque
+livraison ; droits vérifiés table par table le 19/08/2026 (\cref{sec:preuve-t11}) \\ \hline
+T12 & Partiel & Alerte d'absence de trafic reçue le 22/08/2026, 36~min~19~s après
+l'interruption. \emph{Réserve} : une route de journaux coupée 1~h~08 le même jour n'a ouvert aucune
+alerte et 1\,148 requêtes n'ont laissé aucune trace \\ \hline
+T13 & Partiel & Journalisation d'audit des accès aux données activée en lecture et en
+écriture sur quatre services ; activité d'administration non désactivable. \emph{Réserve} :
+rétention de trente jours non verrouillée, sans acheminement dédié \\ \hline
+T14 & \textbf{Non conforme} & Le 25/08/2026, une sonde portant la configuration réseau de la
+révision déployée atteint une destination externe en 412~ms ; le refus par défaut en sortie,
+vérifié le même jour sur le sous-réseau, ne s'applique pas au chemin du composant
+(\cref{sec:non-conformite-t1}) \\ \hline
+T15 & Partiel & 22/08/2026 : 350 détections traitées en 7 exécutions, entrées égales aux
+sorties, durée maximale 96~s, coût dominé par le forfait de balayage. \emph{Réserve} : 150 des 500
+détections injectées sortent de la fenêtre de deux heures avant d'être lues, sans erreur ni
+trace \\ \hline
+T16 & Partiel & Mécanisme sollicité en conditions réelles le 08/08/2026, planification sans
+différence le 19/08/2026, contrôle quotidien de dérive de l'isolation. \emph{Réserve} : aucune
+dérive planifiée sur l'infrastructure décrite en code \\ \hline
+T17 & Conforme & Quatre refus opposés le 20/08/2026 à trois identités de service, chacun
+nommant le droit manquant, avec contrôle positif. \emph{Réserve} : emplacement de l'état
+provisionné hors description en code \\ \hline
+T18 & Partiel & Revue de fusion et application manuelle par l'administrateur.
+\emph{Réserve} : aucune approbation outillée, aucun environnement protégé déclaré \\ \hline
+T19 & Partiel & Deux notifications de budget reçues le 21/08/2026, seuils 90\,\% et
+100\,\%, sur l'alerte déclarée dans le code d'infrastructure le 20/08/2026. \emph{Réserve} : délai
+compris entre 5~h~48 et 8~h~18, et la notification ne nomme pas le poste de consommation \\ \hline
+T20 & \textbf{Conforme} & Le 24/08/2026, trois sorties refusées --- externe, croisée entre
+locataires, et vers la base --- avec les trois lignes de refus retrouvées dans l'entrepôt en
+2~min~55~s à 4~min~12~s, les horodatages du refus et de l'échec client se recoupant à 10,3~s
+près \\
+\hline
+\end{longtable}
+}
+
+\textbf{Bilan à la date de \dateref} : \textbf{7 conformes, 11 partiellement conformes et 2 non
+conformes}. Les vingt protocoles portent une preuve nommée, vérifiable et rattachée à une date ou à
+une exécution automatisée ; le plan de validation continue (\cref{sec:plan-validation}) ne porte
+plus des protocoles sans résultat, mais la cadence à laquelle six d'entre eux sont rejoués.
+
+Ce bilan appelle une lecture méthodologique : les onze résultats partiels ne sont pas des
+demi-échecs, ce sont des propriétés établies dont une part précise du critère --- le plus souvent
+la tentative négative depuis l'extérieur du périmètre, borne du dispositif de mesure énoncée en
+\cref{sec:limites} --- n'a pas encore été mise à l'épreuve, et cette part est nommée ligne
+à ligne.
+
+\begin{keybox}[title={Une campagne sans non-conformité serait suspecte}]
+Une campagne de vingt tests dont aucun n'échouerait indiquerait que les tests ont été choisis
+après coup, pour tomber juste. Ceux-ci ont été dérivés de l'analyse de risque du \cref{ch:besoins-menaces},
+\emph{avant} la conception de l'architecture, et publiés avec leur critère d'acceptation.
+Les deux non-conformités, T1 et T14, sont la conséquence directe de ce choix de méthode : elles
+sont le prix, et la preuve, de l'antériorité des critères. T14 en est l'illustration la plus
+nette --- son critère, écrit avant la refonte réseau, aurait été trivialement satisfait par une
+reformulation après coup en « absence de chemin public \emph{vers} le composant ».
+\end{keybox}
+
+\subsection{Les deux non-conformités assumées : T1 et T14}
+\label{sec:non-conformite-t1}
+
+Le protocole T1 exige que \emph{toutes} les charges d'attaque correspondant aux familles de
+règles activées au périmètre soient rejetées avant d'atteindre la charge de travail. Le
+23/08/2026, les charges d'injection SQL, de script inter-sites et d'inclusion de fichier local
+ont bien reçu un refus en~403 ; une forme brute de traversée de chemin a reçu une redirection
+302. Le critère n'est pas tenu, et le résultat est prononcé non conforme.
+
+Le mécanisme n'est pas élucidé, et le mémoire le dit plutôt que de lui inventer une cause.
+L'hypothèse de travail est une normalisation d'URL effectuée en amont de l'évaluation des règles :
+la requête serait réécrite, puis redirigée, avant que le moteur de filtrage n'ait à se prononcer
+sur la forme brute qui devait le déclencher. Cette hypothèse est vérifiable, et sa vérification
+fait partie du correctif.
+
+Le correctif est identifié et son ordre d'application est arrêté : activation des jeux de règles
+d'anomalie de protocole et d'application de méthode, d'abord en observation seule pour mesurer le
+volume de faux positifs sur le trafic de recette, puis en blocage une fois ce volume connu.
+L'ordre importe : passer directement en blocage sur un jeu générique échangerait une lacune de
+couverture contre une indisponibilité. Tant que ce correctif n'est pas appliqué et T1 rejoué,
+l'exigence EX1 reste ouverte et le scénario de menace SO1 avec elle.
+
+\textbf{T14 --- une non-conformité produite par la refonte, non masquée par elle.} Le protocole
+exige l'échec d'une connexion sortante émise depuis le composant d'encodage. Le 25/08/2026, deux
+sondes ne différant que par leur chemin de sortie ont été exécutées sous l'identité du composant :
+celle qui emprunte le sous-réseau et l'étiquette du composant a été refusée deux fois par la règle
+de refus par défaut en sortie, avec ses deux lignes de journal ; celle qui emprunte le chemin de la
+révision réellement déployée --- sortie managée par la plateforme d'exécution, sans accès au réseau
+privé --- a reçu un code~204 en 412~ms. La règle refuse ; le composant n'est pas derrière elle.
+Le composant a été retiré du sous-réseau les 12 au 14/08 au motif, exact, qu'il n'a aucune
+dépendance privée : ce motif justifiait le retrait pour la sortie \emph{nécessaire}, non pour la
+sortie \emph{possible}. Le correctif est identifié et son coût est d'une révision sans changement
+applicatif --- réintégrer le composant au sous-réseau et lui poser une étiquette pour laquelle
+aucune règle d'autorisation de sortie n'existe --- au prix de le rendre à nouveau tributaire de la
+disponibilité du sous-réseau. Il vaut identiquement pour l'interface web de l'application hébergée,
+seconde charge de travail à sortie managée non gouvernée. Tant qu'il n'est pas appliqué et T14
+rejoué, l'exigence EX14 reste ouverte et le scénario de menace SO17 avec elle.
+
+\subsection{Deux preuves déterminantes et deux réserves levées}
+\label{sec:preuve-t11}
+
+Deux des sept résultats conformes reposent sur des preuves d'une nature que le mot « test »
+recouvre mal, et qui portent plus loin qu'une capture d'écran.
+
+\textbf{T11 --- le meilleur test de la campagne.} Le principe cardinal de la chaîne de détection
+est que le moteur d'enrichissement ne doit pas pouvoir modifier les preuves qu'il analyse. Un
+test de bout en bout automatisé, rejoué à chaque livraison, le vérifie : sous l'identité de la
+tâche d'enrichissement obtenue par usurpation contrôlée, il exécute d'abord une lecture des
+détections --- qui doit réussir, puisque la tâche lit pour enrichir --- puis tente réellement
+l'insertion d'une ligne dans la table de preuves, et n'est vert que si cette insertion est
+refusée.
+
+Aux deux propriétés du rang~1 il en ajoute une troisième, qu'aucune image ne possède : il a une
+histoire. Il échouait tant que la tâche d'enrichissement partageait son identité avec les requêtes
+planifiées de détection, qui doivent, elles, écrire dans cette table ; \textbf{la séparation des
+identités a été faite \emph{parce que} le test échouait}. Un test qui a déjà fait corriger
+l'architecture qu'il vérifie mesure quelque chose. Sa portée s'énonce aussi précisément : il couvre
+la table des détections, en lecture autorisée et en écriture refusée, le refus sur les journaux
+bruts et le cas de la suppression étant établis par la vérification des droits table par table du
+19/08/2026 ; et il s'abstient lorsque l'identité courante n'a pas le droit d'usurper l'identité
+restreinte --- choix préféré à un vert obtenu avec les droits de l'opérateur, qui aurait mesuré la
+mauvaise identité.
+
+\textbf{T8 --- un refus qui n'a pas été provoqué.} La porte d'analyse de vulnérabilité de la
+chaîne de livraison applicative a réellement arrêté une livraison, sur une vulnérabilité critique
+de la bibliothèque d'archivage \texttt{node-tar} en version 6.2.1. Cette bibliothèque n'était pas
+une dépendance du code écrit : elle était embarquée par le gestionnaire de paquets présent dans
+l'image de base du tableau de bord, et le correctif retenu est instructif --- retirer ce
+gestionnaire de l'image finale plutôt que tenter de mettre à jour une dépendance transitive dont
+le projet n'est pas propriétaire. Ce refus n'a pas été mis en scène, il est survenu sur le code
+de l'auteur, et il a modifié la façon de construire les images. La réserve qui l'accompagne ---
+l'image est publiée au registre \emph{avant} d'être analysée, de sorte que la porte bloque le
+déploiement et non la publication --- est établie avec son correctif en
+\cref{sec:chaine-livraison}.
+
+\textbf{Deux réserves de conception levées en cours de campagne.} La tâche d'enrichissement a
+reçu une identité dédiée, limitée en lecture au jeu de données de supervision et en écriture à sa
+seule table de résultat --- correction vérifiée par T11 et par la vérification des droits de T5 ;
+T14 relève d'une autre propriété, que cette correction ne touche pas
+(\cref{sec:non-conformite-t1}). La journalisation des refus du pare-feu a été activée et vérifiée
+le 19/08/2026, ce qui clôt l'écart É1 : c'était la condition de recevabilité de T20, relevé le
+24/08/2026 une fois le refus par défaut en sortie posé.
+
+\subsection{Plan de validation continue}
+\label{sec:plan-validation}
+
+Six protocoles --- T12, T14, T15, T17, T19 et T20 --- portent un premier relevé daté entre le 20 et
+le 25/08/2026 et une \textbf{cadence de rejeu}. Le plan est distinct de la campagne par sa nature :
+celle-ci établit qu'un dispositif tient au moment où il est construit, celui-là qu'il tient encore
+après avoir évolué. Ces six-là y figurent parce que la propriété qu'ils vérifient est celle qui se
+dégrade --- un seuil qui dépend du volume, une règle de pare-feu qu'une révision peut contourner, un
+droit sur un emplacement provisionné hors code : le plan est structuré par la fréquence de dérive du
+contrôle vérifié, non par la commodité (\cref{tab:plan-validation}).
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|P{0.8cm}|P{3.9cm}|P{1.6cm}|P{1.85cm}|P{6.7cm}|}
+\caption[Plan de validation continue]{Plan de validation continue : premier relevé et cadence de rejeu}
+\label{tab:plan-validation} \\
+\hline
+\textbf{Test} & \textbf{Propriété vérifiée} & \textbf{Premier relevé} & \textbf{Cadence de rejeu} &
+\textbf{Déclencheur additionnel} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Test} & \textbf{Propriété vérifiée} & \textbf{Premier relevé} & \textbf{Cadence de rejeu} &
+\textbf{Déclencheur additionnel} \\
+\hline
+\endhead
+T12 & Détection d'une interruption de collecte & 22/08/2026 & Trimestrielle & Toute modification
+d'un acheminement de journaux \\ \hline
+T14 & Absence de sortie réseau du composant d'inférence & 25/08/2026 & Trimestrielle & Application
+du correctif : réintégration du composant au sous-réseau \\ \hline
+T15 & Tenue de la chaîne d'enrichissement sous charge & 22/08/2026 & Trimestrielle & Changement de
+modèle, de taille de lot ou de cadence de la tâche \\ \hline
+T17 & Protection de l'état de l'infrastructure & 20/08/2026 & Semestrielle & Tout changement
+d'emplacement ou de droits sur l'état \\ \hline
+T19 & Détection d'une consommation anormale & 21/08/2026 & Trimestrielle & Toute révision du
+montant ou des seuils du budget déclaré \\ \hline
+T20 & Restriction des sorties réseau & 24/08/2026 & Trimestrielle & Ajout d'un locataire ou d'une
+destination externe autorisée \\
+\hline
+\end{longtable}
+}
+
+Le premier rejeu de l'ensemble est fixé au quatrième trimestre 2026. Les trois prérequis identifiés
+avant la campagne ont été levés, et leurs dates comptent autant que les résultats : refus de sortie
+par défaut posé le 23/08/2026, alerte de budget déclarée en code le 20/08/2026, journalisation des
+refus réseau acquise depuis le 19/08/2026. L'attendu des six avait été écrit avant exécution
+(annexe~\ref{ann:protocoles-tests}) et confronté au relevé sans être ajusté : c'est ce qui donne
+son poids au seul de ces six qui échoue.
+
+\section{Évaluation de la chaîne de détection et de l'enrichissement}
+\label{sec:eval-detection}
+
+\subsection{Couverture obtenue}
+
+Les deux précautions qu'appelle toute mesure de couverture --- dénominateur restreint aux
+plateformes concernées, taux rapporté à une version précise du référentiel --- sont établies en
+\cref{sec:attck-matrice} \cite{mitre_attack,mitre_attack_design2018}. Ce que la mesure ajoute ici
+est l'\textbf{empreinte de l'instantané employé} : 872~vecteurs couvrant 697~techniques et
+sous-techniques réparties sur \textbf{quinze tactiques}, dont TA0005 renommée « Stealth » et TA0112
+« Defense Impairment », issue du découpage de l'ancienne « Defense Evasion » --- de quoi retrouver
+la version Entreprise employée et reproduire le dénominateur. \emph{Réserve} : le script de
+chargement tire le lot depuis la branche courante du dépôt public de MITRE, sans épinglage, de
+sorte que l'instantané est daté par son chargement et non fixé par une référence immuable ; le
+tableau de bord joint par \emph{nom} de tactique, ce qui rend un renommage visible plutôt que
+muet.
+
+Sept règles de détection sont actives (R1 à R7, chacune adossée à une requête planifiée), plus
+cinq requêtes de normalisation. Faute d'inventaire versionné des techniques applicables, ni taux
+ni graphique de couverture ne sont publiés : le nombre de règles actives n'est pas assimilé à un
+taux de couverture ATT\&CK.
+
+\subsection{Ce que le système ne détecte pas}
+
+L'objectif O4 engage explicitement le mémoire à publier ce que le socle ne détecte pas. Le
+\cref{tab:lacunes} tient cet engagement, cause par cause. Deux de ces lacunes sont
+structurelles et se retrouvent en \cref{sec:limites-filtrage} : la chaîne de détection
+n'observe que des signaux de transport, et une seule personne traduit les règles.
+
+\begin{table}[!htbp]
+\caption[Causes connues de non-couverture]{Causes connues de non-couverture, à la date de \dateref}
+\label{tab:lacunes}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|P{3.1cm}|P{4.5cm}|P{7.7cm}|}
+\hline
+\textbf{Cause} & \textbf{Origine} & \textbf{Conséquence} \\
+\hline
+Refus réseau tracés mais non qualifiés & Refus en sortie et refus croisés journalisés et
+retrouvables (T20, 24/08/2026), qu'aucune des sept règles ne lit & Un mouvement latéral refusé est
+\emph{tracé}, il n'est pas \emph{détecté} : ni détection, ni score, ni ligne au tableau de
+bord \\ \hline
+Plafond de traduction manuelle & Une seule personne traduit les règles publiques & Couverture
+bornée par le volume maintenable ; exhaustivité non revendiquée \\ \hline
+Absence de trafic réel & Environnement de recette sans usage réel & Seuils comportementaux non
+calibrables \\ \hline
+Exfiltration & Aucune règle dédiée au canal sortant ; seuls les refus sont journalisés, par
+décision de coût, et deux charges conservent une sortie managée non gouvernée (T14, 25/08/2026) &
+Un transfert sortant \emph{réussi} vers une destination autorisée n'est qualifié par rien, et
+l'autorisation qui rend l'entrepôt joignable rend joignable tout entrepôt du même
+fournisseur \\ \hline
+Abus des droits et du plan de contrôle & Règles concentrées sur le filtrage applicatif et le
+transport & Élévation de privilège et modification de politique d'accès non couvertes \\ \hline
+Logique métier de l'application hébergée & La chaîne n'observe pas les actions fonctionnelles de
+l'application & Un abus commis par un compte légitime reste invisible
+(\cref{sec:limites-filtrage}) \\ \hline
+Seuils codés en dur & Paramètres intégrés aux requêtes & Adaptation au volume réel lente et peu
+traçable \\ \hline
+Absence de test unitaire par règle & Validation surtout par scénarios de bout en bout &
+Régression d'une règle difficile à isoler \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Qualité du signal, délai, et enrichissement sémantique}
+\label{sec:eval-enrichissement}
+
+Le volume d'alertes, le taux de faux positifs et les délais médian et maximal ne sont pas établis
+par une campagne suffisamment large ; le scénario du 19/08 fournit une observation ponctuelle. La
+règle R2, exécutée toutes les cinq minutes sur une fenêtre de quinze minutes, a produit une alerte
+environ quinze minutes après les requêtes, et la tâche d'enrichissement s'exécute toutes les
+15~min --- cadences de planification, non bornes garanties du délai de bout en bout. Le délai tient
+à la nature de la règle (\cref{sec:chaine-detection}) : R2 agrège avant de décider et sa fenêtre
+absorbe la latence d'ingestion, si bien que le délai attendu est voisin de la fenêtre et non de la
+cadence de réévaluation. Une conséquence borne l'interprétation de tout délai mesuré : aucune
+politique d'alerte n'étant branchée sur la table des détections, la chaîne se termine par un écran
+et le délai perçu dépend de la présence de l'analyste devant le tableau de bord --- premier des
+trois seuils de \cref{sec:socle-service}.
+
+L'évaluation de l'enrichissement répond au verrou V3 du \cref{ch:etat-art} : les modèles de rapprochement
+sémantique sont habituellement évalués sur des textes bien formés, non sur des alertes courtes et
+bruitées. Une limite la précède : l'enrichissement n'alimente pas le score d'incident
+(\cref{subsec:avancement-enrichissement}), et son effet sur la priorisation n'est donc pas
+évaluable. Ce qui est mesurable rigoureusement est la qualité du rattachement d'une alerte à une
+technique, comparée à deux méthodes de référence plus simples --- correspondance par mots-clés (M0)
+et similarité par pondération de termes sans apprentissage de domaine (M1) --- face à la méthode
+retenue (M2) ; protocole, jeu d'évaluation et grille de résultats figurent en
+\cref{ann:evaluation-semantique}.
+
+L'enrichissement reste utile sans cette jointure, puisqu'il fournit à l'analyste, depuis chaque
+alerte, une technique candidate et la procédure d'incident associée --- seule forme sous laquelle
+il l'atteint, et que la \cref{fig:capture-K33} montre à l'écran. En l'absence de mesure
+comparative, le rapport se garde en revanche d'affirmer ce rattachement assez précis pour être
+automatisé dans le calcul de priorité --- l'objectif O5 avait par avance admis qu'un résultat
+négatif serait rapporté tel quel. Une validation distincte, déjà exécutée, mérite d'être signalée
+sans s'y substituer : un export quantifié du modèle a été rejeté après un contrôle d'accord de
+classement mené le 1\textsuperscript{er} août 2026 --- 0~correspondance de premier rang sur
+5~requêtes face au modèle de référence --- et le format non quantifié a été conservé en recette, au
+prix d'une empreinte mémoire plus élevée. Ce petit échantillon invalide cet export précis ; il ne
+démontre ni la qualité générale du modèle retenu ni sa supériorité sur M0, M1 ou M2.
+
+\begin{figure}[!htbp]
+\centering
+\IfFileExists{figures/K33.png}{%
+  \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+  \fcolorbox{black!30}{white}{\includegraphics[width=0.72\textwidth]{figures/K33.png}}%
+}{%
+  \begin{minipage}{0.72\textwidth}
+  \begin{extraitconf}[breakable=false, fontupper=\footnotesize,
+      title={Cadre de capture K33 : spécification de prise}]
+  \textbf{Vue :} fiche d'incident du tableau de bord, une entité agrégée sélectionnée depuis
+  la page \emph{Incidents}, la tâche d'enrichissement ayant tourné sur la fenêtre courante.
+  \textbf{Date de prise :} relevée au rejeu, et portée dans la légende.\par\smallskip
+  \textbf{Ce que le cadre établit :} ce que l'enrichissement rend à l'analyste --- la technique
+  candidate et son score de similarité affichés à côté de l'alerte, la jauge de score d'incident
+  et la chronologie de l'entité. Il établit du même coup la borne rapportée au même endroit : le
+  score de la jauge ne dépend pas du candidat sémantique affiché.\par\smallskip
+  \textbf{Masquage :} identifiant de projet, adresses réelles.
+  \end{extraitconf}
+  \end{minipage}%
+}
+\caption[Fiche d'incident : le candidat sémantique rendu à l'analyste]{Fiche d'incident du
+tableau de bord. À y lire : la technique candidate et sa similarité affichées à côté de
+l'alerte --- c'est la seule forme sous laquelle l'enrichissement atteint l'analyste --- et
+la jauge de score, calculée sans ce candidat, qui rend visible l'écart d'architecture
+énoncé au même endroit.}
+\label{fig:capture-K33}
+\end{figure}
+
+La boucle reliant les vulnérabilités livrées aux techniques observées se mesure par une question
+unique : l'ordre de priorité qu'elle produit diffère-t-il de l'ordre par gravité théorique seule\,?
+Y répondre suppose un rattachement des vulnérabilités aux techniques, dont le champ est laissé vide
+par le script de chargement. F6 est donc un prototype dont la chaîne fonctionne de bout en bout ---
+les constats remontent réellement dans l'entrepôt et s'affichent --- mais dont la priorisation n'est
+pas validée : \textbf{la boucle transporte la donnée, elle n'en tire pas encore d'ordre}.
+
+\section{Performance, résilience et coût}
+\label{sec:performance}
+
+\subsection{Objectifs de service}
+
+\textbf{Quatre objectifs de service} sont configurés sur trente jours glissants : disponibilité et
+latence, pour la plateforme et pour l'application hébergée \cite{gcp_architecture_framework}. La
+disponibilité est fixée à 99\,\% --- budget d'erreur de 7~h~12 sur 30~jours --- et la latence à
+95\,\% des requêtes sous 1~s. Deux décisions de conception les accompagnent, justifiées dans le
+code : les erreurs clientes sont exclues du numérateur de disponibilité, car compter un refus
+d'authentification comme une indisponibilité ferait chuter l'objectif précisément quand la
+plateforme fait son travail ; et le seuil de latence a été relâché de 800~ms à 1~s en conséquence du
+choix de réduire à zéro le nombre d'instances actives hors trafic --- \textbf{un seuil que l'on sait
+déjà intenable ne mesure rien, il apprend seulement à ignorer l'alerte}. Ce sont des objectifs
+configurés, non atteints, faute de trafic réel (\cref{sec:cloture}) ; la seule observation
+disponible porte sur 48~heures relevées le 07/08/2026, où la latence au
+95\textsuperscript{e}~centile de l'API est restée entre 9,5~ms et 1004~ms, un seul point au-dessus
+de 800~ms --- fenêtre trop courte pour valider l'objectif, ordre de grandeur tenu en recette.
+
+\textbf{Observabilité de sécurité et observabilité d'exploitation.} Les deux ne sont pas au même
+stade et les confondre serait surestimer le résultat. L'\emph{observabilité de sécurité} est
+réalisée et démontrée : collecte filtrée F4, sept règles actives, table d'indicateurs agrégés
+(volume, erreurs, latence, blocages), et un scénario complet vérifié le 19/08/2026.
+L'\emph{observabilité d'exploitation} est configurée sans être éprouvée : \textbf{dix-sept
+politiques d'alerte réparties en onze familles} --- des taux d'erreur et de latence à l'arrêt de
+l'ingestion et à la dérive de l'isolation entre locataires --- déclarées en code et acheminées vers
+un canal de notification, complétées par \textbf{deux sondes de disponibilité} interrogeant les
+points de santé de l'API et de l'application hébergée, seuls signaux de vivacité indépendants du
+trafic.
+
+Trois de ces politiques ont depuis été provoquées et portent leur mesure datée au
+\cref{tab:synthese-campagne} : absence de trafic (T12), retard d'enrichissement ouvert sans avoir
+été provoqué (T15), budget de facturation (T19). Deux bornes subsistent et portent le même défaut :
+les quatorze autres politiques n'ont jamais été déclenchées, et les quatre objectifs de service
+restent mesurés sans être actionnés, faute de politique d'alerte sur la consommation de leur budget
+d'erreur.
+
+Le démarrage à froid du composant d'encodage sémantique porte une mesure réelle de début
+août~2026 (\cref{graph:coldstart}) : moyenne $\approx$~27~s, pic $\approx$~94~s, très
+au-dessus de l'estimation de conception, de l'ordre de deux à quatre secondes --- conservée plutôt
+que corrigée en silence, pour que l'écart au mesuré reste lisible (incident et traitement en
+\cref{subsec:incidents}). Le tableau de bord présente un profil plus favorable : environ 10,5~s le
+07/08/2026, dominées par l'initialisation de la plateforme d'exécution et non par le code.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[y=0.0185cm, x=0.82cm, font=\footnotesize]
+% Aire de trace bornee juste apres la seconde barre ; graduation reguliere de 25 en 25.
+\draw[thick] (-0.3,0) -- (4.9,0);
+\draw[thick] (-0.3,0) -- (-0.3,160);
+\node[rotate=90, anchor=south, font=\scriptsize] at (-1.25,80) {Secondes};
+\foreach \y in {0,25,50,75,100,125,150}{
+  \draw (-0.45,\y) -- (-0.3,\y);
+  \node[anchor=east, font=\scriptsize] at (-0.5,\y) {\y};
+  \draw[black!20] (-0.3,\y) -- (4.9,\y);
+}
+\fill[black!12] (0.4,0) rectangle (1.8,27); \draw[thick] (0.4,0) rectangle (1.8,27);
+\node[anchor=south, font=\scriptsize\bfseries] at (1.1,27) {27~s};
+\node[anchor=north, font=\scriptsize, align=center] at (1.1,-4) {Moyenne mesurée};
+\fill[black!45] (2.8,0) rectangle (4.2,94); \draw[thick] (2.8,0) rectangle (4.2,94);
+\node[anchor=south, font=\scriptsize\bfseries] at (3.5,94) {94~s};
+\node[anchor=north, font=\scriptsize, align=center] at (3.5,-4) {Pic observé (p99)};
+\draw[dashed, very thick] (-0.3,150) -- (4.9,150);
+\node[anchor=south west, font=\scriptsize] at (-0.25,152) {budget de la sonde porté à 150~s (07/08/2026)};
+\end{tikzpicture}
+\caption[Démarrage à froid du service d'encodage]{Démarrage à froid du service d'encodage : moyenne et pic mesurés début août 2026,
+comparés au budget de la sonde de disponibilité.}
+\label{graph:coldstart}
+\end{figure}
+
+\subsection{Reproductibilité et résilience}
+\label{sec:resilience}
+
+La reconstruction complète d'un environnement depuis le seul dépôt répond au constat
+d'infrastructure non reproductible du \cref{ch:cadre-existant}, et deux questions s'y distinguent. La
+\textbf{capacité} est acquise : la recette a été construite, puis reconstruite, à partir du seul
+code d'infrastructure --- c'est ce qui fonde la réponse à O2. Sa \textbf{mesure}, durée de bout en
+bout en une exécution continue, relève du plan de validation continue à cadence semestrielle et
+sera exécutée en direct en soutenance. \emph{Réserve} : le fichier de variables de l'environnement
+n'est pas versionné, de sorte qu'une reconstruction depuis un poste neuf ne reproduit pas encore
+l'environnement à l'identique --- le versionner, ce fichier ne contenant aucun secret, est le
+correctif de reproductibilité le plus rentable identifié et le prérequis de la mesure. La
+restauration de la base, elle, a été exécutée et chronométrée (\cref{tab:restore-db}).
+
+\begin{table}[!htbp]
+\caption[Restauration de la base, test réel du 03/08/2026]{Restauration de la base de données --- test réel exécuté le 03/08/2026}
+\label{tab:restore-db}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|P{4.6cm}|P{10.9cm}|}
+\hline
+\textbf{Grandeur} & \textbf{Valeur mesurée} \\
+\hline
+RTO (durée de l'opération de restauration) & 32~min~45~s (opération de clonage, de
+\hms{11:16:40} à \hms{11:49:26} UTC, instance d'entrée de gamme, 10~Go) \\ \hline
+RPO (perte de données au point demandé) & 0 \\ \hline
+Résultat au point demandé & 314~lignes attendues, 314~restaurées, aucune manquante ni en trop ;
+les trois écritures postérieures au point de restauration correctement absentes \\ \hline
+Dispositif de sauvegarde & 7~jours de journaux de transactions conservés en continu ;
+7~sauvegardes complètes, quotidiennes à \hms{02:00} UTC \\ \hline
+Portée de la mesure & Configuration zonale, antérieure au passage en haute disponibilité
+régionale du 08/08/2026 ; mesure à revalider sur la configuration actuelle \\
+\hline
+\end{tabular}
+\end{table}
+
+Le RTO déclaré ne couvre que le clonage technique : détection, décision et bascule applicative, non
+chronométrées séparément, portent l'estimation de bout en bout entre 45~min et 1~h. Une précision
+d'exploitation a des conséquences contractuelles : la même instance héberge les deux bases, si bien
+qu'un clone de restauration les restaure ensemble. Le retour arrière applicatif par révision est
+mesuré le 07/08/2026 sur l'API en recette : \textbf{11,6~s} vers la révision précédente,
+\textbf{16,5~s} au retour, l'écart tenant à un démarrage à froid --- mesure non répétée, ni le
+nombre de séries ni le délai de validation humaine n'étant documentés, donc ordre de grandeur et
+non objectif de rétablissement.
+
+Le mécanisme de détection de dérive \cite{hashicorp_drift} (\cref{subsec:derive}) a été sollicité
+en conditions réelles début août~2026, lors de l'incident de chiffrement géré par le client. Cet
+épisode ne vaut pas T16 corrigé, une ressource créée hors état échappant à la seule planification.
+Le seul contrôle de dérive \emph{planifié} est d'une autre nature --- la tâche quotidienne qui
+vérifie la persistance du durcissement de l'isolation entre bases (\cref{sec:locataire}) --- et
+c'est un aveu d'architecture autant qu'un contrôle : une propriété qu'il faut surveiller
+quotidiennement n'est pas déclarative.
+
+\subsection{Coût réel}
+\label{sec:cout}
+
+Aucune ventilation mensuelle vérifiable par poste n'existe dans les sources, et aucun relevé de
+facturation ventilé n'est donc publié. Un fait reste sourcé : le document d'architecture du projet
+situe le coût au niveau des paliers gratuits, à quelques dizaines d'euros par mois, désigne
+l'ingestion de journaux comme poste dominant et confirme l'absence de processeur graphique et de
+base vectorielle facturée séparément --- constat interne daté, non relevé de facturation. Trois
+constats datés le complètent (\cref{tab:cout-anomalies}).
+
+\begin{table}[!htbp]
+\caption[Constats de coût datés]{Constats de coût datés, statut à la date de \dateref}
+\label{tab:cout-anomalies}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|P{3.0cm}|P{5.2cm}|P{7.1cm}|}
+\hline
+\textbf{Poste et statut} & \textbf{Constat daté} & \textbf{Direction de remédiation} \\
+\hline
+Services d'exécution --- \textbf{corrigé} & Instance maintenue active en permanence, donc coût
+continu sans contrepartie en recette ; réglage hérité jamais déclaré & Nombre minimal d'instances
+ramené à zéro hors trafic, arbitrage coût contre latence déclaré \\ \hline
+Requêtes planifiées de l'entrepôt --- \textbf{ouvert} & $\approx$~78~Go/j facturés pour 24~Mo de
+données : minimum forfaitaire par table balayée $\times$ exécutions quotidiennes & Réduire le
+nombre d'exécutions facturées plutôt que le volume : fusionner les sept requêtes en une seule
+passe, restreindre le balayage aux partitions de la fenêtre utile, et n'espacer la cadence qu'en
+dernier recours, une cadence plus lente dégradant le délai de détection \\ \hline
+Haute disponibilité base de données --- \textbf{appliqué} & Bascule régionale appliquée et
+confirmée en direct le 08/08/2026 ; basculement de zone jamais provoqué & Provoquer un
+basculement de zone en fenêtre maîtrisée et le chronométrer, seul moyen d'établir le gain payé \\
+\hline
+\end{tabular}
+\end{table}
+
+Deux conséquences que le tableau ne porte pas. Le volume facturé venant du minimum forfaitaire et
+non des données, \emph{une réduction de rétention n'aurait ici aucun effet sur la facture}. Et le
+dimensionnement est incohérent, ce qui se dit franchement : l'instance retenue est de gamme
+partagée, déconseillée en production, tout en étant facturée au tarif de la haute disponibilité
+régionale --- appliquée en 11~min~2~s le 08/08/2026, dont la preuve \emph{dynamique} suppose un
+basculement de zone provoqué, porté par le plan de validation continue. Aucune des trois directions
+n'est appliquée à la date de \dateref{} : elles sont énoncées comme suite à donner, non comme
+correction acquise.
+
+Faute de volume représentatif et de grille tarifaire datée, l'alternative commerciale étudiée au
+\cref{ch:etat-art} n'est pas chiffrée. La comparaison \emph{qualitative} reste instructive : les deux
+options partagent la même variable dominante, l'ingestion, que la solution commerciale facture avec
+un abonnement plancher et dont le socle se passe, aux volumes de la recette, dans les paliers
+gratuits du fournisseur. \textbf{L'écart de structure compte plus que l'écart de montant} : on
+achète dans un cas un service exploité par un tiers, dans l'autre du temps d'ingénieur et une dette
+de maintenance --- dont le plafond de règles traduisibles par une personne est la contrepartie.
+
+\section{Démonstration de bout en bout et conformité aux référentiels}
+\label{sec:demonstration}
+
+Le 19/08/2026, un scénario d'attaque complet a été exécuté en recette : il combine les preuves de
+cinq domaines --- identité, périmètre, cloisonnement des données, supervision et chaîne de
+livraison --- en une démonstration continue que la \cref{fig:scenario-19-08} déroule de l'attaque à
+l'alerte qualifiée ; les treize requêtes mêlaient injections SQL, script inter-sites, inclusion de
+fichier local et accès à des fichiers sensibles. Cette observation ponctuelle ne mesure pas le taux
+de faux positifs, qui n'a pas été établi.
+
+\begin{figure}[!htbp]
+\centering
+\begin{tikzpicture}[
+  jalon/.style={draw, thick, rounded corners=2pt, fill=black!4, text width=3.0cm,
+    minimum height=1.85cm, align=center, font=\footnotesize, inner sep=3pt},
+  pastille/.style={circle, draw, thick, fill=black, inner sep=1.5pt},
+  h/.style={font=\scriptsize\bfseries, align=center}
+]
+\draw[-{Latex[length=2.2mm]}, thick] (-1.5,0) -- (13.4,0);
+\node[font=\scriptsize, anchor=south west] at (-1.5,0.10) {heure UTC};   % place au-dessus de l'axe : sous l'axe il chevauchait le premier horodatage
+\foreach \x in {0,4,8,12}{\node[pastille] at (\x,0) {}; \draw[thick] (\x,0) -- (\x,0.7);}
+\node[jalon, anchor=south] at (0,0.7)
+  {13~requêtes SQLi, XSS et LFI envoyées vers l'application hébergée};
+\node[jalon, anchor=south] at (4,0.7)
+  {13 réponses~403 au périmètre ; 1~requête légitime en~200};
+\node[jalon, anchor=south] at (8,0.7)
+  {13~lignes de journaux portant le service du locataire};
+\node[jalon, anchor=south] at (12,0.7)
+  {Alerte R2 : « 13~requêtes bloquées en 15~min », TA0040 / T1498};
+\node[h, anchor=north] at (0,-0.2)    {\hms{16:41:xx}};
+\node[h, anchor=north] at (4,-0.2)    {\hms{16:41:5x}};
+\node[h, anchor=north] at (8,-0.2)    {quelques secondes\\ (non horodaté)};
+\node[h, anchor=north] at (12,-0.2)   {\hms{16:56:08}\\ ($\approx$~15~min)};
+\node[anchor=north west, text width=15.5cm, align=left, font=\scriptsize, inner sep=0pt]
+  at (-1.5,-1.5)
+  {\emph{Échelle non linéaire.} L'étiquetage TA0040 / T1498 est celui produit par la règle ;
+   une qualification par T1190 serait plus plausible pour ces charges et doit être revue par
+   l'analyste. L'enrichissement disponible datait de \hms{12:16:15} : il n'enrichit pas cette
+   alerte.};
+\end{tikzpicture}
+\caption[Scénario de bout en bout du 19/08/2026]{Scénario de bout en bout du 19/08/2026 : de l'attaque à l'alerte qualifiée}
+\label{fig:scenario-19-08}
+\end{figure}
+
+L'alerte R2 du 19/08/2026 à \hms{16:56:08} UTC est le dernier maillon de la chaîne : elle compte
+treize requêtes bloquées sur sa fenêtre de 15~min et les attribue au locataire --- attribution qui
+est l'exception plutôt que la règle (\cref{sec:socle-service}). Deux contrôles complémentaires ont
+été relancés en direct le même jour : le contrôle d'isolation entre bases a produit \textbf{six
+vérifications} toutes en échec comme attendu --- une connexion croisée depuis l'utilisateur d'un
+locataire vers la base de l'autre, réellement tentée et rejetée --- et le compte de service du
+second locataire dispose exactement de deux rôles, sans droit sur l'entrepôt. Le dernier
+rattachement sémantique disponible, daté de \hms{12:16:15} UTC, présente une similarité de 0,698
+avec T1556.003 : précédant l'attaque de plus de quatre heures, il atteste le fonctionnement
+antérieur du composant, pas l'enrichissement de l'alerte R2.
+
+Le premier maillon de cette chaîne --- les treize refus eux-mêmes --- est le seul dont la preuve
+tienne dans une seule vue : la \cref{fig:capture-K14} le restitue.
+
+\begin{figure}[!htbp]
+\centering
+\IfFileExists{figures/K14.png}{%
+  \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+  \fcolorbox{black!30}{white}{\includegraphics[width=0.86\textwidth]{figures/K14.png}}%
+}{%
+  \begin{minipage}{0.86\textwidth}
+  \begin{extraitconf}[breakable=false, fontupper=\footnotesize,
+      title={Cadre de capture K14 : spécification de prise}]
+  \textbf{Vue :} collecteur de journaux, requête filtrée sur les journaux du répartiteur pour la fenêtre du 19/08/2026 autour de \hms{16:41} UTC, colonnes horodatage, code de réponse et nom de la règle de filtrage appliquée.\par\smallskip
+  \textbf{Date de prise :} 19/08/2026 --- la fenêtre est datée par le scénario lui-même ; la capture se reprend depuis le collecteur tant que la rétention le permet, sans rejeu.\par\smallskip
+  \textbf{Contenu probant :} les \textbf{treize} requêtes de la \cref{fig:scenario-19-08} refusées en \textbf{403} au périmètre, horodatées dans la fenêtre annoncée, avec le nom de la règle qui a prononcé chaque refus. C'est ce décompte, et lui seul, que l'alerte R2 de \hms{16:56:08} agrège quinze minutes plus tard. \textbf{Le cadre ne vaut pas preuve de la couverture du filtrage} : le motif brut de traversée de chemin, qui a reçu une redirection 302 le 23/08/2026, n'appartient pas à ce scénario (\cref{sec:non-conformite-t1}).\par\smallskip
+  \textbf{Masquage} (rectangle opaque, jamais de flou) \textbf{:} numéro de projet cloud, adresses source réelles des requêtes.
+  \end{extraitconf}
+  \end{minipage}%
+}
+\caption[Les treize refus au périmètre du 19/08/2026 dans le collecteur de journaux]{Les treize requêtes du scénario du 19/08/2026 refusées en 403 au périmètre, telles qu'elles figurent dans le collecteur de journaux. Restitution du premier maillon de la \cref{fig:scenario-19-08} ; elle illustre une preuve nommée et ne lui tient pas lieu.}
+\label{fig:capture-K14}
+\end{figure}
+
+\subsection{Correspondance avec les preuves de soutenance, et bornes du scénario}
+
+Le scénario ne vaut comme démonstration que s'il se rattache aux résultats du rapport, et les cinq
+preuves attendues en soutenance s'y retrouvent chacune : le \textbf{périmètre} par les treize
+requêtes bloquées en~403 (\cref{sec:bout-en-bout}, test T1) ; l'\textbf{identité} par les deux rôles exacts et
+l'usurpation refusée (\cref{sec:plan-identite}, test T5) ; le \textbf{cloisonnement des données} par les six
+vérifications d'isolation sur six (\cref{sec:locataire}, test T11) ; la \textbf{supervision} par l'alerte R2 de
+\hms{16:56:08} UTC, dont la qualification doit être revue par l'analyste
+(\cref{sec:chaine-detection}) ; et la
+\textbf{chaîne de livraison} par l'exécution réelle de l'analyse statique, en échec sur 74
+constats (\cref{sec:chaine-livraison}, incident de la porte inerte ; test T8). Trois points restent hors du périmètre du
+scénario, tous rattachés à des protocoles de la campagne : la ségrégation réseau entre locataires,
+écart documenté en \cref{sec:socle-service} ; le motif brut de traversée de chemin
+(\cref{sec:non-conformite-t1}) ; et les constats d'analyse statique --- 74 constats et une tâche
+en échec le 19/08, dont la remédiation complète n'est pas démontrée.
+
+\subsection{Conformité aux référentiels et maturité Zero Trust}
+\label{sec:maturite}
+
+Le positionnement par rapport aux principes Zero Trust \cite{cisa_zt_maturity_model} et au
+référentiel de configuration est celui du \cref{ch:conception} : ni certification, ni audit exhaustif, et
+aucun taux global sans grille contrôle par contrôle. Trois des onze écarts du
+\cref{ch:conception} touchent cette campagne, et les trois sont clos : journalisation des
+refus réseau (É1) et identité partagée du composant d'encodage (É3), traitées en
+\cref{sec:preuve-t11} ; deux sous-réseaux inutilisés (É2), retirés le 24/08/2026
+(\cref{subsec:migration-reseau}). Le mémoire prononce en revanche lui-même son niveau de maturité
+pilier par pilier, avec une justification chiffrée et un résultat \emph{asymétrique}
+(\cref{tab:ztmm}) : \textbf{un profil uniformément élevé serait un profil complaisant}, les piliers
+ne progressant jamais au même rythme parce qu'ils ne coûtent pas le même prix.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|P{2.5cm}|P{1.7cm}|P{11.1cm}|}
+\caption[Auto-évaluation de maturité Zero Trust]{Auto-évaluation sur le modèle de maturité Zero Trust, à la date de \dateref}
+\label{tab:ztmm} \\
+\hline
+\textbf{Pilier} & \textbf{Niveau} & \textbf{Justification chiffrée et borne du niveau} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Pilier} & \textbf{Niveau} & \textbf{Justification chiffrée et borne du niveau} \\
+\hline
+\endhead
+Identités & \textbf{Avancé} & Sept identités de service distinctes, aucun rôle primitif sur 53
+fichiers de description d'infrastructure, aucune clé de compte de service, fédération contrainte
+sur le dépôt \emph{et} la branche, jetons courts, second facteur temporel sur le tableau de bord.
+\emph{Borne} : second facteur résistant à l'hameçonnage, codes de secours, garantie préventive par
+politique d'organisation \\ \hline
+Terminaux & \textbf{Traditionnel} & Aucune notion d'appareil dans toute la chaîne : ni inventaire,
+ni certificat client, ni signal de posture ; le seul attribut de contexte est le pays d'origine.
+\textbf{C'est le pilier vide du modèle}, par absence de périmètre administratif et non par
+oubli \\ \hline
+Réseaux & \textbf{Initial à avancé} & Nord-sud solide : filtrage applicatif appliqué, transport
+chiffré imposé, entrée des services restreinte au répartiteur, base sans adresse publique.
+Est-ouest refondu du 11 au 25/08/2026 (décision D15, \cref{subsec:reseau-cible}) : un sous-réseau
+par locataire, refus par défaut en sortie posé le 23/08/2026, cinq autorisations seulement, chacune
+ciblée par une identité de service et par un port, aucune plage source ; la règle interne
+permissive a été supprimée le 24/08/2026 et le connecteur partagé le 15/08/2026. Un refus croisé
+entre locataires a été réellement opposé et journalisé le 24/08/2026 (T20, conforme).
+\emph{Borne} : deux charges de travail détachées du sous-réseau conservent une sortie managée hors
+de portée du pare-feu (T14, non conforme, 25/08/2026) ; aucune règle de détection ne lit les refus
+journalisés ; l'instance de base de données reste jointe par les deux locataires \\ \hline
+Applications et charges de travail & \textbf{Avancé} & Entrée par le répartiteur seule sur tous
+les services, composant d'encodage en accès interne strict, contrôle des rôles vérifié en direct
+sur les sept routes serveur, en-têtes de sécurité durcis, conteneurs sans privilège, porte
+d'analyse d'image bloquante et \emph{éprouvée} (T8). \emph{Borne} : documentation d'interface
+publique, droit d'invocation anonyme adossé au seul contrôle de périmètre \\ \hline
+Données & \textbf{Initial à avancé} & Chiffrement par clé gérée sur l'entrepôt, les secrets et le
+stockage d'objets ; séparation d'écriture par table \emph{vérifiée par test automatisé} (T11) ;
+rétention de 90~jours sur les journaux bruts ; restauration mesurée à 32~min~45~s avec perte
+nulle. \emph{Borne} : chiffrement non rétroactif sur les tables de preuves antérieures, aucune
+protection contre la suppression, et trois seulement des dix tables de l'entrepôt portent une clé
+d'application, une seule la portant renseignée sur la totalité de ses lignes
+(\cref{tab:modele-donnees}) \\ \hline
+\textbf{Visibilité et analyse} & \textbf{Avancé} & Quatre acheminements de journaux, trafic du
+répartiteur collecté sans filtre, sept règles de détection avec étiquetage de technique,
+enrichissement sémantique, et un tableau de bord qui affiche aussi les \emph{non}-détections \\ \hline
+\textbf{Automatisation et orchestration} & \textbf{Initial à avancé} & Infrastructure décrite en
+code à l'exception du nom de domaine ; chaîne de livraison fédérée sans clé ; requêtes planifiées
+et contrôle de dérive quotidien de l'isolation. \emph{Borne} : infrastructure appliquée
+manuellement, sans planification en chaîne ni détection de dérive programmée --- le maillon le
+moins mature (T16, T18) \\ \hline
+\textbf{Gouvernance} & \textbf{Initial} & Dix-sept décisions d'architecture datées et un registre
+d'écarts tenu sans complaisance. \emph{Borne} : aucune politique d'organisation, aucun processus
+de révision périodique des règles de filtrage par pays \\
+\hline
+\end{longtable}
+}
+
+La formulation à défendre tient en une phrase : le socle met en \oe uvre un Zero Trust
+\emph{nord-sud} mature --- identité, périmètre, charges de travail --- et un est-ouest gouverné par
+l'identité \emph{au plan réseau} depuis le 25/08/2026, mais non au plan du stockage, où l'instance
+de base de données et l'entrepôt restent communs aux deux locataires. Ce qui reste périmétrique
+l'est par contrainte de périmètre, tracée en décision : sans organisation au sens du fournisseur,
+ni politique d'organisation, ni périmètre de service, ni accès conditionnel géré ne sont
+disponibles. Le seuil de rupture de ce compromis est l'accueil d'un troisième locataire.
+
+\section{Ce que le filtrage applicatif ne protège pas}
+\label{sec:limites-filtrage}
+
+Un chapitre de validation qui n'énoncerait que ce qui fonctionne validerait mal. Deux limites du
+socle sont structurelles : elles ne se corrigent pas par un réglage, et elles délimitent exactement
+ce qu'un hébergeur peut promettre.
+
+\subsection{Invisibilité d'une faille de logique métier}
+
+Le risque le plus concret porté par l'application hébergée est le suivant : le signalement d'une
+phrase du corpus la désactive aussitôt, sans quorum. Un contributeur authentifié, agissant dans
+son quota, peut donc désactiver le corpus phrase par phrase --- l'actif économique de
+l'application --- en émettant des requêtes parfaitement bien formées.
+
+Ce que voit le socle se résume en un mot : rien. Le filtrage applicatif observe du trafic
+légitime --- méthode autorisée, chemin fonctionnel, charge utile sans motif d'attaque --- et aucune
+des sept règles de détection ne se déclenche : R1 compte les refus d'authentification, or l'utilisateur est
+authentifié ; R2 compte les blocages du filtrage, or il n'y en a aucun ; R3 cherche des séquences
+de traversée de chemin, absentes ; R4 cherche des agents utilisateurs scriptés, et le service de
+l'application hébergée en est de toute façon explicitement exclu ; R5 surveille la latence,
+inchangée ; R6 cherche des motifs d'injection, absents ; R7 surveille l'accès à des fichiers
+sensibles, non sollicités.
+
+La conclusion s'écrit telle quelle : \textbf{un filtrage applicatif ne corrige pas une faille de
+logique métier, et une chaîne de détection fondée sur des signaux de transport ne la voit pas}. Le
+socle n'observe ni les actions fonctionnelles de l'application, ni son modèle d'autorisation, ni
+ses invariants métier. Le correctif --- un quorum avant désactivation --- est une migration
+applicative et appartient à l'éditeur : c'est la justification concrète de la frontière de
+responsabilité de \cref{tab:frontiere-resp}, conséquence de ce qu'un dispositif de transport peut
+observer.
+
+\subsection{Portée de la limitation de débit au bord}
+
+La seconde limite est du même ordre. La limitation de débit posée au périmètre est indexée sur
+l'adresse source : efficace contre une salve provenant d'une adresse unique, ce que T2 a vérifié,
+elle est sans effet contre un adversaire distribué qui répartit le même volume sur assez d'adresses
+pour que chacune reste sous le seuil.
+
+Le symétrique est plus gênant encore, et il a été rencontré. Là où de nombreux abonnés partagent un
+petit nombre d'adresses publiques de sortie --- situation courante sur les réseaux mobiles du pays
+visé par l'application hébergée, et anticipée par son éditeur --- un seuil par adresse frappe des
+utilisateurs légitimes : le compteur agrège des personnes différentes. C'est la généralisation de
+l'incident rapporté en \cref{subsec:authent-dashboard}, dont la formulation est que \emph{le
+contrôle mesure la mauvaise entité}. Tant que la limitation reste au bord, la resserrer bloque
+davantage d'utilisateurs légitimes sans gêner l'adversaire distribué, et la relâcher fait
+l'inverse : la sortie du compromis n'est pas un meilleur seuil, c'est une limitation portée par
+l'identité, donc côté application, ou indexée au bord sur un jeton de session --- ce qui suppose
+que le bord sache lire cette session.
+
+\section{Du socle au service}
+\label{sec:socle-service}
+
+Le \cref{ch:cadre-existant} posait le socle comme un produit potentiel, non comme un exercice. Cette section en
+tire le bilan avec les mêmes exigences de preuve que le reste du chapitre : ce que le socle apporte
+sans modification de l'application hébergée, ce qu'il n'apporte pas, ce que coûte l'accueil d'une
+application supplémentaire, et à quelles conditions l'ensemble deviendrait contractualisable.
+
+\subsection{Apport du socle et charge de l'éditeur}
+
+L'accueil de l'application pilote a servi de test grandeur nature de la proposition de valeur.
+Sont apportés automatiquement, sans une ligne de code applicatif : le certificat de transport et sa
+redirection, une adresse d'entrée unique, le filtrage applicatif et sa limitation de débit
+anti-force-brute avec bannissement, la journalisation centralisée et sa normalisation, les sept
+règles de détection avec leur étiquetage de technique, l'enrichissement sémantique, la restitution
+dans le tableau de bord, les alertes d'exploitation, une identité de service dédiée à moindre
+privilège, un secret par usage chiffré par clé gérée, une base et un espace de stockage dédiés, et
+une chaîne de livraison avec détection de secrets, analyse statique et double analyse d'image
+bloquante.
+
+Une preuve précise vaut mieux qu'un argument général. L'application hébergée protégeait ses accès
+d'administration par une liste d'adresses autorisées, lue depuis un en-tête de proxy propre à son
+hébergeur précédent ; derrière le répartiteur du socle, cet en-tête devient forgeable par le client,
+et le contrôle d'administration se serait effondré silencieusement au moment de la migration. Il a
+été corrigé pendant l'accueil, par un arbitrage explicite de l'en-tête de confiance selon
+l'hébergeur, et le correctif est protégé par un test unitaire érigé en porte bloquante.
+\textbf{Changer d'hôte peut casser un contrôle de sécurité, et seul un socle qui l'a anticipé le
+rattrape.}
+
+\textbf{Ce qui incombe à l'éditeur.} La frontière est établie au \cref{ch:realisation}
+(\cref{tab:frontiere-resp}) ; ce qu'elle exclut du périmètre de l'hébergeur tient en six
+domaines : authentification et autorisation des utilisateurs finaux --- le second facteur du socle
+protège les comptes du tableau de bord, pas les utilisateurs de l'application hébergée ---
+validation des entrées, le filtrage ne traitant que les charges connues, sécurité de la logique
+métier, structurellement invisible (\cref{sec:limites-filtrage}), chiffrement applicatif des
+données sensibles, sauvegardes applicatives, et conformité réglementaire, pour laquelle le socle
+fournit des moyens techniques et non une gouvernance. La ségrégation réseau entre applications
+hébergées appartient en revanche à l'hébergeur et est couverte au plan réseau depuis la migration
+du 11 au 25/08/2026 ; ce qui lui incombe encore est le cloisonnement de la donnée, troisième seuil
+énoncé plus bas.
+
+\subsection{Coût d'accueil d'une application supplémentaire}
+
+Le coût d'accueil d'une troisième application est mesuré (\cref{tab:cout-onboarding}) ; la colonne
+d'automatisation est la seule qui compte pour un raisonnement de produit, car elle sépare ce qui
+passe à l'échelle de ce qui exige un geste humain non versionné, donc non auditable.
+
+\begin{table}[!htbp]
+\caption[Coût d'accueil d'une application supplémentaire]{Coût d'accueil d'une application hébergée supplémentaire, à la date de \dateref}
+\label{tab:cout-onboarding}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|P{3.4cm}|P{7.0cm}|P{4.9cm}|}
+\hline
+\textbf{Nature} & \textbf{Détail} & \textbf{Automatisé\,?} \\
+\hline
+Un fichier de description ($\approx$~120~lignes) & Sur le modèle de celui du locataire existant &
+Recopie, module réutilisable \\ \hline
+Cinq variables d'environnement & À mettre à jour ensemble ; un oubli rend l'application absente
+de la supervision \emph{sans aucune erreur visible} & Manuel, et le fichier n'est pas versionné \\ \hline
+Un flux de livraison ($\approx$~296~lignes) & Duplication intégrale, faute de factorisation &
+Manuel \\ \hline
+Sept ordres de base de données \emph{pour un locataire supplémentaire} (dix pour l'accueil du
+second, qui incluait la fermeture symétrique) & Durcissement de l'isolation entre bases & Hors
+description en code, geste appliqué à l'exécution \\ \hline
+Une tâche, un ordonnanceur, une alerte & Contrôle quotidien de dérive de l'isolation & À recopier \\ \hline
+Deux modifications de code & Table des services du locataire et filtre d'affichage & Manuel,
+sans test \\ \hline
+Un enregistrement de nom de domaine & À poser \emph{avant} l'application de l'infrastructure &
+Manuel, hors périmètre du code \\
+\hline
+\end{tabular}
+\end{table}
+
+C'est la mesure honnête de la distance entre un socle qui \emph{fonctionne} pour deux applications
+et un socle qui \emph{s'exploite} pour N.
+
+\subsection{Maturité multi-locataire, axe par axe}
+
+L'évaluation axe par axe (\cref{tab:maturite-multitenant}) est franchement asymétrique, et
+c'est ce qui la rend utilisable : elle indique où investir. Le socle a résolu le plan de l'identité
+et du déploiement, et, du 11 au 25/08/2026, celui du réseau (D15) ; celui de la donnée reste ouvert
+\emph{en exploitation} sans l'être \emph{en conception}, D16 en fixant la cible, le coût et l'ordre
+(\cref{subsec:reseau-cible,subsec:isolation-donnees}). Les notes mesurent le système déployé, non
+la conception qui le corrige, et se lisent sous les conditions de validité du \cref{tab:limites} :
+dispositif mono-opérateur, recette sans trafic réel.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|P{3.2cm}|P{1.0cm}|P{11.1cm}|}
+\caption[Maturité multi-locataire, axe par axe]{Maturité multi-locataire, axe par axe, à la date de \dateref}
+\label{tab:maturite-multitenant} \\
+\hline
+\textbf{Axe} & \textbf{Note} & \textbf{Justification chiffrée} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Axe} & \textbf{Note} & \textbf{Justification chiffrée} \\
+\hline
+\endhead
+Isolation des identités & \textbf{9/10} & Une identité dédiée par application, aucun droit sur
+l'entrepôt de supervision, délégation de la chaîne de livraison ciblée sur cette seule identité,
+accès aux secrets accordé secret par secret, aucun rôle primitif nulle part \\ \hline
+Isolation des secrets & \textbf{9/10} & Un secret par usage, jamais de portée projet, chiffrement
+par clé gérée sur huit secrets \\ \hline
+Isolation des données applicatives & \textbf{4/10} & Base et utilisateur dédiés sur une instance
+partagée ; l'isolation repose sur six révocations appliquées à l'exécution, hors description en
+code, qu'une réconciliation consécutive à un clonage défait sans bruit --- d'où le contrôle
+quotidien, qui la détecte sans la prévenir \\ \hline
+Ségrégation réseau & \textbf{6/10} & Cloisonnement réseau par locataire acquis et daté au
+\cref{tab:ztmm} ; le refus croisé entre locataires a été réellement opposé et journalisé le
+24/08/2026, sa ligne retrouvée dans l'entrepôt (T20, conforme). La note s'arrête là pour trois
+raisons démontrées, non par prudence : deux charges de travail détachées du sous-réseau conservent
+une sortie managée hors de portée du pare-feu (T14, non conforme, 25/08/2026) ; le sélecteur
+disponible étant l'étiquette et non le compte de service, la frontière est opposable à une charge
+compromise et non à un opérateur capable de déployer ; et l'instance de base de données reste
+jointe par les deux locataires \\ \hline
+Cloisonnement de la supervision & \textbf{2/10} & Un seul jeu de données pour tous les locataires,
+aucune politique d'accès par ligne : le filtre est appliqué par l'API, jamais par le stockage. Côté
+tableau de bord, le locataire est porté par un témoin de navigation non signé, absent des
+revendications du jeton --- confort de lecture, jamais frontière de sécurité, et la décision
+d'architecture le dit \\ \hline
+Attribution d'un incident à un locataire & \textbf{5/10} & Fiable à 100\,\% pour R1, dégradée pour
+R2, R3 et R6, dont la source est le répartiteur : sur les dix tables de l'entrepôt, \textbf{trois
+portent une clé d'application et une seule la porte renseignée sur toutes ses lignes}
+(\cref{tab:modele-donnees}), et le champ de service est vide sur 75 à 90\,\% des détections de ces
+trois règles. Contre-exemple positif : la détection du 19/08/2026 porte bien le service de
+l'application hébergée \\ \hline
+Reproductibilité de l'accueil & \textbf{5/10} & Module d'application réutilisable et documenté,
+mais \textbf{quatre gestes manuels non versionnés} subsistent
+(\cref{tab:cout-onboarding}) \\
+\hline
+\end{longtable}
+}
+
+\textbf{Note d'ensemble : 5/10}, contre 4/10 avant la refonte réseau du 11 au 25/08/2026 : l'axe
+réseau est le seul à avoir bougé et il ne rachète ni le stockage ni la supervision, qui bornent la
+note. Le socle est prêt à héberger plusieurs applications d'un même éditeur --- ce qu'il fait,
+correctement --- non les données de deux clients distincts sous engagement contractuel, leur
+isolation y restant une propriété des droits du moteur de base et du code applicatif, non du
+stockage.
+
+\subsection{Modèle cible et seuils d'engagement}
+
+Les quatre niveaux d'isolation évalués et le modèle retenu --- mutualiser ce qui est coûteux et
+sans donnée client, cloisonner ce qui porte la donnée --- sont arrêtés avec leur coût en
+\cref{subsec:isolation-donnees}. Ce que la mesure ajoute est le motif de proportion : ce modèle
+tranche exactement là où passe la frontière de maturité relevée ci-dessus, pour un surcoût de $+40$
+à $+60\,\%$ et un effort \emph{incrémental}. Une limite l'accompagne : tant qu'il n'existe qu'un
+seul projet au sens du fournisseur, un droit mal attribué traverse d'un coup toutes les frontières
+logiques --- la séparation par projet reste la seule frontière garantie nativement, et lever la
+contrainte administrative est le prérequis de toute commercialisation.
+
+\medskip
+\noindent\textbf{Trois seuils avant engagement contractuel.} Trois seuils --- exactement trois ---
+séparent ces deux états, énoncés dans l'ordre où ils doivent être franchis, celui du rapport entre
+l'effet et l'effort.
+
+\textbf{Premier seuil : alerter réellement sur les détections de sécurité.} Le socle exploite deux
+chaînes d'observabilité disjointes --- une chaîne d'exploitation qui alerte, une chaîne de sécurité
+qui n'alerte pas : une détection de sévérité critique n'envoie aucune notification, elle attend
+qu'un analyste ouvre le tableau de bord (\cref{fig:capture-K34}). \textbf{La chaîne se termine par un écran, elle doit se
+terminer par une notification} ; c'est la lacune la plus lourde du dispositif, et sa remédiation la
+plus légère des trois.
+
+\begin{figure}[!htbp]
+\centering
+\IfFileExists{figures/K34.png}{%
+  \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+  \fcolorbox{black!30}{white}{\includegraphics[width=0.72\textwidth]{figures/K34.png}}%
+}{%
+  \begin{minipage}{0.72\textwidth}
+  \begin{extraitconf}[breakable=false, fontupper=\footnotesize,
+      title={Cadre de capture K34 : spécification de prise}]
+  \textbf{Vue :} page \emph{Vue d'ensemble} du tableau de bord, cadrée sur le bandeau supérieur
+  et la bande des cinq indicateurs, un locataire sélectionné et au moins une détection de gravité
+  élevée dans la répartition. \textbf{Date de prise :} relevée sur la révision de recette en
+  service.\par\smallskip
+  \textbf{Ce que le cadre établit :} le premier des trois seuils qui séparent un socle d'un
+  service --- la chaîne de sécurité se termine par un écran. Aucune file d'incidents à traiter,
+  aucun accusé de prise en charge, aucun canal de notification : cette absence, au milieu de
+  compteurs vifs, est l'objet même du cadre, et c'est la raison pour laquelle il est ici plutôt
+  qu'une phrase.\par\smallskip
+  \textbf{Réserve :} les compteurs de cette vue incluent le trafic d'auto-consultation
+  (\cref{tab:limites}) ; la preuve porte sur leur environnement d'interface, non sur leur niveau.
+  \textbf{Masquage :} identifiant de projet, courriel du compte connecté.
+  \end{extraitconf}
+  \end{minipage}%
+}
+\caption[Vue d'ensemble : la chaîne de sécurité se termine par un écran]{Vue d'ensemble du
+tableau de bord. À y lire ce qui \emph{n'y est pas} : ni file d'incidents à traiter, ni
+accusé de prise en charge, ni départ de notification. La chaîne de détection se termine par
+cet écran, et le délai perçu par un analyste dépend donc de sa présence devant lui.}
+\label{fig:capture-K34}
+\end{figure}
+
+\textbf{Deuxième seuil : verrouiller la rétention des journaux d'audit.} Les journaux d'accès aux
+données sont produits mais ne sont acheminés vers aucune destination dédiée ; ils restent dans un
+espace à rétention de trente jours, modifiable. C'est la brique de non-répudiation manquante, et
+le contexte la rend impérative : la table des détections a réellement été vidée par une
+suppression administrateur les 24 et 25/08/2026, ce qui est exactement l'événement qu'un journal
+d'audit verrouillé doit rendre incontestable.
+
+\textbf{Troisième seuil : cloisonner la donnée entre locataires.} C'est le seul des trois qui
+demande plusieurs jours. La segmentation réseau qui occupait cette place a été appliquée du 11 au
+25/08/2026 et mesurée par T20 ; ce qui reste relève du plan de la donnée : clé de locataire
+obligatoire à l'ingestion, cloisonnement au stockage de l'entrepôt, instance de base dédiée au
+locataire porteur de donnée irréparable --- conçue, chiffrée et ordonnancée sous D16
+(\cref{subsec:isolation-donnees}), non appliquée. S'y ajoute le résidu réseau du correctif T14
+(\cref{sec:non-conformite-t1}). Le dépôt pose lui-même ce seuil comme la condition d'accueil d'un
+troisième client.
+
+\section{Conditions de validité et réponse aux objectifs}
+\label{sec:cloture}
+
+\subsection{Conditions de validité des résultats}
+\label{sec:limites}
+
+Toute mesure porte les limites de son dispositif. Le \cref{tab:limites} recense celles qui
+conditionnent l'interprétation des résultats, énoncées comme des bornes de validité et non comme
+des excuses : chacune indique jusqu'où une conclusion peut être portée.
+
+\begin{table}[!htbp]
+\caption{Conditions de validité des résultats du chapitre}
+\label{tab:limites}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|P{3.9cm}|P{11.4cm}|}
+\hline
+\textbf{Condition} & \textbf{Portée qu'elle donne aux résultats} \\
+\hline
+Absence de trafic réel & Les résultats valent pour les scénarios exécutés, non pour une
+exploitation réelle : ni taux de faux positifs ni seuil comportemental n'en est déductible \\ \hline
+Attaques simulées, non adverses & Les tests valident les scénarios prévus, pas l'espace des
+scénarios non prévus \\ \hline
+Période d'observation courte & Les phénomènes lents --- dérive, saturation, coût --- restent hors
+du champ d'observation ; c'est précisément l'objet du plan de validation continue
+(\cref{sec:plan-validation}) \\ \hline
+Isolation portée par les droits au plan du stockage & Les refus observés entre locataires
+attestent le cloisonnement des identités, des secrets, des bases et --- depuis le refus croisé du
+24/08/2026, T20 --- du réseau ; la conclusion ne s'étend pas au stockage, où l'instance de base de
+données et l'entrepôt de supervision demeurent communs \\ \hline
+Ressource d'infrastructure partagée & L'instance de base de données reste unique, seules les bases
+et les rôles y étant séparés : point de défaillance unique que la campagne n'éprouve pas, et une
+restauration restaure les deux bases ensemble. L'autre ressource commune, le connecteur d'accès
+sans serveur, a été supprimée le 15/08/2026 \\ \hline
+Compteurs incluant l'\textbf{auto-consultation} & Les volumes affichés par la vue d'ensemble
+incluent le trafic généré par la consultation du tableau de bord lui-même : ils illustrent le
+fonctionnement de la chaîne, ils ne mesurent pas une activité \\ \hline
+Journal d'audit applicatif sans politique de purge & Aucune durée de conservation n'y est
+déclarée : sa croissance est non bornée, et une ligne de politique suffirait, mais elle doit
+exister avant tout engagement de service \\ \hline
+Écriture non bloquante de la piste d'audit applicative & L'écriture est enveloppée dans un
+traitement d'erreur silencieux : une panne ferait perdre la trace sans aucun signal, et les
+conclusions tirées de cette piste valent sous réserve de sa complétude \\ \hline
+\textbf{Dispositif de mesure mono-opérateur} & La reproductibilité est assurée par publication :
+chaque protocole est écrit avec son critère d'acceptation, formulé avant exécution, de sorte qu'un
+tiers puisse le rejouer et contredire le résultat (annexe~\ref{ann:protocoles-tests}) --- garantie
+de méthode substituée à une revue croisée indisponible à cette taille \\ \hline
+Annotation sémantique par une seule personne & L'évaluation comparative de l'enrichissement n'est
+donc pas prononcée : le protocole prévoit une seconde annotation et un taux d'accord, et la grille
+reste vide jusque-là (\cref{ann:evaluation-semantique}) \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Réponse aux objectifs du projet}
+
+Les six objectifs mesurables du \cref{ch:cadre-existant} sont confrontés aux résultats obtenus
+(\cref{tab:objectifs-ch6}). Une échelle binaire « atteint / non atteint » confondrait un objectif
+dont le dispositif n'existe pas et un objectif dont le dispositif fonctionne sans être chiffré.
+Trois niveaux cumulatifs sont donc employés --- \textbf{conçu} : traduit en exigences, en
+architecture et en décisions datées ; \textbf{réalisé} : déployé et observé en fonctionnement ;
+\textbf{mesuré} : une valeur relevée et datée établit le résultat.
+
+{\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{longtable}{|P{0.6cm}|P{2.6cm}|P{10.25cm}|P{1.6cm}|}
+\caption{Réponse aux six objectifs mesurables du projet}
+\label{tab:objectifs-ch6} \\
+\hline
+\textbf{\#} & \textbf{Objectif} & \textbf{Acquis, et portée de l'acquis} & \textbf{Niveau} \\
+\hline
+\endfirsthead
+\hline
+\textbf{\#} & \textbf{Objectif} & \textbf{Acquis, et portée de l'acquis} & \textbf{Niveau} \\
+\hline
+\endhead
+O1 & Supprimer la confiance implicite du réseau & Contrôles d'identité et de périmètre déployés,
+refus observés en recette et rejoués par test automatisé ; refus croisé entre locataires opposé et
+journalisé le 24/08/2026 (T20). \emph{Portée} : frontière opposable à une charge compromise, non à
+un opérateur capable de déployer ; deux charges conservent une sortie managée non gouvernée
+(T14) & Réalisé, mesuré en partie \\ \hline
+O2 & Rendre l'infrastructure reproductible & Socle décrit en code, construit puis reconstruit en
+recette : la capacité est établie, la \emph{mesure} chronométrée relevant du plan de validation
+continue, dont le versionnement du fichier de variables est le prérequis & Réalisé \\ \hline
+O3 & Contrôler la chaîne de livraison & Portes bloquantes et \emph{éprouvées} : refus réel sur une
+vulnérabilité critique (T8), fédération sans clé, aucune clé exportée (T7). \emph{Portée} : le
+registre de confiance repose sur la construction, non sur un refus (T9) & Réalisé, mesuré en
+partie \\ \hline
+O4 & Détecter les événements de sécurité & Sept règles actives, chaîne complète démontrée le
+19/08/2026, et publication de ce que le socle \emph{ne} détecte pas
+(tableaux~\ref{tab:lacunes}, \ref{tab:limites} et \cref{sec:limites-filtrage}), comme l'objectif
+l'exigeait. \emph{Portée} : couverture, faux positifs et délai médian non chiffrés ; la chaîne se
+termine par un écran ; une interruption de la route de journaux ne produit aucune alerte (T12) &
+Réalisé \\ \hline
+O5 & Enrichir les alertes de façon déterministe & Candidats sémantiques produits, stockés et
+consultables (\cref{fig:capture-K33}). \emph{Portée} : comparaison aux méthodes de référence non
+prononcée et jointure au score d'incident laissée en écart assumé --- l'objectif admettait par
+avance le résultat négatif ; débit plafonné à 200~détections par heure, au-delà desquelles la
+fenêtre de deux heures écarte les plus anciennes sans erreur (T15, 22/08/2026) & Réalisé en
+partie \\ \hline
+O6 & Rester exploitable et soutenable & Restauration exécutée et chronométrée (32~min~45~s, perte
+nulle, 314~lignes sur 314), retours arrière à 11,6~s et 16,5~s, haute disponibilité régionale
+appliquée le 08/08/2026 en 11~min~2~s, plafond de charge mesuré le 22/08/2026, état de
+l'infrastructure protégé par quatre refus le 20/08/2026. \emph{Portée} : bascule de zone non
+provoquée, coût non ventilé & Réalisé, mesuré en partie \\
+\hline
+\end{longtable}
+}
+
+Aucun des six objectifs n'en reste au stade de la conception : les six dispositifs sont construits
+et observés en fonctionnement, et ce qui n'est pas encore chiffré est de nature homogène --- durée,
+volume, fréquence --- c'est-à-dire exactement le champ du plan de validation continue.
+
+\section*{Conclusion du chapitre}
+\addcontentsline{toc}{section}{Conclusion du chapitre}
+
+\looseness=-1
+Les vingt protocoles portent une preuve nommée, vérifiable et datée ; six portent en outre une
+cadence de rejeu. Les deux plus fortes ne sont pas des captures mais un test automatisé qui tente
+réellement l'écriture interdite sur les tables de preuves à chaque livraison, et un refus non
+provoqué. Les non-conformités T1 et T14, conservées et expliquées, sont la contrepartie d'une
+campagne dérivée de l'analyse de risque \emph{avant} la conception. Les points fragiles se nomment
+aussi : couverture de détection non calculée, chaîne se terminant par un écran plutôt que par une
+notification, deux charges dont la sortie réseau échappe au pare-feu, stockage commun aux deux
+locataires. Restent les trois seuils --- alerter, verrouiller la rétention, cloisonner la donnée
+--- qui séparent un socle qui fonctionne d'un service que l'on peut vendre, et la question ouverte
+au \cref{ch:etat-art} : le gain de l'enrichissement sémantique justifiera-t-il son coût\,?
+
+% Restauration des reglages de flottants par defaut
+\setcounter{topnumber}{2}\setcounter{bottomnumber}{1}\setcounter{totalnumber}{3}
+\renewcommand{\topfraction}{0.7}\renewcommand{\bottomfraction}{0.3}
+\renewcommand{\textfraction}{0.2}\renewcommand{\floatpagefraction}{0.5}
+\setlength{\LTpre}{\bigskipamount}\setlength{\LTpost}{\bigskipamount}

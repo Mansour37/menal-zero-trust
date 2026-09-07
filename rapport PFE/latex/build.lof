@@ -1,0 +1,47 @@
+\babel@toc {french}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {french}{}\relax 
+\contentsline {figure}{\numberline {1}{\ignorespaces Carte du mémoire : chaque chapitre consomme le livrable du précédent}}{3}{figure.caption.10}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2}{\ignorespaces Organigramme de MENAL-SARL et rattachement du projet}}{5}{figure.caption.12}%
+\contentsline {figure}{\numberline {3}{\ignorespaces Boucle fonctionnelle de l'application pilote et actifs produits}}{6}{figure.caption.13}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Écran de contribution de l'application pilote (environnement de recette)}}{7}{figure.caption.14}%
+\contentsline {figure}{\numberline {5}{\ignorespaces Modèle de sécurité de l'hébergement initial}}{9}{figure.caption.15}%
+\contentsline {figure}{\numberline {6}{\ignorespaces Répartition des 41~critères de préparation au déploiement}}{10}{figure.caption.16}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {7}{\ignorespaces Diagramme de cas d'utilisation du socle}}{27}{figure.caption.20}%
+\contentsline {figure}{\numberline {8}{\ignorespaces Diagramme de flux de données du socle et ses cinq frontières de confiance}}{29}{figure.caption.21}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {9}{\ignorespaces Vue de contexte : le socle, ses acteurs et les systèmes extérieurs}}{36}{figure.caption.22}%
+\contentsline {figure}{\numberline {10}{\ignorespaces Modèle en couches : cinq couches empilées et deux plans transversaux}}{37}{figure.caption.23}%
+\contentsline {figure}{\numberline {11}{\ignorespaces Vue de déploiement : composants, liens réseau et flux F1 à F5}}{38}{figure.caption.24}%
+\contentsline {figure}{\numberline {12}{\ignorespaces Topologie réseau avant la refonte}}{39}{figure.caption.25}%
+\contentsline {figure}{\numberline {13}{\ignorespaces Topologie réseau après la refonte appliquée}}{40}{figure.caption.26}%
+\contentsline {figure}{\numberline {14}{\ignorespaces Cycle de vie de la donnée de sécurité}}{46}{figure.caption.29}%
+\contentsline {figure}{\numberline {15}{\ignorespaces Modèle de données des deux systèmes de stockage}}{48}{figure.caption.30}%
+\contentsline {figure}{\numberline {16}{\ignorespaces Requête malveillante refusée au périmètre}}{50}{figure.caption.31}%
+\contentsline {figure}{\numberline {17}{\ignorespaces Plan d'identité : droits accordés et interdictions structurantes}}{52}{figure.caption.33}%
+\contentsline {figure}{\numberline {18}{\ignorespaces Chaînes de délégation d'identité}}{53}{figure.caption.34}%
+\contentsline {figure}{\numberline {19}{\ignorespaces Authentification à deux facteurs}}{55}{figure.caption.35}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {20}{\ignorespaces Charges de travail du socle sur la plateforme d'exécution}}{59}{figure.caption.38}%
+\contentsline {figure}{\numberline {21}{\ignorespaces Chaîne de livraison applicative : étapes, portes bloquantes et refus}}{61}{figure.caption.39}%
+\contentsline {figure}{\numberline {22}{\ignorespaces Chaîne de provisionnement de l'infrastructure}}{65}{figure.caption.40}%
+\contentsline {figure}{\numberline {23}{\ignorespaces Architecture interne des deux logiciels écrits}}{70}{figure.caption.42}%
+\contentsline {figure}{\numberline {24}{\ignorespaces Chaîne de données d'une vue du tableau de bord}}{71}{figure.caption.43}%
+\contentsline {figure}{\numberline {25}{\ignorespaces Tableau de bord servi à un compte analyste, page des détections}}{72}{figure.caption.44}%
+\contentsline {figure}{\numberline {26}{\ignorespaces Accueil d'un locataire : six étapes et cinq gestes hors du code}}{75}{figure.caption.45}%
+\contentsline {figure}{\numberline {27}{\ignorespaces Porte d'analyse statique : le faux vert du 16/08 et l'échec du 19/08}}{79}{figure.caption.46}%
+\contentsline {figure}{\numberline {28}{\ignorespaces Planning consolidé du stage, du 03/03/2026{} au 07/09/2026{}}}{81}{figure.caption.47}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {29}{\ignorespaces Fiche d'incident : le candidat sémantique rendu à l'analyste}}{89}{figure.caption.49}%
+\contentsline {figure}{\numberline {30}{\ignorespaces Démarrage à froid du service d'encodage}}{90}{figure.caption.50}%
+\contentsline {figure}{\numberline {31}{\ignorespaces Scénario de bout en bout du 19/08/2026}}{92}{figure.caption.53}%
+\contentsline {figure}{\numberline {32}{\ignorespaces Les treize refus au périmètre du 19/08/2026 dans le collecteur de journaux}}{93}{figure.caption.54}%
+\contentsline {figure}{\numberline {33}{\ignorespaces Vue d'ensemble : la chaîne de sécurité se termine par un écran}}{98}{figure.caption.56}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }

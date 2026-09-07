@@ -1,0 +1,944 @@
+###############################################################################
+#  MODULE VPC CIBLE — PROPOSITION DE CONCEPTION, NON APPLIQUEE
+#
+#  Ce fichier est une PROPOSITION accompagnant CONCEPTION_RESEAU_CIBLE.md.
+#  Il ne remplace pas terraform/modules/vpc/main.tf : l appliquer est un geste
+#  d auteur, precede du plan de migration du paragraphe (i) du dossier.
+#
+#  ------------------------------------------------------------------------
+#  POURQUOI CE MODULE EXISTE
+#  ------------------------------------------------------------------------
+#  Le module actuel decrit un reseau que rien n occupe : deux sous-reseaux
+#  vides, une passerelle de sortie rattachee au vide, et une regle qui ouvre
+#  tous les ports entre deux plages sans designer aucune cible. Les charges de
+#  travail, elles, sortent par un connecteur dont la plage n est ni pare-feuee
+#  ni traduite. Autrement dit : le pare-feu ne peut designer aucune charge, et
+#  aucune regle ne gouverne la sortie.
+#
+#  Ce module renverse la situation par un seul changement structurant : les
+#  charges Cloud Run recoivent leurs interfaces de sortie DANS un sous-reseau
+#  (sortie reseau directe, en remplacement du connecteur). A partir de la, et
+#  seulement a partir de la, le pare-feu peut nommer chaque charge et la
+#  sortie devient gouvernable.
+#
+#  ------------------------------------------------------------------------
+#  PRINCIPE DIRECTEUR
+#  ------------------------------------------------------------------------
+#  Le reseau ne transporte que ce qu une identite nommee a le droit d emettre,
+#  vers une destination nommee. La plage d adresses ne donne aucun droit.
+#
+#  Critere d acceptation verifiable de ce fichier : AUCUNE regle "allow" ne
+#  comporte de "source_ranges". Une regle qui autoriserait une plage vers une
+#  autre serait de la confiance de zone, ce que NIST SP 800-207 §2.1 proscrit.
+#  Verification : protocole V12 du dossier.
+#
+#  ------------------------------------------------------------------------
+#  PREREQUIS DUR — A VERIFIER AVANT TOUT apply (protocole V1 du dossier)
+#  ------------------------------------------------------------------------
+#  Le fournisseur Terraform doit exposer "network_interfaces" dans le bloc
+#  vpc_access de google_cloud_run_v2_service / _job. Le depot verrouille
+#  google ~> 5.0 (5.45.2). Si le schema ne l expose pas, ce module ne sert a
+#  rien : les charges resteraient hors des sous-reseaux et le pare-feu
+#  resterait aveugle.
+###############################################################################
+
+
+###############################################################################
+# 1. VARIABLES
+###############################################################################
+
+variable "project_id" {
+  description = "Identifiant du projet GCP."
+  type        = string
+}
+
+variable "region" {
+  description = "Region unique du socle. Le projet n a aucun besoin multi-region."
+  type        = string
+  default     = "europe-west1"
+}
+
+variable "environment" {
+  description = "Nom de l environnement (staging, prod)."
+  type        = string
+}
+
+# ── Le plan d adressage, exprime par locataire ───────────────────────────────
+#
+# POURQUOI une map de locataires plutot que des variables nommees : le seuil de
+# bascule declare du projet est le TROISIEME locataire. Un plan d adressage qui
+# oblige a rouvrir le module pour accueillir un locataire est un plan qui sera
+# improvise le jour ou il faudra le faire. Ici, un locataire de plus est une
+# entree de map — et, avec la sortie reseau directe, cela ne coute rien : c est
+# ce qui rend la segregation reseau gratuite (voir le §f du dossier, qui corrige
+# l hypothese a 12-15 EUR/mois/locataire du §17.5 du dossier technique).
+#
+# POURQUOI des /26 : la sortie reseau directe consomme une adresse par instance
+# active, et les adresses ne sont pas rendues instantanement lors d un cycle de
+# montee/descente en charge. Un /26 offre 60 adresses utilisables pour un
+# plafond declare de 6 instances cote MENAL et 3 cote ELSON, soit 10x et 20x de
+# marge. C est aussi le prefixe minimal recommande pour cette capacite
+# (a confirmer — protocole V3).
+#
+# POURQUOI dans 10.0.0.0/16 : la plage d appairage (acces prive aux services)
+# a ete allouee automatiquement en /16, adresse de debut inconnue et non
+# modifiable sans detruire l instance Cloud SQL. Le fournisseur n alloue jamais
+# une plage d appairage recouvrant un sous-reseau existant ; or 10.0.1.0/24,
+# 10.0.2.0/24 et 10.0.3.0/28 existent depuis la creation du reseau. Aucun /16
+# recouvrant 10.0.0.0/16 n a donc pu etre alloue : toute adresse prise ici,
+# hors de ces trois plages, est structurellement sure. Rester dans 10.0.0.0/16
+# est donc un raisonnement, pas une habitude.
+variable "tenants" {
+  description = <<-EOT
+    Locataires du socle. Cle = nom court du locataire.
+      cidr       : plage du sous-reseau portant les interfaces de sortie.
+      identities : noms courts des comptes de service executant les charges de
+                   ce locataire. Ces noms servent AUSSI d etiquettes reseau :
+                   une etiquette = une identite (voir local.tenant_of_identity).
+  EOT
+  type = map(object({
+    cidr       = string
+    identities = list(string)
+  }))
+  default = {
+    menal = {
+      cidr       = "10.0.8.0/26"
+      identities = ["sa-api", "sa-dashboard", "sa-enrich-job"]
+    }
+    elson = {
+      cidr       = "10.0.8.64/26"
+      identities = ["sa-elson"]
+    }
+    # Troisieme locataire : plage RESERVEE et sous-reseau cree vide. Un
+    # sous-reseau sans ressource ne coute rien ; l avoir deja adresse
+    # transforme l onboarding reseau en une ligne de tfvars au lieu d une
+    # decision d adressage prise dans l urgence.
+    tenant3 = {
+      cidr       = "10.0.8.128/26"
+      identities = []
+    }
+    # Reserve : 10.0.8.192/26 (4e locataire). Au-dela, extension sur
+    # 10.0.9.0/24 selon la meme regle : un /24 = quatre locataires.
+  }
+}
+
+# ── Qui a le droit de faire quoi ─────────────────────────────────────────────
+#
+# Ces listes SONT la politique de securite. Elles sont volontairement lisibles
+# par quelqu un qui ne connait pas le reseau : on doit pouvoir contester une
+# ligne sans lire une seule regle de pare-feu.
+
+variable "db_client_identities" {
+  description = <<-EOT
+    Identites autorisees a joindre l instance Cloud SQL, port 5432 uniquement.
+    Toute identite absente de cette liste sera refusee ET journalisee.
+    Etat verifie dans le code : seuls sa-api (roles/cloudsql.client, iam/main.tf)
+    et sa-elson (app-service/main.tf) detiennent le role client Cloud SQL.
+  EOT
+  type        = list(string)
+  default     = ["sa-api", "sa-elson"]
+}
+
+variable "google_api_client_identities" {
+  description = <<-EOT
+    Identites autorisees a joindre les points de terminaison du fournisseur.
+    sa-dashboard en est ABSENT a dessein : le tableau de bord Next.js n a aucun
+    client BigQuery (verifie : aucune dependance Google dans son package.json)
+    et son secret est monte par la plateforme, hors de son chemin reseau. Le
+    pare-feu referme ici un ecart que l IAM laisse ouvert (roles BigQuery morts
+    encore attribues a sa-dashboard, §11.2 du dossier technique).
+  EOT
+  type        = list(string)
+  default     = ["sa-api", "sa-elson", "sa-enrich-job"]
+}
+
+variable "lb_client_identities" {
+  description = <<-EOT
+    Identites autorisees a joindre l adresse publique de l equilibreur.
+    Le tableau de bord interroge l API par https://<domaine> (variable API_URL,
+    dashboard/main.tf:92-94) : c est sa SEULE destination reseau au monde.
+  EOT
+  type        = list(string)
+  default     = ["sa-dashboard"]
+}
+
+variable "runapp_client_identities" {
+  description = <<-EOT
+    Identites autorisees a joindre un service Cloud Run par son adresse
+    *.run.app. Un seul cas : la tache d enrichissement appelle le service
+    d encodage, qui est en entree strictement interne (ml-pipeline/main.tf).
+    C est le seul flux dont la destination ne peut pas etre resserree : run.app
+    n expose pas de prefixe stable. Le controle est donc reporte sur l identite
+    emettrice, unique, et sur l autorisation d invocation IAM, nominative.
+  EOT
+  type        = list(string)
+  default     = ["sa-enrich-job"]
+}
+
+variable "cloudsql_private_ip" {
+  description = <<-EOT
+    Adresse privee de l instance Cloud SQL, en /32. A cabler depuis la racine par
+    module.cloud_sql.private_ip_address — JAMAIS recopiee a la main. La plage
+    d appairage entiere (un /16) n est jamais autorisee : un service futur
+    ajoute a cette plage ne doit pas devenir joignable par accident.
+  EOT
+  type        = string
+}
+
+variable "lb_external_ip" {
+  description = "Adresse globale reservee de l equilibreur (load-balancer/main.tf:19-22)."
+  type        = string
+}
+
+# ── Les deux commutateurs de conception ──────────────────────────────────────
+
+variable "use_service_account_targets" {
+  description = <<-EOT
+    false (defaut) : les regles ciblent les charges par ETIQUETTE reseau.
+    true            : elles les ciblent par COMPTE DE SERVICE.
+
+    Pourquoi ce commutateur existe. Le pare-feu supporte target_service_accounts
+    et source_service_accounts — c est la traduction litterale du principe
+    d identite dans le reseau, et c est la forme que le memoire doit viser. Ce
+    qui n est PAS etabli, c est que ce selecteur reconnaisse les interfaces de
+    sortie reseau directe de Cloud Run : la documentation de cette capacite
+    mentionne les etiquettes reseau. Affirmer le contraire sans l avoir teste
+    serait une erreur qu un jury ne pardonne pas.
+
+    D ou la convention tenue partout ici : L ETIQUETTE PORTE LE NOM DU COMPTE DE
+    SERVICE, ET RIEN D AUTRE. Une etiquette = une identite. Jamais d etiquette
+    de role (https-server, web, db). L etiquette et le compte de service sont
+    poses dans le meme bloc Cloud Run, donc mecaniquement solidaires. Une regle
+    qui cible "sa-api" cible bien une identite, quel que soit le selecteur.
+
+    Basculer ce commutateur a true le jour ou le protocole V4 du dossier aura
+    etabli que le selecteur fonctionne. Cout de la bascule : ce booleen.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "enable_private_api_endpoint" {
+  description = <<-EOT
+    false (variante B1, a deployer en premier) : les API du fournisseur sont
+      jointes par leurs adresses publiques, via l acces prive. Destination = les
+      prefixes publics du fournisseur, lus par source de donnees. Aucun
+      prerequis, aucun changement de resolution de noms. Bloque deja ce qui
+      compte : toute destination hors fournisseur, donc tout canal de commande
+      ou d exfiltration vers un hote arbitraire.
+
+    true (variante B2, cible) : la destination se reduit a UN /30
+      (199.36.153.8/30) et une zone DNS privee redirige *.googleapis.com vers
+      lui. Resultat ideal, mais soumis a un verrou non etabli : la charge
+      Cloud Run doit utiliser la resolution de noms du reseau virtuel. Avec
+      l ancien connecteur, ce n etait pas le cas. NE PAS activer avant que le
+      protocole V7 du dossier soit passe.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "enable_nat_fallback" {
+  description = <<-EOT
+    Filet de securite, normalement false.
+
+    La passerelle de traduction d adresses est SUPPRIMEE par cette conception,
+    non pas parce qu elle est mal configuree, mais parce qu elle devient SANS
+    OBJET : les interfaces n ont pas d adresse externe, l acces prive leur donne
+    les points de terminaison du fournisseur — la totalite de ce dont les
+    charges ont besoin — et le refus par defaut interdit toute autre
+    destination. Il ne reste aucun trafic qu une traduction d adresses aurait a
+    traiter.
+
+    Passer a true dans deux cas seulement :
+      1. le protocole V8 echoue (l acces prive ne couvre pas *.run.app) ;
+      2. une charge acquiert un besoin sortant hors fournisseur — cas
+         previsible : les dependances aujourd hui DORMANTES d ELSON
+         (api.openai.com, smtp.zoho.com, huggingface.co), dont aucune cle n est
+         passee par Terraform en staging, mais dont le code existe.
+
+    Noter que le filet CORRIGE les defauts 4, 5 et 6 au lieu de les reconduire :
+    rattachement au bon sous-reseau, adresse reservee donc listable chez un
+    tiers, et journalisation de la TOTALITE des connexions et non des seules
+    erreurs. Cout : de l ordre de 5 a 15 EUR/mois (ordre de grandeur).
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "flow_log_sampling" {
+  description = <<-EOT
+    0.5 pendant les phases d observation du plan de migration (etapes 6 et 8) :
+    c est ce qui remplace le pari par la mesure et fournit l inventaire des
+    destinations reellement jointes AVANT de poser le refus par defaut.
+    0.1 en regime permanent, pour tenir la ligne de cout (voir §h du dossier).
+    Contrairement a aujourd hui, ces journaux portent enfin sur des sous-reseaux
+    qui transportent du trafic : ils cessent d etre une depense sans objet.
+  EOT
+  type        = number
+  default     = 0.1
+}
+
+
+###############################################################################
+# 2. CALCULS INTERMEDIAIRES
+###############################################################################
+
+locals {
+  # Toutes les identites presentes dans le reseau, tous locataires confondus.
+  all_identities = flatten([for t in var.tenants : t.identities])
+
+  # Identite -> locataire. Sert a construire les refus croises sans les ecrire
+  # a la main : le nombre de paires croit en N*(N-1), ce qu on n ecrit pas
+  # deux fois.
+  tenant_of_identity = merge([
+    for tname, t in var.tenants : { for id in t.identities : id => tname }
+  ]...)
+
+  # Paires ordonnees de locataires distincts : une regle de refus par sens.
+  tenant_pairs = {
+    for pair in setproduct(keys(var.tenants), keys(var.tenants)) :
+    "${pair[0]}-to-${pair[1]}" => { from = pair[0], to = pair[1] }
+    if pair[0] != pair[1]
+  }
+
+  # Identites qui n ont AUCUN droit sur la base : cible du refus nomme E3.
+  # Calculee par difference, jamais listee a la main — ainsi une identite
+  # ajoutee sans droit base tombe automatiquement sous le refus nomme.
+  non_db_identities = setsubtract(local.all_identities, var.db_client_identities)
+
+  # Suffixe d email des comptes de service, pour la variante par selecteur
+  # de compte de service.
+  sa_domain = "${var.project_id}.iam.gserviceaccount.com"
+}
+
+# Fonction de ciblage : selon le commutateur, on renseigne target_tags OU
+# target_service_accounts, jamais les deux (ils sont mutuellement exclusifs).
+# On passe null a celui qui n est pas retenu.
+locals {
+  # Helper : construit les deux formes pour une liste d identites donnee.
+  # Utilise partout via local.tgt_tags[...] / local.tgt_sas[...].
+  target_sets = {
+    for key, ids in {
+      all    = local.all_identities
+      db     = var.db_client_identities
+      non_db = tolist(local.non_db_identities)
+      gapi   = var.google_api_client_identities
+      lb     = var.lb_client_identities
+      runapp = var.runapp_client_identities
+      } : key => {
+      tags = var.use_service_account_targets ? null : ids
+      sas  = var.use_service_account_targets ? [for i in ids : "${i}@${local.sa_domain}"] : null
+    }
+  }
+
+}
+
+
+###############################################################################
+# 3. SOURCES DE DONNEES
+###############################################################################
+
+# Prefixes du fournisseur, lus plutot que recopies : une liste d adresses
+# ecrite en dur dans un depot est une liste qui derive en silence.
+#
+# ATTENTION (protocole V5) : une regle de pare-feu accepte au plus 256 plages de
+# destination. Compter avant l apply :
+#   terraform console -> length(data.google_netblock_ip_ranges.google.cidr_blocks_ipv4)
+data "google_netblock_ip_ranges" "google" {
+  range_type = "google-netblocks"
+}
+
+# Point de terminaison prive des API du fournisseur : un /30. C est la
+# destination ideale — mais elle suppose que la resolution de noms de la charge
+# passe par le reseau virtuel (verrou V7).
+data "google_netblock_ip_ranges" "private_googleapis" {
+  range_type = "private-googleapis"
+}
+
+
+###############################################################################
+# 4. RESEAU ET SOUS-RESEAUX
+###############################################################################
+
+resource "google_compute_network" "vpc" {
+  name                    = "menal-vpc-${var.environment}"
+  project                 = var.project_id
+  auto_create_subnetworks = false
+
+  # Declare explicitement : le module actuel omet ce champ, ce qui laisse une
+  # valeur par defaut non documentee — un jury releve ce genre d implicite.
+  # REGIONAL est le bon choix : le socle est mono-region et le restera ; GLOBAL
+  # ne servirait qu a propager des routes entre regions qui n existent pas.
+  routing_mode = "REGIONAL"
+
+  description = "Reseau du socle MENAL. Un sous-reseau par locataire, aucune ressource a adresse externe, aucune machine virtuelle."
+}
+
+# Un sous-reseau par locataire.
+#
+# POURQUOI separer alors que les regles ciblent des identites : trois raisons
+# qui ne sont pas de la confiance de zone.
+#   1. Cloisonnement de l epuisement d adresses — la montee en charge d un
+#      locataire ne peut pas affamer l autre, ce que le connecteur unique ne
+#      garantissait pas.
+#   2. Journaux de flux par locataire, donc attribution d un flux sans avoir a
+#      resoudre une identite.
+#   3. Filet de derniere main : si une charge etait deployee sans etiquette, la
+#      plage reste un discriminant exploitable pour les refus croises.
+# La segregation reste PORTEE par l identite ; la plage n en est que la trace.
+resource "google_compute_subnetwork" "tenant" {
+  for_each = var.tenants
+
+  name          = "sn-${each.key}-${var.environment}"
+  project       = var.project_id
+  region        = var.region
+  network       = google_compute_network.vpc.id
+  ip_cidr_range = each.value.cidr
+
+  description = "Interfaces de sortie reseau directe des charges du locataire ${each.key}."
+
+  # Acces prive aux services du fournisseur : c est LUI qui rend la passerelle
+  # de traduction d adresses inutile. Les interfaces n ont pas d adresse
+  # externe ; l acces prive leur donne les points de terminaison du fournisseur
+  # sans traduction. Aujourd hui ce chemin fonctionne pour le connecteur, mais
+  # de facon PRESUMEE (le connecteur a sa propre plage, hors des deux
+  # sous-reseaux). Ici il est DECLARE sur un sous-reseau que l on possede :
+  # c est un renforcement de la preuve, pas une prise de risque.
+  private_ip_google_access = true
+
+  log_config {
+    aggregation_interval = "INTERVAL_10_MIN"
+    flow_sampling        = var.flow_log_sampling
+    # EXCLUDE_ALL_METADATA en regime permanent : les metadonnees completes
+    # multiplient le volume, donc la facture d ingestion, pour une valeur de
+    # detection marginale — le signal de securite vient des refus de pare-feu
+    # journalises, pas des flux acceptes. Repasser a INCLUDE_ALL_METADATA
+    # pendant les fenetres d observation des etapes 6 et 8 de la migration.
+    metadata = var.flow_log_sampling >= 0.5 ? "INCLUDE_ALL_METADATA" : "EXCLUDE_ALL_METADATA"
+  }
+}
+
+
+###############################################################################
+# 5. PARE-FEU — SORTIE
+#
+#  Journalisation : conforme a l ADR-0007 deja en vigueur dans le projet. On
+#  journalise les REFUS, pas les autorisations : le volume suit les refus, et
+#  en regime nominal rien n est refuse. Le cout d ingestion reste donc celui
+#  d aujourd hui, alors que le nombre de regles journalisees passe de 1 a 9.
+#  Chaque refus alimente le puits vpc_to_bq existant
+#  (jsonPayload.disposition="DENIED", logging/main.tf:36-40) : AUCUNE
+#  modification du SIEM n est necessaire.
+###############################################################################
+
+# ── E1/E2 — Acces a la base, par identite, port unique, adresse unique ───────
+#
+# Une regle par identite cliente, et non une regle collective : le nom de la
+# regle dit alors qui a le droit, et retirer un droit est une suppression de
+# ressource visible dans le plan, pas la modification d une liste.
+resource "google_compute_firewall" "egress_allow_sql" {
+  for_each = toset(var.db_client_identities)
+
+  name        = "egress-allow-sql-${each.value}-${var.environment}"
+  project     = var.project_id
+  network     = google_compute_network.vpc.id
+  direction   = "EGRESS"
+  priority    = 1000
+  description = "L identite ${each.value} joint l instance Cloud SQL, port 5432, adresse unique."
+
+  destination_ranges = ["${var.cloudsql_private_ip}/32"]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["5432"]
+  }
+
+  target_tags             = var.use_service_account_targets ? null : [each.value]
+  target_service_accounts = var.use_service_account_targets ? ["${each.value}@${local.sa_domain}"] : null
+}
+
+# ── E3 — Refus nomme de la base pour qui n y a pas droit ─────────────────────
+#
+# Cette regle NE CHANGE AUCUN VERDICT : le refus par defaut E9 refuserait deja
+# ce trafic. Elle existe pour PRODUIRE UN SIGNAL. Sans elle, une tentative du
+# tableau de bord vers la base serait journalisee comme un refus banal parmi
+# d autres ; avec elle, elle porte un nom de regle qui dit exactement ce qui
+# s est passe, directement exploitable comme regle de detection de mouvement
+# lateral. Le pare-feu n est pas seulement un organe de blocage : c est une
+# source de journal nommee.
+resource "google_compute_firewall" "egress_deny_sql_others" {
+  count = length(local.non_db_identities) > 0 ? 1 : 0
+
+  name        = "egress-deny-sql-others-${var.environment}"
+  project     = var.project_id
+  network     = google_compute_network.vpc.id
+  direction   = "EGRESS"
+  priority    = 1100
+  description = "Refus nomme et journalise : aucune identite hors ${join(", ", var.db_client_identities)} ne joint la base."
+
+  destination_ranges = ["${var.cloudsql_private_ip}/32"]
+
+  deny {
+    protocol = "all"
+  }
+
+  target_tags             = local.target_sets.non_db.tags
+  target_service_accounts = local.target_sets.non_db.sas
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
+  }
+}
+
+# ── E4 — Points de terminaison du fournisseur ────────────────────────────────
+#
+# Deux variantes, un seul commutateur. Voir enable_private_api_endpoint.
+# Dans les deux cas, la destination est LUE, jamais recopiee.
+resource "google_compute_firewall" "egress_allow_google_apis" {
+  name        = "egress-allow-google-apis-${var.environment}"
+  project     = var.project_id
+  network     = google_compute_network.vpc.id
+  direction   = "EGRESS"
+  priority    = 1200
+  description = var.enable_private_api_endpoint ? "Sortie vers le point de terminaison prive des API du fournisseur (un /30)." : "Sortie vers les prefixes publics du fournisseur, via l acces prive. Bloque toute destination hors fournisseur."
+
+  destination_ranges = var.enable_private_api_endpoint ? data.google_netblock_ip_ranges.private_googleapis.cidr_blocks_ipv4 : data.google_netblock_ip_ranges.google.cidr_blocks_ipv4
+
+  allow {
+    protocol = "tcp"
+    ports    = ["443"]
+  }
+
+  target_tags             = local.target_sets.gapi.tags
+  target_service_accounts = local.target_sets.gapi.sas
+}
+
+# ── E5 — La regle la plus parlante du module ─────────────────────────────────
+#
+# Le tableau de bord n a le droit de joindre QU UNE SEULE ADRESSE IP AU MONDE,
+# sur un seul port : l equilibreur par lequel il interroge l API. Ni base, ni
+# entrepot, ni API du fournisseur — alors meme que son compte de service
+# detient encore, cote IAM, des roles BigQuery morts (§11.2 du dossier). Le
+# reseau referme ici un ecart que l IAM laisse ouvert : c est la definition de
+# la defense en profondeur, et elle se demontre en une commande (protocole V6).
+resource "google_compute_firewall" "egress_allow_lb" {
+  count = length(var.lb_client_identities) > 0 ? 1 : 0
+
+  name        = "egress-allow-lb-${var.environment}"
+  project     = var.project_id
+  network     = google_compute_network.vpc.id
+  direction   = "EGRESS"
+  priority    = 1250
+  description = "Le tableau de bord joint l API par l equilibreur public. Seule et unique destination autorisee pour cette identite."
+
+  destination_ranges = ["${var.lb_external_ip}/32"]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["443"]
+  }
+
+  target_tags             = local.target_sets.lb.tags
+  target_service_accounts = local.target_sets.lb.sas
+}
+
+# ── E6 — Le seul flux dont la destination ne se resserre pas ─────────────────
+#
+# La tache d enrichissement appelle le service d encodage par son adresse
+# *.run.app, qui n a pas de prefixe stable. Trois options ont ete pesees (§e.4
+# du dossier) ; celle-ci conserve la defense en profondeur (entree strictement
+# interne du service d encodage) au prix d une destination large. Le controle
+# est reporte sur ce que l on peut nommer : UNE identite, UN usage, UN port.
+#
+# A VERIFIER (protocole V8) : que l acces prive couvre bien *.run.app. La preuve
+# empirique existe deja — aujourd hui ce flux passe par le connecteur, dont la
+# plage n est pas desservie par la passerelle de traduction, et il fonctionne.
+resource "google_compute_firewall" "egress_allow_runapp" {
+  count = length(var.runapp_client_identities) > 0 ? 1 : 0
+
+  name        = "egress-allow-runapp-${var.environment}"
+  project     = var.project_id
+  network     = google_compute_network.vpc.id
+  direction   = "EGRESS"
+  priority    = 1300
+  description = "Appel du service d encodage a entree interne, par la seule identite de la tache d enrichissement."
+
+  destination_ranges = data.google_netblock_ip_ranges.google.cidr_blocks_ipv4
+
+  allow {
+    protocol = "tcp"
+    ports    = ["443"]
+  }
+
+  target_tags             = local.target_sets.runapp.tags
+  target_service_accounts = local.target_sets.runapp.sas
+}
+
+# ── E7/E8 — Refus croises entre locataires, en sortie ────────────────────────
+#
+# Comme E3 : ces regles ne changent aucun verdict, elles produisent un signal
+# nomme. C est ce qui rend une tentative inter-locataire DETECTABLE et non
+# seulement bloquee.
+#
+# BORNE DE VALIDITE, a enoncer : le nombre de ces regles croit en N*(N-1). A
+# trois locataires cela fait six regles, ce qui reste lisible. Au-dela de
+# trois, la bonne reponse n est plus des regles croisees mais une politique de
+# pare-feu reseau par locataire — ou, plus haut, la separation par projet.
+resource "google_compute_firewall" "egress_deny_cross_tenant" {
+  for_each = {
+    for k, v in local.tenant_pairs : k => v
+    if length(var.tenants[v.from].identities) > 0
+  }
+
+  name        = "egress-deny-xt-${each.value.from}-to-${each.value.to}-${var.environment}"
+  project     = var.project_id
+  network     = google_compute_network.vpc.id
+  direction   = "EGRESS"
+  priority    = 1400
+  description = "Refus nomme et journalise : les charges du locataire ${each.value.from} ne joignent pas celles du locataire ${each.value.to}."
+
+  destination_ranges = [var.tenants[each.value.to].cidr]
+
+  deny {
+    protocol = "all"
+  }
+
+  target_tags             = var.use_service_account_targets ? null : var.tenants[each.value.from].identities
+  target_service_accounts = var.use_service_account_targets ? [for i in var.tenants[each.value.from].identities : "${i}@${local.sa_domain}"] : null
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
+  }
+}
+
+# ── E9 — Le refus par defaut en sortie ───────────────────────────────────────
+#
+# C EST LA REGLE QUI N EXISTAIT PAS. Aujourd hui la sortie est autorisee par la
+# regle implicite du fournisseur, et le seul garde-fou est un parametre de la
+# plateforme d execution (egress = PRIVATE_RANGES_ONLY), soit un controle DE LA
+# PLATEFORME et non DU RESEAU.
+#
+# CONDITION D EFFICACITE, indissociable de cette regle : les charges porteuses
+# de donnee doivent passer en egress = "ALL_TRAFFIC". Avec
+# PRIVATE_RANGES_ONLY, seul le trafic vers les plages RFC 1918 traverse le
+# reseau ; tout le reste sort par le chemin manage de Cloud Run, hors de portee
+# de toute regle. Poser cette regle sans cette bascule donnerait un refus par
+# defaut qui ne refuse rien : une declaration, pas un controle.
+#
+# ETAPE LA PLUS DANGEREUSE DE LA MIGRATION (etape 10 du §i) : ne la poser
+# qu apres sept jours d observation des journaux de flux, apres les
+# autorisations E1-E6, apres la bascule en ALL_TRAFFIC, et apres les refus
+# nommes E3/E7/E8 qui servent de dernier filet. Retour arriere prepare et
+# teste a blanc AVANT l apply.
+#
+# Priorite 65534 et non 65535 : 65535 est la priorite des regles implicites du
+# fournisseur ; on ne dispute pas une egalite de priorite avec elles. 65534
+# est aussi la valeur deja retenue par le module actuel pour le refus general
+# en entree — coherence interne.
+resource "google_compute_firewall" "egress_deny_all" {
+  name        = "egress-deny-all-${var.environment}"
+  project     = var.project_id
+  network     = google_compute_network.vpc.id
+  direction   = "EGRESS"
+  priority    = 65534
+  description = "Refus par defaut en sortie. Aucune cible : s applique a tout le reseau, present et futur."
+
+  destination_ranges = ["0.0.0.0/0"]
+
+  deny {
+    protocol = "all"
+  }
+
+  # AUCUNE cible, volontairement : une charge deployee sans etiquette n est
+  # couverte par aucune autorisation et tombe donc ici. L erreur est bruyante
+  # et immediate, jamais silencieuse. C est le bon sens de la panne.
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
+  }
+}
+
+
+###############################################################################
+# 6. PARE-FEU — ENTREE
+#
+#  AUCUNE REGLE D AUTORISATION EN ENTREE. Aucune.
+#
+#  Le pare-feu est a etats : le trafic de retour d une connexion sortante est
+#  admis sans regle. Or rien, dans le socle, n initie de connexion VERS une
+#  charge par le reseau : les sondes d etat de l equilibreur n atteignent pas
+#  les charges par le VPC (groupes de points de terminaison serverless), et
+#  l entree des services est gouvernee par ingress = INTERNAL_LOAD_BALANCER et
+#  par Cloud Armor.
+#
+#  Consequence directe : les trois regles d entree du module actuel
+#  (allow-internal priorite 900, allow-https-ingress 1000, allow-health-checks
+#  800) ne sont pas remplacees — elles sont SUPPRIMEES SANS SUCCESSEUR. Les
+#  deux dernieres ciblent l etiquette https-server que rien ne porte ; la
+#  preuve tient en une commande : gcloud compute instances list renvoie vide
+#  (protocole V15).
+###############################################################################
+
+# ── I1/I2 — Refus croises entre locataires, en entree ────────────────────────
+#
+# Symetriques de E7/E8. Redondants avec le refus general I3, et poses pour la
+# meme raison : un refus nomme est un signal exploitable, un refus general ne
+# l est pas.
+resource "google_compute_firewall" "ingress_deny_cross_tenant" {
+  for_each = {
+    for k, v in local.tenant_pairs : k => v
+    if length(var.tenants[v.to].identities) > 0
+  }
+
+  name        = "ingress-deny-xt-${each.value.from}-to-${each.value.to}-${var.environment}"
+  project     = var.project_id
+  network     = google_compute_network.vpc.id
+  direction   = "INGRESS"
+  priority    = 1400
+  description = "Refus nomme et journalise : les charges du locataire ${each.value.to} n acceptent rien du locataire ${each.value.from}."
+
+  source_ranges = [var.tenants[each.value.from].cidr]
+
+  deny {
+    protocol = "all"
+  }
+
+  target_tags             = var.use_service_account_targets ? null : var.tenants[each.value.to].identities
+  target_service_accounts = var.use_service_account_targets ? [for i in var.tenants[each.value.to].identities : "${i}@${local.sa_domain}"] : null
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
+  }
+}
+
+# ── I3 — Refus general en entree ─────────────────────────────────────────────
+#
+# Reconduit tel quel depuis le module actuel : c est le seul controle du module
+# existant qui etait a la fois reel, journalise et cable au SIEM. On ne casse
+# pas ce qui marche.
+resource "google_compute_firewall" "ingress_deny_all" {
+  name        = "ingress-deny-all-${var.environment}"
+  project     = var.project_id
+  network     = google_compute_network.vpc.id
+  direction   = "INGRESS"
+  priority    = 65534
+  description = "Refus general en entree, journalise. Alimente le puits vpc_to_bq (disposition=DENIED)."
+
+  source_ranges = ["0.0.0.0/0"]
+
+  deny {
+    protocol = "all"
+  }
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
+  }
+}
+
+
+###############################################################################
+# 7. VARIANTE B2 — POINT DE TERMINAISON PRIVE DES API (sous verrou V7)
+#
+#  Ne se deploie que si enable_private_api_endpoint = true. Reduit la
+#  destination de E4 a un /30. Suppose que la charge Cloud Run resout les noms
+#  par le reseau virtuel — ce qui n etait PAS le cas avec le connecteur.
+###############################################################################
+
+resource "google_compute_route" "private_googleapis" {
+  count = var.enable_private_api_endpoint ? 1 : 0
+
+  name        = "rt-private-googleapis-${var.environment}"
+  project     = var.project_id
+  network     = google_compute_network.vpc.name
+  description = "Route le point de terminaison prive des API vers la passerelle par defaut. Sans adresse externe et sans traduction : c est l acces prive qui porte le flux."
+
+  dest_range       = "199.36.153.8/30"
+  next_hop_gateway = "default-internet-gateway"
+  priority         = 1000
+}
+
+resource "google_dns_managed_zone" "googleapis" {
+  count = var.enable_private_api_endpoint ? 1 : 0
+
+  name        = "zn-googleapis-${var.environment}"
+  project     = var.project_id
+  dns_name    = "googleapis.com."
+  description = "Zone privee redirigeant les API du fournisseur vers le point de terminaison prive."
+  visibility  = "private"
+
+  private_visibility_config {
+    networks {
+      network_url = google_compute_network.vpc.id
+    }
+  }
+}
+
+resource "google_dns_record_set" "private_googleapis_a" {
+  count = var.enable_private_api_endpoint ? 1 : 0
+
+  name         = "private.googleapis.com."
+  project      = var.project_id
+  managed_zone = google_dns_managed_zone.googleapis[0].name
+  type         = "A"
+  ttl          = 300
+  rrdatas      = ["199.36.153.8", "199.36.153.9", "199.36.153.10", "199.36.153.11"]
+}
+
+resource "google_dns_record_set" "googleapis_cname" {
+  count = var.enable_private_api_endpoint ? 1 : 0
+
+  name         = "*.googleapis.com."
+  project      = var.project_id
+  managed_zone = google_dns_managed_zone.googleapis[0].name
+  type         = "CNAME"
+  ttl          = 300
+  rrdatas      = ["private.googleapis.com."]
+}
+
+
+###############################################################################
+# 8. FILET — PASSERELLE DE SORTIE, NORMALEMENT ABSENTE
+#
+#  Ne se deploie que si enable_nat_fallback = true. Voir la variable pour les
+#  deux seuls cas qui le justifient. Noter que ce filet CORRIGE les defauts
+#  4, 5 et 6 au lieu de les reconduire.
+###############################################################################
+
+resource "google_compute_router" "router" {
+  count = var.enable_nat_fallback ? 1 : 0
+
+  name    = "menal-router-${var.environment}"
+  project = var.project_id
+  region  = var.region
+  network = google_compute_network.vpc.id
+}
+
+# Adresse de sortie STABLE : corrige le defaut 6. Une adresse reservee est la
+# condition pour qu un tiers (par exemple un relais de messagerie) puisse
+# inscrire le socle sur sa liste d autorisation. AUTO_ONLY rendait cela
+# impossible.
+resource "google_compute_address" "nat" {
+  count = var.enable_nat_fallback ? 1 : 0
+
+  name         = "menal-nat-ip-${var.environment}"
+  project      = var.project_id
+  region       = var.region
+  address_type = "EXTERNAL"
+  description  = "Adresse de sortie stable, listable chez un tiers."
+}
+
+resource "google_compute_router_nat" "nat" {
+  count = var.enable_nat_fallback ? 1 : 0
+
+  name    = "menal-nat-${var.environment}"
+  project = var.project_id
+  router  = google_compute_router.router[0].name
+  region  = var.region
+
+  nat_ip_allocate_option = "MANUAL_ONLY"
+  nat_ips                = [google_compute_address.nat[0].self_link]
+
+  # Rattachee aux sous-reseaux QUI PORTENT REELLEMENT DU TRAFIC : corrige le
+  # defaut 4, ou la passerelle ne desservait qu un sous-reseau vide tandis que
+  # la plage portant la totalite de la sortie ne lui etait pas rattachee.
+  source_subnetwork_ip_ranges_to_nat = "LIST_OF_SUBNETWORKS"
+
+  dynamic "subnetwork" {
+    for_each = { for k, v in var.tenants : k => v if length(v.identities) > 0 }
+    content {
+      name                    = google_compute_subnetwork.tenant[subnetwork.key].id
+      source_ip_ranges_to_nat = ["ALL_IP_RANGES"]
+    }
+  }
+
+  # ALL et non ERRORS_ONLY : corrige le defaut 5. ERRORS_ONLY ne captait AUCUNE
+  # connexion sortante reussie — une exfiltration ou un canal de commande
+  # discret ne produisait aucun signal. Si l on paie une passerelle, on paie
+  # aussi sa visibilite ; sinon on ne la deploie pas.
+  #
+  # A FAIRE en meme temps que l activation : ajouter un puits de journaux sur
+  # resource.type="nat_gateway" dans modules/logging — aucun des quatre puits
+  # existants ne capte ce type de ressource.
+  log_config {
+    enable = true
+    filter = "ALL"
+  }
+}
+
+
+###############################################################################
+# 9. SORTIES
+###############################################################################
+
+output "vpc_id" {
+  value       = google_compute_network.vpc.id
+  description = "Identifiant du reseau, a cabler dans network_interfaces des services Cloud Run."
+}
+
+output "vpc_name" {
+  value       = google_compute_network.vpc.name
+  description = "Nom du reseau."
+}
+
+# Sortie indexee par locataire : c est ce que la racine consomme pour cabler
+# chaque charge dans le sous-reseau de SON locataire. Contrairement au module
+# actuel, dont la sortie subnet_private_id n etait consommee par aucun module,
+# CELLE-CI est destinee a etre utilisee — et si elle ne l est pas, c est que
+# la charge n est pas dans le reseau, ce qui est alors un choix explicite
+# (cas du service d encodage et du frontend du locataire ELSON).
+output "tenant_subnet_ids" {
+  value       = { for k, v in google_compute_subnetwork.tenant : k => v.id }
+  description = "Identifiant du sous-reseau par locataire."
+}
+
+output "tenant_subnet_cidrs" {
+  value       = { for k, v in var.tenants : k => v.cidr }
+  description = "Plage par locataire, pour documentation et controles."
+}
+
+output "identity_network_tags" {
+  value       = { for id in local.all_identities : id => id }
+  description = <<-EOT
+    Convention d etiquetage, exposee pour etre consommee et non recopiee :
+    l etiquette reseau d une charge PORTE LE NOM DU COMPTE DE SERVICE qui
+    l execute. La racine doit poser, dans le meme bloc Cloud Run, le champ
+    service_account et le champ network_interfaces.tags, tous deux depuis
+    cette sortie. C est ce qui rend l identite et l etiquette mecaniquement
+    solidaires — et donc ce qui autorise a dire que le pare-feu filtre par
+    identite.
+  EOT
+}
+
+
+###############################################################################
+# 10. CE QUE LA RACINE DOIT ECRIRE, COTE CLOUD RUN
+#
+#  Ce module ne suffit pas : il cree le reseau, pas le rattachement. Extrait de
+#  ce que la racine doit poser, pour memoire. C EST LA MOITIE DE LA
+#  CONCEPTION — sans cette bascule, les charges restent hors des sous-reseaux
+#  et toutes les regles ci-dessus sont sans objet.
+#
+#    template {
+#      service_account = "sa-api@<projet>.iam.gserviceaccount.com"
+#      vpc_access {
+#        network_interfaces {
+#          network    = module.vpc.vpc_name
+#          subnetwork = module.vpc.tenant_subnet_ids["menal"]
+#          tags       = ["sa-api"]        # = le compte de service, exactement
+#        }
+#        # ALL_TRAFFIC et non PRIVATE_RANGES_ONLY : condition sine qua non pour
+#        # que le refus par defaut E9 gouverne quoi que ce soit (cf. E9).
+#        egress = "ALL_TRAFFIC"
+#      }
+#    }
+#
+#  Et, symetriquement, ce que la racine doit RETIRER — deux charges n ont
+#  aucune dependance privee et n ont donc rien a faire dans le reseau :
+#    - menal-ml-embed : aucun role BigQuery (ADR-0002), aucun acces base, seul
+#      logging.logWriter. Retirer entierement le bloc vpc_access.
+#    - elson-web      : « frontend Next.js standalone, sans base ni secret »,
+#      URL API figee au build. Retirer entierement le bloc vpc_access.
+#  C est le geste le moins cher du dossier : moins de surface, moins
+#  d adresses, aucun cout.
+###############################################################################

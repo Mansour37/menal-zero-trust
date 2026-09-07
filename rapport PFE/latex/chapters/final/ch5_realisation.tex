@@ -1,0 +1,1456 @@
+% =============================================================
+% Chapitre 5 --- Réalisation et industrialisation (~8 pages)
+% Source : ../../CH5_Realisation.md
+% =============================================================
+\chapter{Réalisation et industrialisation}
+\label{ch:realisation}
+\soustitrechapitre{Description en code, chaînes de livraison et de provisionnement, supervision
+et accueil d'un locataire}
+
+% Nomenclature des schémas : ligne 1 = rôle fonctionnel, ligne 2 = produit
+% nommé, en gris et au plancher typographique de 8 pt (\scriptsize).
+% \gcprod est désormais défini dans config/convention_graphique.tex, plusieurs
+% chapitres l'employant.
+
+Le chapitre précédent décrivait une architecture cible ; celui-ci rend compte de ce qui a été
+construit, en distinguant partout \textbf{réalisé et vérifié}, \textbf{réalisé et rattaché à une
+vérification planifiée} et \textbf{écarté par une décision motivée}. Deux chaînes structurent
+l'exposé : la livraison applicative et le provisionnement de l'infrastructure.
+
+\section{Environnement de travail et description en code}
+\label{sec:env-travail}
+
+Deux environnements réels correspondent à deux projets cloud distincts : le développement,
+dimensionné au minimum, et la recette, de topologie identique à la cible ; la production est une
+cible documentée, non provisionnée. Séparer par projet plutôt que par étiquette rend l'isolation
+\textbf{structurelle} --- les ressources d'un environnement ne sont pas adressables depuis
+l'autre --- sous réserve des liaisons d'autorisation accordées à l'identité de déploiement,
+qu'aucun test dédié n'a éprouvées. Le développement n'est pas un miroir fidèle de la recette : la
+configuration du second locataire et huit variables d'accueil de plusieurs applications n'existent
+qu'en recette, et la chaîne de promotion n'a pas été déroulée de bout en bout. Une règle vaut
+cependant sans exception --- \emph{les mêmes modules servent partout, seules les variables de
+dimensionnement changent} --- de sorte qu'aucune configuration « sans authentification en
+développement » ne risque d'être promue par inadvertance. Le quatrième projet d'amorçage prévu à la
+conception n'a pas été créé, ses éléments étant replacés dans chaque projet d'environnement :
+simplification cohérente avec le principe de justification (PR1), enregistrée comme écart.
+
+Le dépôt d'infrastructure transpose le modèle en couches du \cref{ch:conception} en un module par couche
+(annexe~\ref{ann:extraits-realisation}). Les trois politiques d'organisation prévues --- pas
+d'adresse publique de base de données, pas de clé d'identité de service, pas d'espace de stockage
+public --- se sont révélées inapplicables dans le périmètre administratif disponible (écart É7) :
+ces interdictions sont donc recherchées par la configuration des modules, les contrôles de la
+chaîne d'infrastructure et la revue du \emph{plan}.
+
+La \cref{fig:capture-K36} restitue l'inventaire de ces charges tel que la plateforme le publie,
+à mettre en regard de l'inventaire technologique du \cref{ch:etat-art}.
+
+\begin{figure}[!htbp]
+\centering
+\IfFileExists{figures/K36.png}{%
+  \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+  \fcolorbox{black!30}{white}{\includegraphics[width=0.86\textwidth]{figures/K36.png}}%
+}{%
+  \begin{minipage}{0.86\textwidth}
+  \begin{extraitconf}[breakable=false, fontupper=\footnotesize,
+      title={Cadre de capture K36 : spécification de prise}]
+  \textbf{Vue :} liste des services de la plateforme d'exécution de conteneurs, projet de recette, colonnes « service », « région » et « dernier déploiement » visibles.\par\smallskip
+  \textbf{Date de prise :} sur le projet de recette. \emph{La date portée par la capture fait foi.}\par\smallskip
+  \textbf{Contenu probant :} les charges de travail du socle nommées et actives dans une région européenne unique, ce qui établit d'un seul coup deux propriétés énoncées au \cref{ch:conception} : la séparation par service --- donc une identité par charge --- et l'absence de toute charge hors de la région déclarée. Le décompte visible doit coïncider avec celui de l'inventaire technologique.\par\smallskip
+  \textbf{Masquage} (rectangle opaque, jamais de flou) \textbf{:} numéro et identifiant du projet cloud, adresses de service publiées.
+  \end{extraitconf}
+  \end{minipage}%
+}
+\caption[Charges de travail du socle sur la plateforme d'exécution]{Les charges de travail du socle sur la plateforme d'exécution de conteneurs (Cloud Run), projet de recette. Restitution de l'inventaire technologique (\cref{sec:trente-trois-briques}) ; la date de relevé est portée par la capture.}
+\label{fig:capture-K36}
+\end{figure}
+
+\subsection{Frontière entre le code et l'exploitation}
+\label{subsec:frontiere-code}
+
+Le principe de description en code (PR4) s'applique à toutes les ressources durables du socle,
+\textbf{à six exceptions que ce mémoire nomme et justifie} : trois tiennent à la nature de l'objet,
+trois à une limite du dispositif et sont traitées comme des écarts, avec leur contrôle
+compensatoire. Les énoncer vaut mieux que revendiquer une couverture totale, car \textbf{un principe
+dont on ne sait pas dire la frontière n'est pas appliqué, il est proclamé}.
+
+\begin{enumerate}\itemsep0pt
+\item \textbf{Les valeurs des secrets et les données applicatives.} Le code crée les conteneurs,
+les clés de chiffrement et les droits d'accès ; jamais le contenu, qu'une description en code ferait
+mécaniquement apparaître en clair dans le fichier d'état.
+\item \textbf{Les comptes du tableau de bord et leurs secrets de second facteur}, nés d'un appel
+authentifié à l'API de supervision à l'exécution ; le premier compte d'administration est créé par
+une tâche éphémère plutôt que par une ressource déclarée.
+\item \textbf{Les enregistrements de noms de domaine}, tenus chez le bureau d'enregistrement, hors
+du périmètre d'administration du fournisseur cloud : dépendance externe au \cref{ch:conception}, non composant
+de la couche de périmètre.
+\item \textbf{Le versionnement de l'espace de stockage de l'état d'infrastructure}, activé à la
+main. Contrôle compensatoire : la revue d'inventaire de cet espace ; condition de clôture : sa
+déclaration dans un module d'amorçage distinct de l'état qu'il héberge.
+\item \textbf{Les ordres de révocation SQL qui séparent les locataires} sur l'instance partagée
+(annexe~\ref{ann:extraits-realisation}) : gestes d'exploitation réversibles par une restauration à
+un instant donné, qu'un contrôle quotidien \emph{détecte} sans les \emph{prévenir}
+(\cref{sec:locataire}).
+\item \textbf{La liaison d'usurpation d'identité accordée à l'opérateur humain} sur l'identité de la
+tâche d'enrichissement, posée à la main pour rejouer les tests de bout en bout. Contrôle
+compensatoire : elle est nominative et figure à l'inventaire des chaînes de délégation du
+\cref{ch:conception}.
+\end{enumerate}
+
+S'y ajoute une zone qui n'est pas une exception mais un \emph{partage}, couture la plus délicate
+entre les deux chaînes et commune à toute équipe combinant infrastructure en code
+\cite{iac_morris2020} et livraison continue : la chaîne d'infrastructure (F7) crée le service
+d'exécution et en possède la définition, la chaîne applicative (F3) met à jour l'image à chaque
+livraison, et si les deux prétendent posséder le champ « image », chaque exécution de l'une annule
+le travail de l'autre. \textbf{Résolution retenue :} l'infrastructure possède le service,
+l'applicatif possède l'image, le code d'infrastructure ignorant explicitement ce champ. Le fichier
+de variables de la recette n'est par ailleurs pas versionné alors qu'il porte des décisions de
+sécurité --- chemins protégés par le filtrage applicatif, services ingérés dans l'entrepôt --- ce
+qui limite la reproductibilité d'un provisionnement depuis un poste neuf : c'est le correctif de
+reproductibilité le plus rentable identifié.
+
+\subsection{État d'infrastructure : sécurité et détection de dérive}
+\label{subsec:derive}
+
+Le fichier d'état décrit la topologie complète du système : donnée sensible, traitée comme telle par
+cinq mesures détaillées en annexe~\ref{ann:extraits-realisation}. C'est la règle des secrets
+ci-dessus qui l'empêche de devenir un coffre : aucune valeur sensible n'y a été relevée lors des
+revues du 19/08/2026, et son inspection exhaustive sous une identité non autorisée est l'objet du
+protocole T17, \textbf{conforme} le 20/08/2026 sur quatre refus opposés à trois identités de service
+(\cref{sec:campagne}). La détection de dérive \cite{hashicorp_drift} repose sur une planification
+régulière : pour une \emph{ressource déjà gérée dans l'état}, un écart entre la configuration
+déclarée et la valeur observée produit un plan non vide ; une ressource nouvelle, absente de l'état,
+y échappe et exige un contrôle d'inventaire complémentaire. Le protocole T16 modifie hors code un
+attribut réversible d'une ressource gérée, planifie avec rafraîchissement, puis rapproche le
+résultat des journaux d'audit : il est porté comme partiellement conforme au \cref{ch:validation}.
+
+\begin{alertbox}[boxsep=1pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+Deux limites sont rapportées bien que défavorables. \textbf{Le verrouillage des versions a dû être
+corrigé} : le fichier de verrouillage et l'initialisation complète de la validation ont été ajoutés
+le 19/08/2026 après constat d'un défaut de reproductibilité. \textbf{Le plan ne prédit pas toujours
+l'effet réel de l'application} : la planification ne capture pas certaines validations effectuées
+par le fournisseur au moment de l'application, comme le montre l'incident détaillé en
+\cref{subsec:incidents} ; la procédure a été amendée en conséquence.
+\end{alertbox}
+
+Une fois ces correctifs appliqués, la planification du 19/08/2026 sur la recette ne renvoie
+\textbf{aucune différence} : la configuration déclarée dans le dépôt correspond exactement à l'état
+réellement provisionné.
+
+\section{Chaîne de livraison applicative}
+\label{sec:chaine-livraison}
+
+\subsection{Déclenchement, permissions, graphe des tâches et portes bloquantes}
+
+La chaîne applicative se déclenche sur la poussée sur la branche principale et sur l'ouverture
+d'une demande de fusion vers cette branche, \textbf{filtrée par chemins}
+(annexe~\ref{ann:extraits-realisation}). Le filtre n'est pas un confort : avant sa pose,
+\textbf{toute poussée sur la branche principale reconstruisait et redéployait la plateforme}, y
+compris une correction de documentation --- un déclencheur non filtré dilue la signification d'un
+déploiement et rend illisible le lien entre un changement et son effet. Les permissions du jeton de
+la forge sont, elles, \textbf{déclarées au niveau du flux} --- lecture du dépôt, émission d'un
+jeton d'identité --- donc héritées par les six tâches, y compris celles d'analyse et de test qui ne
+s'authentifient jamais auprès du fournisseur cloud : la lisibilité d'un fichier unique l'emporte
+ici sur la granularité du moindre privilège. Le périmètre reste borné, aucun droit d'écriture sur
+le dépôt, mais l'écart est réel ; sa condition de clôture est la factorisation des deux chaînes en
+un flux appelable commun, sur le modèle de la chaîne dédiée à l'application pilote, qui applique
+déjà le réglage fin.
+
+Les six tâches ne s'exécutent pas en séquence : elles forment un graphe orienté à \textbf{deux
+chemins parallèles} qui se rejoignent, celui de l'API et celui du tableau de bord, aux dépendances
+\emph{bloquantes}. Vue par étapes, la chaîne de l'API en compte huit, dont trois \textbf{portes
+bloquantes} \cite{owasp_cicd_top10} ; les tests de l'API en forment une quatrième, parallèle à
+l'analyse, et le chemin du tableau de bord porte la sienne
+(\cref{fig:sequence-livraison}). Deux réglages absents complètent ce portrait, assumés plutôt que
+tus : la chaîne ne déclare ni contrôle de concurrence --- deux poussées rapprochées se déploient en
+parallèle, sans garantie d'ordre --- ni environnement protégé, donc aucune approbation manuelle
+avant le déploiement. Les deux relèvent du même arbitrage, une chaîne à un seul opérateur sur un
+environnement de recette, et de la même condition de bascule : l'ouverture de la branche principale
+à un second contributeur.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm, font=\footnotesize,
+  etape/.style={nsysteme, text width=1.64cm, inner sep=1.5pt,
+                minimum height=2.05cm},
+  portec/.style={etape, line width=1.2pt, fill=menalplanB},
+  bloc/.style={nsysteme, text width=2.55cm, inner sep=3pt,
+               minimum height=0.85cm},
+  portel/.style={bloc, line width=1.2pt, fill=menalplanB},
+  arret/.style={nabsent, text width=1.45cm, inner sep=2.5pt,
+                minimum height=0.50cm, font=\scriptsize},
+  verif/.style={nabsent, text width=2.55cm, inner sep=3pt,
+                minimum height=0.85cm}]
+
+% ============ chemin de l'API : huit etapes, dont trois portes ==============
+\node[etape]  (s1) at (0.90,3.60) {\textbf{1.}\\identité fédérée\\\gcprod{WIF}};
+\node[portec] (s2) at (2.78,3.60) {\textbf{2.}\\recherche de secrets\\\gcprod{Gitleaks}};
+\node[portec] (s3) at (4.66,3.60) {\textbf{3.}\\analyse statique\\\gcprod{Semgrep}};
+\node[etape]  (s4) at (6.54,3.60) {\textbf{4.}\\cons\-truc\-tion de l'image\\\gcprod{Docker}};
+\node[portec] (s5) at (8.42,3.60) {\textbf{5.}\\analyse de vulné\-ra\-bi\-lité\\\gcprod{Trivy}};
+\node[etape]  (s6) at (10.30,3.60) {\textbf{6.}\\pu\-bli\-ca\-tion au registre\\\gcprod{Artifact Registry}};
+\node[etape]  (s7) at (12.18,3.60) {\textbf{7.}\\dé\-ploie\-ment par étiquette\\\gcprod{Cloud Run}};
+\node[etape]  (s8) at (14.06,3.60) {\textbf{8.}\\boucle F6\\\gcprod{BigQuery}};
+\foreach \a/\b in {s1/s2,s2/s3,s3/s4,s4/s5,s5/s6,s6/s7,s7/s8}%
+  {\draw[fluxdonnee] (\a) -- (\b);}
+
+% ============ la porte de tests, parallele, qui bloque la construction ======
+\node[portel] (tst) at (6.54,5.65) {porte : tests\\\gcprod{31 tests Python}};
+\draw[fluxdonnee] (tst.south) -- (s4.north);
+
+% ============ les refus : la chaine s'arrete ================================
+\node[arret] (ar1) at (2.55,5.65) {chaîne\\arrêtée};
+\node[arret] (ar2) at (10.05,5.65) {chaîne\\arrêtée};
+\draw[fluxrefuse] (s2.north) -- node[croixrefus]{} (ar1.south west);
+\draw[fluxrefuse] (s3.north) -- node[croixrefus]{} (ar1.south east);
+\draw[fluxrefuse] (s5.north) -- node[croixrefus]{} (ar2.south west);
+\draw[fluxrefuse] (tst.east) -- node[croixrefus]{} (ar2.west);
+
+% ============ chemin du tableau de bord =====================================
+\node[portel] (t1) at (4.35,1.30) {porte : tests du tableau de bord};
+\node[bloc]   (t2) at (8.30,1.30) {construction et déploiement du tableau de bord};
+\draw[fluxdonnee] (t1) -- (t2);
+\node[arret] (ar3) at (1.30,1.30) {chaîne\\arrêtée};
+\draw[fluxrefuse] (t1.west) -- node[croixrefus]{} (ar3.east);
+\draw[fluxdonnee] (s1.south) -- (0.90,2.22) -- (4.35,2.22) -- (t1.north);
+
+% ============ la verification, posterieure au deploiement ===================
+\node[verif] (ver) at (12.60,1.30) {vérification de bout en bout};
+\draw[fluxevenement] (s8.south) |- (ver.east);
+\draw[fluxevenement] (t2.east) -- (ver.west);
+
+% ============ bandes de chemin ==============================================
+\begin{scope}[on background layer]
+  \node[bandedonnee, fit=(s1)(s2)(s3)(s4)(s5)(s6)(s7)(s8)] (bA) {};
+  \node[bandedonnee, fit=(t1)(t2)] (bB) {};
+\end{scope}
+\node[titrebande, anchor=south east] at (bA.north east) {chemin de l'API};
+\node[titrebande, anchor=north east] at (bB.south east) {chemin du tableau de bord};
+
+% ============ legende interne ===============================================
+\node[legendecadre, text width=14.55cm, anchor=north west, font=\scriptsize]
+     at (0.05,0.08)
+  {\legendetrait{fluxdonnee}{enchaînement bloquant --- l'étape suivante n'est atteinte que si
+   la précédente réussit}\hfill
+   \legendetrait{fluxevenement}{non bloquant}\\[2pt]
+   \legendecroix{refus : la chaîne s'arrête}\hfill
+   cadre épais et fond grisé : \textbf{porte bloquante}\hfill
+   cadre en tirets : hors du chemin bloquant};
+
+\end{tikzpicture}
+\caption[Chaîne de livraison applicative : étapes, portes bloquantes et refus]{Chaîne de
+livraison applicative. Chemin de l'API : huit étapes, dont trois portes bloquantes, plus la porte
+de tests qui conditionne la construction ; chemin du tableau de bord : sa propre porte. La
+vérification de bout en bout suit le déploiement et ne le défait pas --- c'est une vérification,
+non une porte. Les cas de refus sont décrits en \cref{subsec:refus} ; deux d'entre eux portent un
+protocole numéroté, T8 et T10, dont le \cref{ch:validation} donne le verdict daté.}
+\label{fig:sequence-livraison}
+\end{figure}
+
+L'ordre des portes n'est pas arbitraire : la recherche de secrets \cite{gitguardian_sprawl} précède
+l'analyse statique pour une raison économique, un secret étant compromis dès sa publication et sa
+détection à la première étape déclenchant immédiatement la rotation. Le déploiement à l'étape 7
+s'effectue \textbf{par étiquette SHA} plutôt que par tag mutable, dans l'esprit des cadres de
+provenance \cite{slsa_framework}, et l'étape 5 s'appuie sur une analyse d'image alignée sur les
+pratiques recommandées pour les conteneurs \cite{gcp_container_best_practices}.
+
+\subsection{Les huit familles de contrôles}
+\label{subsec:familles-controles}
+
+Décrire une chaîne par ses étapes ne dit pas ce qu'elle contrôle. Lue par \emph{familles de
+contrôles}, elle en compte huit, dont \textbf{cinq sont réalisées et bloquantes} --- recherche de
+secrets versionnés, analyse statique du code, analyse de la description d'infrastructure, analyse
+de vulnérabilité des images, tests automatisés --- et \textbf{trois sont arbitrées} : analyse de
+composition des dépendances, test dynamique du service déployé, signature d'artefact et
+nomenclature logicielle (décision D07). Chaque arbitrage porte le chemin par lequel le risque est
+capté en aval et sa condition de réévaluation. Le \cref{tab:familles-controles} donne les huit,
+famille par famille ; sa dernière colonne est celle qu'il faut lire, car la destination du résultat
+détermine si un constat est exploitable ou seulement affiché --- et \textbf{une seule famille voit
+son résultat quitter la chaîne} : l'analyse de vulnérabilité des images, dont les constats sont
+versés à l'entrepôt de supervision.
+
+
+\textbf{La boucle qui ferme le circuit.} La plupart des chaînes de ce niveau s'arrêtent au constat,
+et le rapport meurt dans un journal que personne ne relit ; ici, le résultat de l'analyse d'image
+devient une donnée de supervision, interrogeable avec les mêmes outils que les détections, ce qui
+rend possible le flux F6 (\cref{subsec:boucle-f6}). La contrepartie doit être dite : aucun constat
+des autres familles n'est publié au format d'échange normalisé qu'attend l'onglet de sécurité de la
+forge, et les vulnérabilités du tableau de bord ne sont pas exportées --- la chaîne ferme
+\emph{une} boucle, pas toutes.
+
+\textbf{La discipline des exclusions d'analyse statique.} Chacune des sept exclusions porte une
+justification écrite ancrée sur un fichier et une ligne (annexe~\ref{ann:extraits-realisation}).
+Le point remarquable est ailleurs : la règle qui détecte une vérification de certificat désactivée
+est \textbf{volontairement non écartée}, son constat étant neutralisé par des annotations
+nominatives posées là où le comportement est assumé, de sorte que \textbf{toute nouvelle occurrence
+ailleurs dans le dépôt fasse échouer la chaîne} --- une exclusion globale aurait supprimé le constat
+existant et, du même geste, la capacité à détecter le suivant.
+
+\begin{alertbox}[boxsep=1pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+Une limite de cet épinglage est reconnue et mesurée : la version de l'analyseur est figée, mais le
+\emph{jeu de règles} qu'il télécharge est distant et mutable. Deux exécutions à version d'outil
+identique ont dénombré 612 règles le 20/08/2026 et 606 le 24/08/2026. Le verdict de la chaîne
+dépend donc en partie d'un référentiel que le dépôt ne contrôle pas ; la clôture de cet écart
+suppose de figer aussi le jeu de règles.
+\end{alertbox}
+
+\subsection{Authentification sans secret permanent}
+\label{subsec:wif}
+
+L'étape 1 réalise l'exigence EX7 par la fédération d'identité décrite au \cref{ch:conception} : la chaîne ne
+détient aucune clé, et cette absence n'est pas une intention --- la recherche exhaustive des
+ressources de clé de compte de service, des fichiers d'identifiants et de la variable
+d'environnement qui les désigne ne relève aucune occurrence dans le dépôt. Le point à valoriser est
+la forme de la condition d'attribut qui restreint cette fédération : elle porte \textbf{à la fois}
+sur le dépôt d'origine \textbf{et} sur la référence de branche
+(annexe~\ref{ann:extraits-realisation}). Sans la contrainte de branche, n'importe quelle branche du
+dépôt obtenait l'identité de déploiement et, avec elle, le droit de déployer une révision arbitraire
+des services. Le garde-fou qui semble couvrir ce cas, la condition de branche posée sur l'étape de
+construction, se trouve \textbf{côté forge} : déclaré dans le même fichier que ce qu'il protège, un
+contributeur capable de modifier ce fichier le lève en même temps qu'il l'exploite. \textbf{Seul le
+filtre du fournisseur cloud fait autorité}, parce qu'il est déclaré ailleurs, appliqué par une autre
+partie et non modifiable depuis le dépôt --- application directe du principe d'identité (PR2) : la
+décision d'autorisation appartient au vérificateur, jamais à l'émetteur.
+
+Trois réserves complètent ce constat sans l'annuler : la liaison d'usurpation est posée sur
+l'attribut de dépôt et non sur celui de référence, de sorte que la restriction de branche ne tient
+que par la condition d'attribut ; la référence autorisée a une valeur par défaut commune aux deux
+environnements ; et les trois paliers d'identité prévus à l'origine ont été remplacés par une
+fédération et une identité de déploiement uniques par projet --- le chemin d'autorisation y gagne en
+lisibilité, sans que l'impossibilité d'un accès croisé soit prouvée.
+
+\subsection{Déploiement, retour arrière et frontière avec l'infrastructure}
+
+Le déploiement de l'étape 7 remplace intégralement le trafic du service par la nouvelle révision,
+sans répartition progressive ; le bloc de répartition a été rendu explicite dans le code et placé
+hors du champ comparé par la chaîne d'infrastructure pour préparer un déploiement graduel, capacité
+non exploitée à ce jour. Le retour arrière est donc un geste manuel documenté --- replacer la
+totalité du trafic sur la révision précédente, restée disponible --- dont la condition de bascule
+est la première mise en production, où il devient un délai de rétablissement non maîtrisé. La
+vérification de disponibilité qui suit interroge le service par son domaine public, donc à travers
+le filtrage applicatif : elle éprouve la chaîne d'accès complète, non le seul conteneur.
+
+\begin{alertbox}[boxsep=1pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+\textbf{Un défaut d'ordonnancement est rapporté ici plutôt que tu.} L'image est publiée au
+registre \emph{avant} l'analyse de vulnérabilité : une image porteuse d'une faille critique
+corrigeable entre donc dans le registre de confiance, seul son déploiement étant refusé. La
+chaîne écrite plus tard pour l'application hébergée construit localement, analyse, puis ne
+publie que si l'analyse passe --- c'est l'ordre correct, et il sert de cible d'alignement.
+\end{alertbox}
+
+Une réserve reste ouverte sur le schéma de données : la chaîne du socle n'automatise aucune
+migration, alors que celle de l'application hébergée l'exécute comme une tâche distincte, attendue
+jusqu'à son terme avant tout déploiement, et interdit à chaque instance de la déclencher elle-même
+--- le bon motif, puisque $N$ instances qui migrent sans verrou de schéma produisent une corruption
+silencieuse.
+
+\subsection{Boucle entre livraison et détection : la huitième étape}
+\label{subsec:boucle-f6}
+
+L'étape 8 réalise le flux F6, hypothèse d'apport exposée au \cref{ch:conception} et rattachée à la
+question Q6 du \cref{ch:cadre-existant} comme au verrou V4 du \cref{ch:etat-art} : elle exporte le résultat de l'analyse
+de vulnérabilité vers une table dédiée, avec un droit d'écriture limité à cette seule table, de
+sorte que gravité théorique et techniques observées coexistent enfin dans un entrepôt où elles
+peuvent se parler. La chaîne est linéaire --- analyse de vulnérabilité, service d'encodage, table
+des vulnérabilités, rapprochement avec les détections R1--R7 par technique ATT\&CK, ordre de
+correction --- et son apport se dit sans emphase : \textbf{F6 ne couvre aucune exigence de
+sécurité, il produit un ordre de traitement et non une réduction de risque} ; sa chaîne de
+données existe, son utilité reste non validée (\cref{sec:eval-enrichissement}) tant que l'ordre
+produit n'est pas comparé à l'ordre par gravité seule. Une limite s'y ajoute : le chargement
+inscrit une technique nulle pour chaque vulnérabilité, si bien que le croisement fonctionne sur la
+chaîne de données et non sur les valeurs. La condition de clôture est le renseignement de cette
+colonne à la source.
+
+\subsection{Refus vérifiés}
+\label{subsec:refus}
+
+Une chaîne de livraison doit être éprouvée par des cas de refus, faute de quoi rien ne distingue une
+porte qui laisse passer de bons artefacts d'une porte qui ne fonctionne pas --- l'incident d'analyse
+statique de la \cref{subsec:incidents} montre que la distinction n'est pas théorique. Trois
+protocoles définissent ces cas : un secret factice doit arrêter la chaîne à la deuxième étape (T10),
+une image de base porteuse d'une faille critique connue à la cinquième (T8), et un espace de
+stockage volontairement exposé doit être refusé avant toute création (\cref{sec:chaine-infra}). La
+campagne du \cref{ch:validation} les a départagés (\cref{sec:campagne}) : \textbf{T8 est conforme}, sur un
+refus qui n'a pas été provoqué --- la porte a réellement arrêté une livraison sur une vulnérabilité
+critique --- tandis que \textbf{T10 reste partiellement conforme}, la porte étant bloquante à chaque
+livraison et sur l'historique complet, mais aucun refus n'ayant été opposé. Un quatrième cas, le
+défaut de code détecté par analyse statique, est établi autrement et mieux : par la remise en
+service de la porte le 19/08/2026 et sa première exécution réelle (\cref{subsec:incidents}).
+
+Un cinquième refus, non planifié, est \textbf{réellement survenu sur le code écrit pour ce projet} :
+la porte d'analyse de vulnérabilité a bloqué une livraison sur une faille critique embarquée par le
+\emph{gestionnaire de paquets} de l'image de base, composant dont l'artefact final n'a aucun usage à
+l'exécution (T8, \cref{sec:preuve-t11}).
+Entre inscrire la vulnérabilité sur une liste d'exception et retirer la cause, c'est la seconde voie
+qui a été retenue, la surface d'attaque disparaissant avec l'outil qui la portait : une porte a
+trouvé, dans le socle lui-même, un défaut que sa conception n'avait pas anticipé.
+
+\section{Chaîne de provisionnement de l'infrastructure}
+\label{sec:chaine-infra}
+
+La seconde chaîne obéit à une logique différente, et cette différence est une décision
+d'architecture plutôt qu'un degré d'achèvement : elle est \textbf{automatisée jusqu'au contrôle et
+humaine au-delà}. Son intitulé l'annonce --- le fichier qui la décrit s'appelle « contrôles
+d'infrastructure », non « déploiement d'infrastructure ». Le déclenchement est filtré sur le
+répertoire d'infrastructure, selon la même règle que la chaîne applicative, puis trois étapes
+s'exécutent (annexe~\ref{ann:extraits-realisation}, \cref{fig:chaine-infrastructure}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm, font=\footnotesize,
+  et/.style={nsysteme, text width=4.30cm, inner sep=3pt, minimum height=0.80cm},
+  arret/.style={nabsent, text width=2.20cm, inner sep=2.5pt,
+                minimum height=0.52cm, font=\scriptsize}]
+
+% ============ frontiere automatique / manuel ================================
+\draw[frontiereplan] (7.55,4.10) -- (7.55,9.75);
+\node[font=\footnotesize\bfseries, anchor=south] at (3.10,9.95) {automatique};
+\node[font=\footnotesize\bfseries, anchor=south, align=center, text width=5.4cm]
+      at (11.60,9.95) {manuel --- identifiants de l'administrateur};
+
+% ============ partie automatique ============================================
+\node[et] (dep) at (3.10,9.10) {\textbf{1.} dépôt};
+\node[et] (fmt) at (3.10,8.10) {\textbf{2.} format (récursif, bloquant)};
+\node[et] (val) at (3.10,6.90) {\textbf{3.} validation --- deux environnements, sans accès distant};
+\node[ncontrole, text width=4.30cm, inner sep=3pt, minimum height=0.80cm]
+      (ana) at (3.10,5.15) {\textbf{4.} analyse de configuration --- \textbf{bloquante} sur gravité critique};
+\draw[fluxdonnee] (dep) -- (fmt);
+\draw[fluxdonnee] (fmt) -- (val);
+\draw[fluxdonnee] (val) -- (ana);
+\node[arret] (ar) at (3.10,3.95) {chaîne arrêtée};
+\draw[fluxrefuse] (ana.south) -- node[croixrefus]{} (ar.north);
+
+% ============ partie manuelle ===============================================
+\node[nporte, text width=2.55cm] (por) at (11.60,5.15) {\textbf{5.} porte : revue du plan};
+\node[et, text width=3.60cm] (app) at (11.60,7.20) {\textbf{6.} application};
+\node[et, text width=3.60cm] (der) at (11.60,8.60) {\textbf{7.} détection de dérive planifiée};
+\draw[fluxdonnee] (ana.east) -- (por.west);
+\draw[fluxcontrole] (por.north) -- (app.south);
+\draw[fluxdonnee] (app.north) -- (der.south);
+
+% ============ retour de derive vers le depot ================================
+\draw[fluxevenement] (der.north) -- (11.60,9.75)
+      -- node[etiqsec, pos=0.55] {dérive constatée} (3.10,9.75) -- (dep.north);
+
+% ============ legende interne ===============================================
+\node[legendecadre, text width=15.00cm, anchor=north west, font=\scriptsize]
+     at (0.05,3.35)
+  {\legendetrait{fluxdonnee}{étape suivante}\quad
+   \legendetrait{fluxcontrole}{décision de politique : le plan n'est appliqué qu'après revue}\quad
+   \legendetrait{fluxevenement}{retour asynchrone}\\[2pt]
+   \legendecroix{refus : la chaîne s'arrête}\quad losange et cadre épais : porte bloquante\quad
+   trait vertical épais : frontière de privilège};
+
+\end{tikzpicture}
+\caption[Chaîne de provisionnement de l'infrastructure]{Chaîne de provisionnement de
+l'infrastructure : la frontière automatique/manuel est un \emph{choix de privilège}, non un
+degré d'achèvement --- la partie automatisée n'a, par construction, aucun accès au
+fournisseur cloud.}
+\label{fig:chaine-infrastructure}
+\end{figure}
+
+\textbf{La vérification de format est récursive et bloquante.} Rendre bloquant un contrôle de forme
+peut surprendre ; c'est la condition d'une revue de plan utile, car une différence de mise en forme
+et une différence de sens se présentent à l'identique dans un écart calculé.
+
+\textbf{La validation syntaxique s'exécute sur les deux environnements, en initialisation sans
+accès distant} : elle ne contacte ni le stockage de l'état ni le fournisseur cloud, et valide la
+cohérence interne de la description --- références, types, arguments obligatoires, versions de
+fournisseurs --- sans aucune autorisation sur l'infrastructure réelle. C'est ce qui permet à ce flux
+de ne déclarer aucune permission d'émission de jeton : il ne peut structurellement pas
+s'authentifier auprès du fournisseur cloud, et cette impossibilité est une propriété, pas un manque.
+
+\textbf{L'analyse de sécurité de la description est une porte bloquante sur gravité critique}, sur
+des motifs qui recoupent les trois interdictions que les politiques d'organisation auraient dû
+porter (\cref{sec:env-travail}) ; un second passage, informatif, remonte les gravités inférieures
+sans arrêter la chaîne, de sorte que la porte n'accumule pas de dette silencieuse. \textbf{Aucun
+composant n'a été ajouté pour cette analyse} : c'est l'outil qui analyse les images, employé dans un
+autre mode --- application du principe de justification (PR1).
+
+\subsection{La revue du plan comme porte humaine}
+
+Le plan de modification est produit puis appliqué par l'administrateur, hors de la chaîne, avec ses
+propres identifiants. Automatiser l'application supposerait d'accorder à l'identité de déploiement
+des droits de \emph{lecture et d'écriture étendus sur tout le projet} --- un plan complet lit toutes
+les ressources gérées, une application complète les modifie --- soit la concentration de privilège
+que le \cref{ch:conception} refuse.
+
+\begin{keybox}[boxsep=1pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+\textbf{Décision retenue.} La revue humaine du plan est la porte de cette chaîne.
+\textbf{Condition de bascule :} l'automatisation devient rentable lorsque le périmètre justifie
+une \emph{identité de déploiement d'infrastructure séparée} de l'identité de livraison
+applicative --- c'est-à-dire à partir du troisième environnement, où la fréquence des
+modifications et le nombre d'opérateurs rendent le geste manuel plus risqué que le privilège
+qu'il évite.
+\end{keybox}
+
+Deux principes gouvernent l'ensemble. \textbf{Le plan est revu comme du code}, et se lit
+intégralement, jamais par sa fin : l'incident rapporté en \cref{subsec:incidents} montre qu'un plan
+à périmètre restreint peut contenir un remplacement destructif sans rapport.
+\textbf{L'application est la seule voie d'écriture} : toute modification venue d'un autre chemin
+devient une dérive, détectée à la planification suivante (\cref{subsec:derive}). D'où le verdict de
+T18, partiellement conforme au \cref{ch:validation} : la revue a lieu, l'approbation n'est pas outillée.
+
+\subsection{Protection contre les destructions}
+
+Une chaîne de provisionnement peut détruire aussi vite qu'elle construit. Deux ressources seulement
+portent le verrou de destruction du langage de description : les deux clés de chiffrement. Les
+services d'exécution, les tâches et les modules applicatifs portent explicitement le verrou ouvert,
+cohérent avec leur caractère reconstructible. L'instance de base de données et les tables de
+l'entrepôt --- \emph{y compris celles qui portent les preuves} --- ne portent en revanche pas la
+protection de suppression du fournisseur, le seul garde-fou de l'ensemble de données étant son refus
+de disparaître tant qu'il contient des tables.
+
+\begin{alertbox}[boxsep=1pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+Cet écart est classé au premier rang du plan de correction pour un motif de proportion : le coût est
+de quelques minutes, et l'effacement de la table des détections par une commande d'administration
+les 24 et 25/08/2026 a établi que le risque n'est pas théorique. La correction pose la protection de
+suppression du fournisseur sur l'instance de base de données et sur les trois tables de preuve ---
+détections, verdicts d'analyste, événements de sécurité --- et sert le principe d'intégrité de la
+preuve (PR3), qui perd son sens si la preuve peut être détruite d'un geste.
+\end{alertbox}
+
+Le quatrième scénario de refus porte sur une ressource volontairement mal configurée, dont le
+blocage doit être constaté avant toute création plutôt que lors d'un audit a posteriori. Sa
+définition est complète --- ressource, politique attendue, critère d'acceptation --- mais elle ne
+porte pas de protocole numéroté : à la différence de T8 et de T10, elle n'entre pas dans la campagne
+du \cref{ch:validation}, et son premier passage est porté par le plan de correction.
+
+\subsection{Conduite d'une migration sur un système en service}
+\label{subsec:migration-reseau}
+
+La refonte réseau arrêtée sous la décision D15 (\cref{subsec:reseau-cible}) a été appliquée par
+cette chaîne --- un plan lu intégralement puis appliqué à la main à chaque étape --- en douze étapes,
+entre le 11 et le 25/08/2026. Elle est rapportée ici parce qu'elle est la seule opération du projet
+à avoir déplacé le chemin du trafic d'un système déjà en service : l'ordre y compte davantage que le
+contenu.
+
+\textbf{Cet ordre obéit à une règle unique} --- \emph{on n'interdit jamais avant d'avoir observé,
+et on n'observe qu'après avoir fait passer le trafic par l'endroit où on l'observe}. Les trois
+sous-réseaux par locataire ont donc été créés d'abord (11/08) : ajout pur, qu'aucune ressource ne
+référençait encore. Les charges de travail ont ensuite basculé une par une en sortie réseau
+directe (12 au 14/08), en commençant par la tâche planifiée d'enrichissement --- dont l'échec eût
+été visible et sans effet sur un utilisateur --- et en gardant pour la fin le service le plus
+exposé ; chaque bascule produit une révision, et une révision qui ne démarre pas laisse la
+précédente servir, de sorte que le retour arrière est un redéploiement et non une reconstruction.
+Le connecteur d'accès sans serveur n'a été supprimé qu'ensuite (15/08), une fois qu'aucune
+ressource ne le référençait et que le plan ne présentait qu'une seule destruction.
+
+\textbf{Sept jours d'observation ont remplacé le pari par la mesure} (15 au 22/08) : échantillonnage
+des journaux de flux porté à un paquet sur deux, journalisation de la passerelle de traduction
+d'adresses portée à toutes ses connexions, et construction depuis l'entrepôt de l'inventaire exhaustif
+des destinations réellement jointes. C'est cet inventaire, et non une hypothèse sur les besoins des
+charges, qui a dicté les six autorisations posées le 22/08 ; c'est la même fenêtre qui a établi que
+la passerelle ne traitait aucun trafic, et justifié sa suppression par une mesure.
+
+\textbf{Une seule étape était réellement dangereuse, et elle a été traitée comme telle} : la pose
+du refus par défaut en sortie, le 23/08, qui coupe tout ce que les cinq autorisations n'ont pas
+nommé. Elle a été jouée hors heures ouvrées, la commande de retour arrière préparée avant
+l'application, et n'a été déclarée réussie qu'au terme de trente minutes d'observation. Le risque
+résiduel avait été nommé avant d'être couru : un flux légitime qui ne survient pas pendant la
+fenêtre de sept jours --- une tâche mensuelle, un chemin d'erreur --- n'entre dans aucun
+inventaire. C'est la raison d'être des refus nommés posés juste avant lui : ils font apparaître un
+tel flux dans les journaux sous un nom de règle lisible, au lieu de le laisser disparaître dans un
+refus général qui n'explique rien. La passerelle, son routeur, les deux anciens sous-réseaux vides
+et les trois règles d'entrée qui ciblaient une étiquette que rien ne portait ont été retirés le
+lendemain ; le régime permanent --- échantillonnage ramené à un paquet sur dix, métadonnées
+exclues --- a été posé le \dateref.
+
+\section{Chaîne de détection}
+\label{sec:chaine-detection}
+
+La collecte (flux F4) rassemble vers l'entrepôt de supervision les journaux d'audit du fournisseur,
+ceux des services d'exécution et les verdicts du filtrage applicatif, avec un filtrage appliqué
+\textbf{à la source} et non après stockage (BNF3). Une réserve porte sur les journaux d'audit : ceux
+d'activité d'administration sont collectés avec les autres sources, tandis que ceux d'accès aux
+données --- entrepôt, secrets, clés, base applicative --- restent dans l'espace par défaut du
+fournisseur, en conservation de trente jours, modifiable. L'attribution d'une action privilégiée
+visée par EX13 n'est donc établie que pour le plan d'administration, d'où l'exécution du protocole
+T13 sur les deux plans.
+
+L'entrepôt compte dix tables (\cref{tab:modele-donnees}), dont six voient leur identité d'écriture
+restreinte à une table unique par une liaison de droits : cette séparation vise l'exigence EX11 sans
+rendre les preuves immuables --- une identité d'administration ou une liaison IAM excessive peut
+encore les modifier, ce qui doit être contrôlé séparément. Le score d'incident, recalculé à la
+lecture et jamais persisté (\cref{ch:conception}), est une \textbf{heuristique de tri} et non un verdict : il
+additionne un poids par gravité et une prime fixe lorsque les détections d'une même entité relèvent
+d'au moins deux tactiques distinctes, signe d'une chaîne d'attaque probable. L'asymétrie est
+voulue : le score est recalculé à chaque consultation et jamais conservé, le verdict de l'analyste
+est conservé et jamais modifié --- traduction du principe d'intégrité de la preuve (PR3),
+\textbf{ce que la machine ordonne est révisable, ce que l'humain juge est définitif} ; la colonne
+« verdict » reste vide tant que l'analyste n'a pas tranché.
+
+
+Trois colonnes portent des données à caractère personnel : l'adresse source et l'identifiant
+d'utilisateur des journaux d'accès, et l'entité des détections, le plus souvent une adresse. Les
+journaux expirent à quatre-vingt-dix jours ; les détections, qui portent la même adresse, n'expirent
+pas --- écart assumé au titre de la valeur probante, à trancher par le responsable de traitement.
+Les 872 vecteurs de référence couvrent 697 techniques et sous-techniques du référentiel ATT\&CK
+Entreprise \cite{mitre_attack}. Chaque locataire dispose en outre d'un espace de stockage objet
+dédié, chiffré par clé gérée, protégé contre tout accès public et administrable en écriture par la
+seule identité de l'application concernée : il porte les \textbf{enregistrements vocaux} de
+l'application pilote, données biométriques qui fondent la contrainte réglementaire du \cref{ch:cadre-existant}.
+
+\begin{alertbox}[boxsep=1pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+La journalisation des refus du pare-feu a été activée et vérifiée le 19/08/2026, ce qui clôt
+l'écart É1 et rend la source de signal disponible ; elle porte, depuis la migration rapportée en
+\cref{subsec:migration-reseau}, sur les six règles de refus du réseau --- dont les quatre refus
+croisés entre locataires --- que le puits existant collecte sans modification. Le trajet complet d'un refus jusqu'à l'entrepôt a été
+mesuré depuis : le 24/08/2026, trois sorties refusées --- externe, croisée entre locataires et vers
+la base --- ont été retrouvées dans l'entrepôt en 2~min~55~s à 4~min~12~s, ce qui rend le
+protocole T20 \textbf{conforme} (\cref{sec:campagne}) ; sa cadence de rejeu est trimestrielle.
+\end{alertbox}
+
+Il n'existe pas de convertisseur automatique depuis le format neutre de règles de détection vers
+le dialecte de l'entrepôt retenu (\cref{ch:etat-art}). La traduction des sept règles R1--R7 a donc été
+réalisée manuellement, selon un gabarit systématique --- source, condition de sélection, fenêtre
+temporelle, agrégation, identifiants, faux positifs connus --- dont
+l'annexe~\ref{ann:extraits-realisation} donne un exemple.
+
+La chaîne complète, de la collecte à l'affichage, est celle conçue au \cref{ch:conception}
+(\cref{fig:cycle-donnee}) et la réalisation n'en a pas déplacé une étape : les journaux bruts
+alimentent les sept requêtes planifiées R1--R7 sur une fenêtre de 15~min, les détections
+qu'elles écrivent sont lues par l'API qui calcule le score à la requête, et la tâche
+d'enrichissement forme un \textbf{second cycle indépendant} --- encodage puis recherche
+vectorielle à trois candidats --- dont le résultat n'est joint à aucun score. Les deux cycles
+étant indépendants, une détection est affichée dès qu'elle est écrite et son enrichissement
+arrive au cycle suivant.
+
+Le plafond que cette traduction manuelle impose à la couverture est établi en
+\cref{sec:detection-code} (verrou V2) et mesuré au \cref{ch:validation} ; la contrepartie est que les règles
+sont du code, versionnées, revues et déployées par la chaîne d'infrastructure.
+
+\section{Couche d'enrichissement sémantique}
+
+Les contrôles appliqués aux poids du modèle de représentation de phrases retenu
+\cite{securebert2022,smet2023}, traités comme un artefact tiers non fiable, sont ceux du
+\cref{ch:conception}. Ce que la réalisation ajoute est une mesure : \textbf{la fidélité est vérifiée, pas
+supposée}. La quantification en entiers, testée puis rejetée par la porte d'acceptation codée,
+dégradait les représentations au point de ne produire \textbf{aucune correspondance correcte de
+premier rang sur cinq cas} ; le modèle livré est donc en précision flottante simple. La tâche
+d'enrichissement retient trois candidats plutôt qu'un, afin que l'analyste compare des alternatives
+au lieu de recevoir une affirmation unique.
+
+\textbf{Posture de sortie réseau obtenue.} Depuis la migration rapportée en
+\cref{subsec:migration-reseau}, les charges portent leurs interfaces de sortie \emph{dans} un
+sous-réseau : tout leur trafic sortant traverse le pare-feu, le refus par défaut en sortie est posé,
+et cinq autorisations seulement le percent, chacune ciblée par une identité de service et par un
+port. Le plan d'adressage, les douze règles et les trois lectures qu'elles appellent sont établis en
+\cref{subsec:reseau-cible} ; ce que la réalisation ajoute est que \textbf{le pare-feu est devenu une
+source de journal nommée} --- les refus croisés entre locataires et l'interdiction faite au tableau
+de bord de joindre la base portent chacun un nom de règle qui dit ce qui a été tenté, et rejoignent
+l'entrepôt par le puits déjà en place, \textbf{sans qu'aucune modification de la chaîne de détection
+ait été nécessaire} (annexe~\ref{ann:extraits-realisation}).
+
+Cette posture n'établit pas l'impossibilité d'une exfiltration : elle en ferme la voie directe et en
+laisse deux ouvertes, énoncées en \cref{subsec:reseau-cible} --- les interfaces du fournisseur, et
+les deux charges détachées du réseau. La seconde n'est pas une hypothèse : le 25/08/2026, une sonde
+empruntant le chemin de la révision réellement déployée du service d'encodage a atteint une
+destination externe en 412~ms, quand la même sonde passant par le sous-réseau était refusée deux
+fois. \textbf{Le protocole T14 est donc non conforme} ; le correctif --- réintégrer les deux charges
+au sous-réseau sous une étiquette qu'aucune autorisation de sortie ne couvre --- coûte une révision
+sans changement applicatif. Le trajet d'un refus jusqu'à l'entrepôt est, lui, mesuré et
+\textbf{conforme} par T20 (24/08/2026, \cref{sec:campagne}).
+
+\subsection{État d'avancement réel de la couche}
+\label{subsec:avancement-enrichissement}
+
+L'écart entre conception et réalisation est ici le plus important
+(\cref{tab:avancement-enrichissement}).
+
+\begin{table}[htbp]
+\caption[État d'avancement de la couche d'enrichissement]{État d'avancement de la couche
+d'enrichissement sémantique}
+\label{tab:avancement-enrichissement}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|P{5.20cm}|P{7.35cm}|P{2.55cm}|}
+\hline
+\textbf{Composant} & \textbf{Réalisé} & \textbf{Statut} \\
+\hline
+Préparation et figement du modèle & Oui & Vérifié \\ \hline
+Chemin public direct absent dans la configuration & Oui --- mais la sortie \emph{managée} de la
+révision déployée reste hors du pare-feu & \textbf{T14 non conforme} (25/08/2026) \\ \hline
+Table de vecteurs de référence et index & Oui & Vérifié \\ \hline
+Tâche d'enrichissement, recherche vectorielle & Oui & Réalisé \\ \hline
+Cadence prévue (5~min) & Non --- 15~min & Écart assumé (coût) \\ \hline
+Cache par étiquette SHA d'entrée & Calculé, jamais exploité & Non réalisé \\ \hline
+Vue de corrélation entre alertes & Non & Non réalisé \\ \hline
+Enrichissement dans le score d'incident & Non & Écart majeur \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{alertbox}[boxsep=1pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+\textbf{La couche d'enrichissement produit ses résultats, mais ceux-ci n'alimentent pas le score
+d'incident présenté à l'analyste.} Cet écart ne remet pas en cause la démonstration technique --- la
+chaîne complète fonctionne et le \cref{ch:validation} la mesure --- mais il borne l'affirmation possible : le
+rattachement automatique produit des candidats consultables sans preuve suffisante de précision, de
+coût stabilisé ni d'amélioration de la priorisation.
+\textbf{Décision du \dateref{} :} le positionnement informationnel est assumé comme état livré, et
+la jointure au score est reportée en perspective. Elle ne se réduit pas à une jointure technique :
+elle suppose une règle de décision évaluée et surtout l'ajout d'une clé d'entité à la table
+d'enrichissement, dont le \cref{ch:conception} montre qu'elle est absente du schéma.
+\end{alertbox}
+
+\section{Tableau de bord et API de supervision}
+\label{sec:supervision}
+
+La supervision repose sur deux logiciels écrits pour ce projet : le tableau de bord, application web
+à rendu serveur, et l'API de supervision qui l'alimente (\cref{fig:composants-logiciel}). Tout passe
+par l'API, qui applique le contrôle d'autorisation ; cette séparation réalise les exigences EX5 et
+EX6 et évite l'erreur fréquente donnant à une interface web les droits de lecture d'un entrepôt. Les
+vues se rafraîchissent en continu et signalent la fraîcheur de leurs données, mais cette
+actualisation porte sur des résultats \emph{déjà calculés} : l'interface est vive, la détection ne
+l'est pas au même degré.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm, font=\footnotesize,
+  comp/.style={nsysteme, text width=3.15cm, inner sep=3pt, minimum height=1.15cm},
+  cle/.style={ncontrole, text width=3.15cm, inner sep=3pt, minimum height=1.15cm,
+              fill=menalplanB},
+  ext/.style={nstock, text width=2.25cm, inner sep=3pt, minimum height=1.15cm},
+  titre/.style={font=\footnotesize\bfseries, align=center, text width=4.2cm},
+  cadre/.style={draw=menalencre, line width=0.6pt, densely dashed, rounded corners=4pt}]
+
+% ============ tableau de bord (conteneur de gauche) =========================
+\node[cle]  (mw)    at (4.10,7.10) {Garde de session\\\gcprod{intergiciel}};
+\node[comp] (pages) at (4.10,5.45) {12 vues, dont 10 rendues au serveur};
+\node[cle]  (bff)   at (4.10,3.75) {7 routes serveur : jeton déposé en \emph{cookie} hors de portée du script};
+\node[comp] (cli)   at (4.10,1.85) {Client d'appel typé et 15 composants d'affichage};
+
+% ============ API de supervision (conteneur de droite) ======================
+\node[cle]  (mwapi) at (9.30,7.10) {En-têtes de sécurité et journal d'audit};
+\node[cle]  (auth)  at (9.30,5.45) {Authentification : jeton signé, second facteur, rôle};
+\node[comp] (siem)  at (9.30,3.75) {Routeur de supervision\\\textbf{9 points d'entrée}};
+\node[comp] (crud)  at (9.30,1.85) {Comptes, journaux, alertes\\\textbf{4 points d'entrée}};
+
+% ============ acteur et plan de donnees =====================================
+\node[nacteur, text width=1.85cm, minimum height=1.05cm] (analyst) at (0.95,5.45) {Analyste\\(navigateur)};
+\node[ext] (sm)  at (13.55,7.10) {Coffre de secrets};
+\node[ext] (bq)  at (13.55,3.75) {Entrepôt de supervision};
+\node[ext] (sql) at (13.55,1.85) {Base applicative};
+
+% ============ appels synchrones =============================================
+\draw[fluxdonnee] (analyst.north) |- (mw.west);
+\draw[fluxcontrole] (mw) -- node[etiqsec] {session} (pages);
+\draw[fluxdonnee] (pages) -- (bff);
+\draw[fluxdonnee] (bff)   -- (cli);
+\draw[fluxdonnee] (mwapi) -- (auth);
+\draw[fluxcontrole] (auth) -- node[etiqsec] {rôle vérifié} (siem);
+\draw[fluxdonnee] (siem)  -- (crud);
+\draw[fluxdonnee] (bff.east) -- ++(0.28,0) |- node[etiq, pos=0.72] {identifiants} (auth.west);
+\draw[fluxdonnee] (cli.east) -- ++(0.60,0) |- node[etiq, pos=0.72] {jeton porteur} (siem.west);
+\draw[fluxdonnee] (auth.east) -- ++(0.35,0) |- (sm.west);
+\draw[fluxdonnee] (siem.east) -- node[etiq] {lecture seule} (bq.west);
+\draw[fluxdonnee] (crud.east) -- (sql.west);
+
+% ============ ecriture au mieux, hors du chemin de reponse ==================
+\draw[fluxevenement] (mwapi.east) -- (15.30,7.10) -- node[etiqsec, pos=0.55] {audit}
+      (15.30,1.85) -- (sql.east);
+
+% ============ frontieres de deploiement et plan de donnees ==================
+\begin{scope}[on background layer]
+  \node[cadre, fit=(mw)(pages)(bff)(cli), inner sep=6pt] (fd) {};
+  \node[cadre, fit=(mwapi)(auth)(siem)(crud), inner sep=6pt] (fa) {};
+  \node[bandedonnee, fit=(sm)(bq)(sql), inner sep=5pt] (fs) {};
+\end{scope}
+\node[titre, anchor=south] at (fd.north) {Tableau de bord\\\gcprod{3\,408 lignes TypeScript}};
+\node[titre, anchor=south] at (fa.north) {API de supervision\\\gcprod{1\,855 lignes Python}};
+\node[titrebande, anchor=south] at (fs.north) {plan de données};
+
+% ============ legende interne ===============================================
+\node[legendecadre, text width=15.00cm, anchor=north west, font=\scriptsize]
+     at (-0.15,0.55)
+  {\legendetrait{fluxdonnee}{appel synchrone}\hfill
+   \legendetrait{fluxcontrole}{point d'application du contrôle d'accès}\hfill
+   \legendetrait{fluxevenement}{écriture au mieux, hors du chemin de réponse}\\[2pt]
+   cadre épais, fond grisé : composant portant un contrôle\hfill
+   cadre en tirets : un conteneur\hfill
+   double filet : dépôt\hfill
+   bande claire : plan de données};
+
+\end{tikzpicture}
+\caption[Architecture interne des deux logiciels écrits]{Architecture interne des deux logiciels
+écrits : composants, frontières de déploiement et points d'application du contrôle d'accès. Le rôle
+est vérifié sur les treize points d'entrée de données de l'API --- neuf de supervision et quatre de
+gestion --- et jamais dans le tableau de bord, qui ne détient aucune autorisation propre ; l'échec
+de l'écriture d'audit est absorbé et ne fait jamais échouer la requête de l'analyste.}
+\label{fig:composants-logiciel}
+\end{figure}
+
+\subsection{La chaîne de données d'une vue}
+\label{subsec:chaine-donnees-vue}
+
+Le point le plus solide de cette architecture n'est pas visible à l'écran : \textbf{aucune vue du
+tableau de bord n'interroge directement l'entrepôt de supervision ni la base applicative}. Toutes
+empruntent les cinq mêmes sauts, sans exception vérifiée ligne à ligne
+(\cref{fig:chaine-donnees-vue}, extrait en annexe~\ref{ann:extraits-realisation}) : cette uniformité
+est ce qui rend la chaîne auditable.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm, font=\footnotesize,
+  saut/.style={nsysteme, inner sep=3pt, minimum height=0.85cm}]
+
+% ============ rangee haute : navigateur, tableau de bord, bord ==============
+\node[saut, text width=2.05cm] (nav) at (1.35,2.95) {\textbf{1.} navigateur};
+\node[saut, text width=3.05cm] (tdb) at (7.35,2.95) {\textbf{2.} tableau de bord (composant rendu au serveur)};
+\node[saut, text width=3.25cm] (brd) at (13.05,2.95) {\textbf{3.} bord : répartiteur et filtrage applicatif};
+\draw[fluxdonnee] (nav) -- node[etiq, text width=2.15cm, align=center]
+      {témoin inaccessible au script} (tdb);
+\draw[fluxdonnee] (tdb) -- node[etiq, text width=2.05cm, align=center]
+      {en-tête d'autorisation} (brd);
+
+% ============ la frontiere que le jeton ne franchit pas =====================
+\draw[seuil] (3.05,1.95) -- (3.05,4.10);
+\node[font=\footnotesize\bfseries, anchor=south, align=center, text width=4.6cm]
+      at (3.05,4.15) {le jeton ne franchit jamais cette frontière};
+
+% ============ rangee basse : API puis entrepot ==============================
+\node[saut, text width=3.25cm] (api) at (12.55,0.55) {\textbf{4.} API de supervision --- vérification du jeton et du rôle};
+\node[saut, text width=3.05cm] (ent) at (7.35,0.55) {\textbf{5.} entrepôt de supervision, base applicative};
+\draw[fluxcontrole] (brd.south) -- node[etiq, text width=2.35cm, align=center]
+      {seconde traversée du bord} (api.north);
+\draw[fluxdonnee] (api) -- node[etiq, text width=1.95cm, align=center]
+      {requête paramétrée} (ent);
+
+% ============ legende interne ===============================================
+\node[legendecadre, text width=15.00cm, anchor=north west, font=\scriptsize]
+     at (0.05,-0.35)
+  {\legendetrait{fluxdonnee}{saut de la chaîne}\hfill
+   \legendetrait{fluxcontrole}{traversée d'un point de contrôle}\hfill
+   trait vertical en tirets : frontière que le jeton ne franchit pas};
+
+\end{tikzpicture}
+\caption[Chaîne de données d'une vue du tableau de bord]{Chaîne de données d'une vue du
+tableau de bord : les cinq sauts, et la frontière que le jeton ne franchit pas. L'autorité
+d'autorisation est l'API de supervision, qui vérifie le jeton et le rôle ; l'identité du
+tableau de bord ne détient aucune autorisation sur les données.}
+\label{fig:chaine-donnees-vue}
+\end{figure}
+
+Aucun script exécuté dans le navigateur ne peut donc lire le jeton, ni l'exfiltrer, y compris en cas
+d'injection de script réussie dans une vue : \textbf{le tableau de bord n'est pas un client
+privilégié, c'est un client comme un autre, qui n'a de pouvoir que celui du jeton qu'on lui a
+confié}. Les sept routes serveur ne dérogent pas à ce motif : ce sont des relais
+d'authentification, qui lisent le témoin, en font un en-tête d'autorisation, transmettent et rendent
+la réponse. L'une d'elles porte une décision : le relais de connexion \emph{préserve} le code de
+refus pour dépassement de seuil au lieu de le réécrire en refus d'authentification, ce qui aurait
+fait croire à l'analyste qu'il s'était trompé de mot de passe et privé le centre d'opérations du
+signal d'attaque. Le garde de session vérifie la présence du témoin et sa non-expiration par simple
+décodage de la date d'échéance, \textbf{sans vérification de signature} --- le tableau de bord ne
+connaît pas la clé et ne doit pas la connaître ; ce contrôle est \emph{documenté dans le code comme
+un contrôle d'ergonomie et non d'autorisation}, la seule source de vérité restant l'API.
+
+\subsection{Cartographie des vues}
+
+Le \cref{tab:vues-dashboard} met en regard, pour chaque vue, ce qu'elle apporte à
+l'analyste avec le point d'entrée qu'elle appelle, et sa capacité à être filtrée par locataire.
+
+
+La colonne de droite est presque toujours mal lue : la portée du filtre par locataire n'est pas un
+défaut d'interface qu'un développement complémentaire viendrait combler, c'est une \textbf{propriété
+du modèle de données}. Une vue ne peut être filtrée par
+locataire que si la table qu'elle interroge porte une clé de locataire fiable ; or trois tables
+seulement de l'entrepôt en portent une, et une seule de ces trois clés est renseignée sur la
+totalité des lignes (\cref{tab:modele-donnees}). Les vues
+d'ensemble, de vulnérabilités et de santé des règles restent donc globalement fusionnées quel que
+soit le locataire sélectionné, ce que le sélecteur affiché à l'écran documente lui-même. La
+condition de bascule est l'introduction d'une clé de locataire obligatoire à l'ingestion, préalable
+de tout cloisonnement au stockage.
+
+\begin{alertbox}[boxsep=1pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+Le filtre par locataire est porté par un témoin déposé côté navigateur, non signé, et le jeton ne
+porte aucune revendication de locataire. Tout analyste authentifié peut donc changer de locataire
+ou retirer le filtre. Le mémoire l'énonce comme le code l'énonce : \textbf{c'est un raffinement
+de lecture, pas une frontière de sécurité}. Le transformer en frontière suppose une revendication
+de locataire dans le jeton et un filtre imposé côté serveur --- travail identifié, chiffré, et
+subordonné au préalable de la clé de locataire.
+\end{alertbox}
+
+\subsection{Authentification, second facteur et contrôle d'accès}
+\label{subsec:authent-dashboard}
+
+Trois rôles sont définis dans le jeton émis par l'API : administrateur, analyste et service ---
+cette dernière identité, non humaine, n'étant référencée par aucun contrôle à ce jour ; aucun rôle
+n'est prévu pour les utilisateurs de l'application hébergée, qui n'accèdent jamais au tableau de
+bord. L'écriture d'un verdict illustre l'exception prévue au principe d'intégrité de la preuve
+(PR3) : elle est possible, mais uniquement dans une table qui lui est propre
+(\cref{tab:modele-donnees}), jamais dans les tables de preuve, et réservée à l'administrateur ---
+arbitrage plus restrictif que la répartition des tâches d'un centre d'opérations, cohérent avec la
+règle « une seule identité écrit dans une table donnée », et dont la condition de réévaluation est
+l'arrivée d'un second analyste. L'interface a été servie à un compte analyste le 23/08/2026 sur des
+détections réelles de la recette, une alerte R2 y apparaissant rattachée à la technique T1498 et
+attribuée au locataire concerné.
+
+\begin{figure}[!htbp]
+\centering
+\IfFileExists{figures/K05.png}{%
+  \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+  \fcolorbox{black!30}{white}{\includegraphics[width=0.82\textwidth]{figures/K05.png}}%
+}{%
+  \begin{minipage}{0.82\textwidth}
+  \begin{extraitconf}[breakable=false, fontupper=\footnotesize,
+      title={Capture K05 : spécification de prise}]
+  \textbf{Vue :} tableau de bord de supervision, page \emph{Détections}, session ouverte sous un
+  compte portant le rôle analyste --- pas le rôle administrateur, qui est l'objet même de la
+  preuve.\par\smallskip
+  \textbf{Date :} 23/08/2026 si la vue est repeuplée depuis la table d'archive de récupération, la
+  table vive ayant été vidée par une suppression d'administration les 24 et 25/08/2026 ; à défaut,
+  date du rejeu. \emph{La date portée par la capture fait foi.}\par\smallskip
+  \textbf{Contenu probant :} l'interface décrite servie à un rôle analyste sur des
+  détections réelles de la recette --- au moins une ligne de la règle R2 rattachée à la technique
+  T1498 et portant le locataire dans sa colonne de service, l'horodatage de la détection et
+  l'indicateur de fraîcheur visibles dans le cadre, et le sélecteur de locataire affichant lui-même
+  la portée partielle de son filtre.\par\smallskip
+  \textbf{Masquage} (rectangle opaque, jamais de flou) \textbf{:} identifiant de projet cloud,
+  courriel du compte connecté, adresses réelles.
+  \end{extraitconf}
+  \end{minipage}%
+}
+\caption[Tableau de bord servi à un compte analyste, page des détections]{Tableau de bord de
+supervision servi à un compte de rôle analyste, page des détections. À y lire : une détection de la
+règle R2 rattachée à la technique T1498 et attribuée au locataire, l'horodatage de la détection
+porté par la capture elle-même, et le sélecteur de locataire qui énonce la portée partielle de son
+filtre.}
+\label{fig:capture-K05}
+\end{figure}
+
+\textbf{Le facteur de connaissance.} Une longueur minimale de \textbf{douze caractères} est imposée
+par le schéma de validation d'entrée et non par un contrôle écrit à la main : la contrainte est
+portée par le contrat de l'API et vaut pour tout appelant, sans exigence de complexité, d'expiration
+ni d'historique, conformément aux recommandations actuelles. La vérification borne en outre la
+longueur de l'entrée avant la fonction de hachage, faute de quoi un appel \emph{non authentifié}
+portant un mot de passe très long provoquait une erreur interne au lieu d'un refus --- défaut de
+disponibilité atteignable sans compte, corrigé.
+
+\textbf{La session.} Deux propriétés de la vérification du jeton signé décrit au \cref{ch:conception} méritent
+d'être relevées. L'algorithme de signature est \textbf{figé en constante} et n'est jamais lu depuis
+l'en-tête du jeton présenté, ce qui immunise contre la confusion d'algorithme --- la classe
+d'attaque où un jeton signé par un autre algorithme, voire par aucun, est accepté parce que le
+vérificateur croit ce que le jeton déclare de lui-même. La validation exige par ailleurs la présence
+effective des champs d'échéance et d'émission, un jeton dépourvu d'échéance ayant été auparavant
+valable indéfiniment.
+
+\textbf{Le second facteur.} La séparation du jeton intermédiaire et du jeton d'accès, conçue au
+\cref{ch:conception}, est \textbf{vérifiée à chaque appel} : la dépendance qui identifie l'appelant refuse
+tout jeton dont le type n'est pas celui d'un jeton d'accès. Le point d'entrée qui reçoit le code
+temporel n'était par ailleurs couvert que par un limiteur applicatif, non par la limitation de
+débit du périmètre ; il a été ajouté aux chemins d'authentification protégés le 19/08/2026 et
+vérifié en conditions réelles le jour même : onze requêtes successives ont produit dix refus de
+validation, puis un refus pour dépassement de seuil. C'est cette trace qui étaye le test T2.
+
+\textbf{L'anti-force-brute repose sur deux couches, et le choix de la clé de comptage est un
+raisonnement d'ingénieur plutôt qu'une configuration.} La couche principale est au bord : le
+filtrage applicatif limite les appels aux chemins d'authentification par adresse source réelle, avec
+bannissement temporaire au dépassement. La couche applicative ne peut pas utiliser cette clé, le
+tableau de bord et l'API partageant une \textbf{adresse de sortie commune} : lorsque la requête est
+relayée par le tableau de bord, la seule adresse que voit le limiteur applicatif est celle de cette
+sortie, de sorte qu'une clé par adresse rendrait le compteur \emph{commun à tous les analystes}. La
+conséquence est quantifiable : douze requêtes non authentifiées suffisaient à verrouiller le centre
+d'opérations entier, en refusant la connexion à des analystes qui n'avaient rien fait. La clé porte
+donc sur le \textbf{défi} --- le jeton intermédiaire remis à l'issue du mot de passe --- ce qui
+isole chaque tentative dans son propre budget d'essais. Le code énonce lui-même la limite
+résiduelle : rejouer l'authentification par mot de passe réobtient un jeton intermédiaire, donc un
+budget, ce qui reporte la charge sur la couche de bord, laquelle voit l'adresse réelle du client. La
+leçon dépasse ce cas : \textbf{un contrôle qui suppose qu'une adresse réseau désigne un utilisateur
+produit des blocages collectifs dès qu'une agrégation existe entre lui et le client} --- la question
+n'est pas « quel seuil ? » mais « que compte-t-on, et cet objet est-il propre à celui que l'on veut
+ralentir ? ».
+
+Le secret partagé du second facteur était auparavant stocké en clair. Un \textbf{chiffrement
+authentifié applicatif} a été mis en place le 19/08/2026, avec migration non destructive tolérant
+les valeurs antérieures et clé conservée au coffre de secrets ; la migration des valeurs déjà en
+base n'étant pas documentée comme exécutée, l'écart n'est pas clos.
+
+\subsection{Le logiciel écrit : structure, tests et dette assumée}
+\label{subsec:logiciel-ecrit}
+
+Les deux composants de cette interface sont les seuls éléments du socle écrits ligne à ligne plutôt
+que déclarés (\cref{tab:logiciel-ecrit}). Le contrôle d'autorisation conditionne la portée de
+l'exigence EX5 et appelle une description exacte : les neuf points d'entrée de supervision déclarent
+tous le \emph{même} composant, qui valide le jeton, en extrait le rôle et refuse l'appel si ce rôle
+n'est pas attendu --- huit admettent l'administrateur et l'analyste, le neuvième, celui qui
+enregistre un verdict, n'admet que l'administrateur. Il n'y a donc pas neuf contrôles à auditer mais
+un seul, déclaré neuf fois, ce qui \emph{déplace} le risque : un point d'entrée ajouté sans la
+déclaration serait ouvert sans qu'aucun test existant ne s'en aperçoive. Le remède, un test
+d'inventaire vérifiant que toute route déclarée porte son contrôle, est porté au plan de
+durcissement de l'API.
+
+
+Deux lignes de ce tableau sont défavorables et appellent leur cause. La couverture de 3,00~\% tient
+à ce que les vues ne sont pas testées : seules des fonctions pures le sont, et deux des quatre suites
+éprouvent du code recopié dans le fichier de test plutôt que le module lui-même --- défaut de méthode
+plus que défaut de couverture. Le progrès réel est ailleurs : la chaîne \emph{exécute} désormais ces
+tests, en porte bloquante avant la construction. L'absence de version sur les points d'entrée est
+sans conséquence tant que le tableau de bord en est le seul client, et sa condition de réévaluation
+est l'ouverture à un client tiers.
+
+Deux comportements de repli sont visibles à l'exécution et doivent être nommés. L'intergiciel qui
+écrit le journal d'audit \textbf{absorbe toute exception} : une panne d'écriture ne fait jamais
+échouer la requête de l'analyste. L'arbitrage est délibéré --- aveugler le centre d'opérations
+pendant que la base est en difficulté serait pire --- mais il entre en tension avec l'intégrité de la
+chaîne de preuve, une défaillance d'écriture ne se signalant par rien ; le contrôle compensatoire est
+identifié, \textbf{une alerte sur l'absence d'écriture}, déclenchée lorsque le compteur de lignes
+d'audit tombe à zéro alors que le service reçoit du trafic. Le tableau de bord \textbf{bascule sur un
+jeu de données de démonstration} lorsque l'API est injoignable : repli signalé par un bandeau
+visible, désactivé sur le flux d'authentification --- aucune session ne peut donc être ouverte sans
+l'API --- et autorisé hors d'une construction de production seulement. Comme il porte un catalogue de
+règles \emph{fictif}, la règle s'énonce sans détour : aucune démonstration hors de l'image de
+production, la condition de clôture étant l'alignement du catalogue de repli sur les sept règles
+réelles.
+
+\section{Accueil d'un locataire et frontière de responsabilité}
+\label{sec:locataire}
+\label{sec:second-locataire}
+
+Le besoin~BF13 exigeait que le socle accueille une nouvelle application sans reconception. Le module
+d'exécution des services applicatifs a donc été rendu paramétrique en cours de projet : le nom de
+l'application est une variable, et chaque application reçoit sa propre identité, ses propres secrets
+et son propre service. Le socle héberge la plateforme MENAL elle-même, API et tableau de bord, et à
+côté d'elle l'application pilote ELSON du \cref{ch:cadre-existant} : c'est cette seconde instance, « le second
+locataire », qui sert de preuve d'accueil.
+
+\subsection{La procédure d'accueil et la portée de l'isolation}
+
+La procédure a été reconstituée à partir du cas réellement déployé, et non écrite \emph{a priori} :
+chaque étape correspond à un geste qui a dû être fait. Elle suppose de l'application quatre prérequis
+non négociables --- aucun état sur le disque local, configuration par variables d'environnement, un
+secret par usage, écoute sur le port fourni avec un point de santé sans dépendance externe --- et se
+déroule ensuite en six étapes (\cref{fig:accueil-locataire}). Quatre d'entre elles portent une
+contrainte que le cas réel a imposée. L'\textbf{enregistrement de nom de domaine} doit exister
+\emph{avant} tout provisionnement, faute de quoi le certificat géré reste indéfiniment en cours
+d'émission, et les images doivent avoir été publiées une première fois (étape 1).
+L'\textbf{application se fait dans l'ordre}, à périmètre restreint d'abord --- identité, secrets,
+base, espace média --- puis complète, le plan étant lu intégralement à chaque fois
+(\cref{subsec:incidents}, étape 4). La \textbf{chaîne de livraison dédiée} de l'étape 5 est recopiée
+depuis celle de l'application pilote : cette duplication est l'écart le plus coûteux de la procédure,
+et sa correction, un flux appelable commun, est identifiée. La quatrième contrainte est la plus
+traître : les \textbf{cinq variables d'environnement} de l'étape 3 --- services collectés, chemins
+d'authentification protégés, routage au bord, services supervisés, exclusions de règle --- doivent
+être mises à jour \emph{ensemble}, chacune remplaçant un repli historique ; renseigner l'une sans y
+réinclure les valeurs existantes coupe la collecte ou l'anti-force-brute de la plateforme en croyant
+ajouter une application.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm, font=\footnotesize,
+  et/.style={nsysteme, text width=4.60cm, inner sep=3pt, minimum height=0.62cm},
+  hc/.style={nabsent, text width=4.60cm, inner sep=3pt, minimum height=0.62cm},
+  puce/.style={nabsent, text width=4.90cm, inner sep=3pt, minimum height=0.62cm,
+               align=left}]
+
+% ============ frontiere dans le code / hors du code =========================
+\draw[frontiereplan] (7.25,0.95) -- (7.25,7.75);
+\node[font=\footnotesize\bfseries, anchor=south] at (3.55,7.80) {dans le code};
+\node[font=\footnotesize\bfseries, anchor=south] at (11.05,7.80) {hors du code};
+
+% ============ les six etapes ================================================
+\node[hc] (e1) at (3.55,7.25) {\textbf{1.} prérequis externes};
+\node[et] (e2) at (3.55,6.50) {\textbf{2.} déclaration de l'application};
+\node[hc] (e3) at (3.55,5.75) {\textbf{3.} cinq variables d'environnement};
+\node[et] (e4a) at (3.55,5.00) {\textbf{4a.} application à périmètre restreint};
+\node[nporte, text width=2.75cm] (pt) at (3.55,3.75) {porte : lecture intégrale du plan};
+\node[et] (e4b) at (3.55,2.50) {\textbf{4b.} application complète};
+\node[hc] (e5) at (3.55,1.75) {\textbf{5.} chaîne de livraison dédiée};
+\node[hc] (e6) at (3.55,1.00) {\textbf{6.} correspondance de filtrage};
+\foreach \a/\b in {e1/e2,e2/e3,e3/e4a,e4b/e5,e5/e6}{\draw[fluxdonnee] (\a) -- (\b);}
+\draw[fluxdonnee] (e4a) -- (pt);
+\draw[fluxcontrole] (pt) -- (e4b);
+
+% ============ les cinq gestes hors du code ==================================
+\node[puce] (p1) at (11.05,7.25) {enregistrement de domaine};
+\node[puce] (p3) at (11.05,5.75) {fichier non versionné};
+\node[puce] (p4) at (11.05,3.75) {dix ordres SQL, contrôlés quotidiennement};
+\node[puce] (p5) at (11.05,1.75) {duplication de la chaîne};
+\node[puce] (p6) at (11.05,1.00) {aucun test};
+\draw[lienstructure] (e1.east) -- (p1.west);
+\draw[lienstructure] (e3.east) -- (p3.west);
+\draw[lienstructure] (pt.east) -- (p4.west);
+\draw[lienstructure] (e5.east) -- (p5.west);
+\draw[lienstructure] (e6.east) -- (p6.west);
+
+% ============ legende interne ===============================================
+\node[legendecadre, text width=15.00cm, anchor=north west, font=\scriptsize]
+     at (0.05,0.45)
+  {\legendetrait{fluxdonnee}{étape suivante}\hfill
+   \legendetrait{fluxcontrole}{le plan est lu avant d'être appliqué}\hfill
+   \legendetrait{lienstructure}{rattachement, jamais un flux}\\[2pt]
+   losange : porte humaine\hfill
+   cadre en tirets : \textbf{geste non descriptible en code}\hfill
+   trait vertical épais : frontière du code};
+
+\end{tikzpicture}
+\caption[Accueil d'un locataire : six étapes et cinq gestes hors du code]{Accueil d'un locataire :
+six étapes, et les cinq gestes qui restent hors du code. L'accueil est reproductible sur le plan de
+l'identité et du déploiement ; les cinq gestes non descriptibles en code sont la mesure exacte de la
+maturité multi-locataire du socle.}
+\label{fig:accueil-locataire}
+\end{figure}
+
+\begin{alertbox}[boxsep=1pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+S'ajoute à ces six étapes un geste non descriptible en code en l'état : \textbf{dix ordres SQL,
+dont six révocations} qui retirent aux comptes applicatifs l'appartenance au rôle privilégié de
+l'instance (annexe~\ref{ann:extraits-realisation}). Un contrôle quotidien vérifie qu'ils tiennent
+toujours : \textbf{il détecte la dérive, il ne la prévient pas}. Le chemin par lequel cette
+frontière se défait n'est pas la restauration elle-même mais la réconciliation qui la suit, et il
+n'a aucune borne temporelle : le raisonnement complet, sa conséquence sur la conception et la
+condition de clôture sont établis en \cref{subsec:isolation-donnees}.
+\end{alertbox}
+
+Le second locataire a été accueilli en recette le 07/08/2026 par instanciation du module
+d'exécution paramétrique : compte de service dédié à deux rôles (client base de données, écriture
+de journaux), base de données et utilisateur séparés, DNS et certificat gérés, six alertes et une
+sonde de disponibilité ; depuis le 08/08/2026, les secrets et l'espace média sont chiffrés par clé
+gérée dédiée. Le contrôle quotidien d'isolation du 19/08/2026 a produit \textbf{six vérifications
+réussies sur six}, la connexion croisée entre bases étant effectivement refusée.
+
+L'isolation obtenue porte sur quatre plans, dont un seul reste partagé, et cette délimitation vaut
+mieux qu'une appréciation globale. \textbf{L'identité et les secrets} sont isolés sans réserve : le
+compte de service de l'application hébergée ne détient \emph{aucun droit sur l'entrepôt de
+supervision}, ce qui lui interdit structurellement de lire les données de sécurité, les siennes
+comprises. \textbf{Les données} sont séparées logiquement --- base et utilisateur dédiés --- sur une
+instance partagée, par les ordres décrits ci-dessus. \textbf{Le réseau est isolé depuis la migration
+du 11 au \dateref} (\cref{subsec:migration-reseau}) : un sous-réseau par locataire, et quatre refus
+nommés --- deux en sortie, deux en entrée --- interdisent chaque sens de traversée et journalisent
+toute tentative sous un nom de règle exploitable comme signal de mouvement latéral. Le connecteur
+unique, point de défaillance commun aux deux locataires, n'existe plus.
+
+\textbf{Le plan qui reste partagé est celui du stockage.} Les deux locataires demeurent sur
+\emph{une seule} instance de base de données et \emph{un seul} jeu de tables de supervision : la
+ségrégation réseau empêche une identité d'atteindre les charges de l'autre locataire, non les deux
+d'atteindre le même serveur, puisque les deux règles qui l'autorisent visent la même adresse ; le
+contrôle reste au niveau du moteur de base. L'isolation des données est conçue, chiffrée et
+ordonnancée en \cref{subsec:isolation-donnees}, et non appliquée --- la raison en est écrite plutôt
+que tue : \textbf{deux migrations d'infrastructure dans la même quinzaine, conduites par un
+opérateur unique, ne seraient pas soutenables}.
+
+\begin{alertbox}[boxsep=1pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+La portée exacte de cette frontière est celle établie en \cref{subsec:reseau-cible} : le sélecteur
+disponible étant l'étiquette réseau et non le compte de service, elle est \textbf{opposable à une
+charge de travail compromise, non à un opérateur capable de déployer}, qui poserait l'étiquette de
+l'autre locataire. Ce second cas relève du resserrement du droit de déploiement
+(\cref{subsec:delegation}), non du réseau ; et la conception ne tient pas au-delà de trois ou
+quatre locataires, les refus croisés croissant comme le carré de leur nombre.
+\end{alertbox}
+
+Le seuil de bascule reste l'\textbf{accueil d'un troisième locataire} (\cref{sec:socle-service}),
+mais son contenu a changé : sur les quatre travaux qu'il commandait, \textbf{deux sont faits} --- la
+sortie par locataire, obtenue par un sous-réseau propre plutôt que par un connecteur dédié, et les
+règles internes ciblées par identité, portées par la convention d'étiquetage ci-dessus. Les
+\textbf{deux autres subsistent} : une clé de locataire obligatoire à l'ingestion et un cloisonnement
+au stockage de l'entrepôt, auxquels s'ajoute l'instance de base dédiée au locataire porteur de donnée
+irréparable (\cref{subsec:isolation-donnees}). Tous relèvent du plan de la donnée, aucun du réseau ;
+le sous-réseau du troisième locataire est déjà créé et adressé, de sorte que son accueil est devenu,
+côté réseau, une ligne de configuration.
+
+L'expérimentation montre la réutilisabilité partielle du module d'exécution sans qualifier le socle
+de produit multi-locataire abouti, et son coût de sécurité se dit symétriquement : le périmètre
+d'usurpation accordé à l'identité de déploiement croît avec chaque application accueillie. Un dernier
+piège appartient à la pire catégorie, celle des défaillances silencieuses : omettre le nouveau
+service dans la liste des sources collectées rend l'application \emph{absente de l'entrepôt sans
+produire la moindre erreur} --- l'application tourne, le socle la sert, et le centre d'opérations ne
+la voit pas.
+
+\subsection{La frontière de responsabilité}
+
+Héberger l'application d'un tiers, fût-il du même groupe, oblige à trancher qui répond de quoi. Le
+\cref{tab:frontiere-resp} énonce cette frontière sur quatorze domaines ; les cases où le socle
+n'apporte rien y figurent au même titre que celles où il apporte tout, et un domaine reste laissé à
+découvert par les deux parties --- c'est le plus utile à lire.
+
+{\scriptsize
+\setlength{\tabcolsep}{3pt}%
+\begin{longtable}{|P{2.90cm}|P{6.25cm}|P{5.65cm}|}
+\caption[Frontière de responsabilité entre le socle et l'éditeur]{Frontière de responsabilité
+entre le socle et l'éditeur de l'application hébergée, état au \dateref.}
+\label{tab:frontiere-resp}\\
+\hline
+\textbf{Domaine} & \textbf{Le socle (hébergeur)} & \textbf{L'éditeur de l'application hébergée} \\
+\hline
+\endfirsthead
+\caption[]{Frontière de responsabilité entre le socle et l'éditeur (suite)} \\
+\hline
+\textbf{Domaine} & \textbf{Le socle (hébergeur)} & \textbf{L'éditeur de l'application hébergée} \\
+\hline
+\endhead
+Noms de domaine, transit, certificats & Intégral : routage par hôte, certificat géré, politique
+de chiffrement, transport strict & --- \\ \hline
+Filtrage applicatif au bord & Intégral : politique unique, limitation de débit, blocage
+géographique, motifs connus & Déclare ses chemins d'authentification à protéger \\ \hline
+Réseau --- périmètre et sortie & Intégral : entrée par le seul répartiteur ; en sortie, refus par
+défaut, cinq autorisations nommées par identité et par port, refus journalisés vers l'entrepôt.
+\emph{Réserve} : les interfaces du fournisseur restent une destination autorisée et non inspectée
+& --- \\ \hline
+Réseau --- segmentation entre locataires & Intégral \emph{au plan réseau} depuis le 25/08/2026 : un
+sous-réseau par locataire, refus croisés nommés et journalisés dans les deux sens, plus de
+connecteur partagé (T20). \emph{Réserves} : opposable à une charge compromise, non à un opérateur
+capable de déployer ; deux charges à sortie managée hors du pare-feu (T14) ; instance de base et
+entrepôt partagés & Déclare ses charges, qui reçoivent l'étiquette de leur compte de service et le
+sous-réseau de leur locataire \\ \hline
+Exécution des conteneurs & Intégral : plateforme, quotas, sondes, mise à l'échelle, révisions,
+entrée restreinte au répartiteur & Image conforme : exécution non privilégiée, port imposé, point
+de santé sans dépendance externe \\ \hline
+Identité machine et secrets & Intégral : compte de service dédié à moindre privilège, usurpation
+ciblée, un secret par usage, clé gérée & Consomme les secrets par référence, ne les journalise
+jamais \\ \hline
+Base de données --- instance, sauvegarde, restauration & Intégral : instance régionale, adresse
+privée, restauration à un instant donné ; clé gérée structurellement inapplicable, le champ étant
+immuable après création. \emph{Réserve} : une restauration par clonage porte les deux bases &
+Cohérence applicative après restauration, données hors base \\ \hline
+Base de données --- schéma et isolation logique & Partiel : vérifie quotidiennement que la
+séparation tient & Applique le durcissement ; geste non descriptible en code à ce jour \\ \hline
+Stockage des médias et chiffrement au repos & Intégral au niveau de l'infrastructure : espace
+dédié, accès public interdit, clé gérée & Sert les objets, gère les accès temporaires, et
+\textbf{répond du chiffrement applicatif des données sensibles}, aujourd'hui absent \\ \hline
+Code applicatif, logique métier, validation des entrées & \textbf{Aucune} sur la logique ; le
+filtrage au bord n'arrête que des charges \emph{connues} & Intégral \\ \hline
+Identités des utilisateurs finaux & \textbf{Aucune} : le second facteur du socle ne couvre que les
+comptes du tableau de bord & Intégral : authentification, autorisation et second facteur des
+utilisateurs de l'application \\ \hline
+Journalisation, détection et notification & Journalisation d'infrastructure, normalisation,
+conservation, R1--R7, rattachement ATT\&CK, enrichissement. \emph{Réserve} : la journalisation
+métier est ingérée sans être exploitée, et l'éditeur n'est pas notifié & Émet ses journaux, déclare
+ses exclusions de règle, conserve son alerte fonctionnelle \\ \hline
+Chaîne de livraison et analyse d'image & Intégral : authentification sans clé, registre unique,
+analyse de vulnérabilité, restitution à l'entrepôt & Corrige les vulnérabilités remontées \\ \hline
+Conformité, base légale, droits des personnes & \textbf{Aucune} : des moyens techniques, jamais
+une gouvernance & Intégral : base légale, information des personnes, exercice des droits, durées de
+conservation \\
+\hline
+\end{longtable}
+}
+
+\begin{keybox}[boxsep=1pt, left=4pt, right=4pt, top=3pt, bottom=3pt]
+Le socle sécurise le bord, le réseau, l'exécution, l'identité machine et la chaîne de livraison.
+La logique métier, les identités des utilisateurs finaux et la conformité restent à la charge de
+l'éditeur. Cette frontière n'est pas un partage de commodité : elle correspond à ce qu'un
+hébergeur peut techniquement contrôler.
+\end{keybox}
+
+Une ligne appelle une lecture particulière, car elle est vide des deux côtés : le chiffrement
+applicatif des données sensibles. Le socle chiffre les supports, il ne chiffre pas les champs, et
+l'éditeur ne l'a pas fait. Ce vide n'est pas un oubli de rédaction ; c'est l'exigence qu'un contrat
+d'hébergement devrait porter en premier, et le mémoire la nomme plutôt que de la répartir
+arbitrairement. La segmentation réseau entre locataires occupait cette même case jusqu'à la
+migration du 11 au \dateref{} (\cref{subsec:migration-reseau}) : elle a basculé côté hébergeur, seul
+domaine du tableau à avoir changé de camp. \textbf{Un domaine sort du découvert lorsqu'une partie
+l'assume dans son code, non lorsqu'un contrat le lui attribue.}
+
+\section{Conduite du projet}
+
+J'ai conduit seul toutes les étapes du projet : audit du dépôt existant, rédaction des exigences,
+conception de l'architecture, écriture des modules d'infrastructure, construction des deux chaînes,
+traduction des règles de détection, mise en place de la couche d'enrichissement et du tableau de
+bord, puis exploitation quotidienne du socle en recette --- celle qui a produit les cinq incidents
+ci-dessous. Un assistant de programmation a servi à produire des squelettes répétitifs, des tests et
+des relectures, jamais à décider d'une option d'architecture ou de sécurité, et aucune production
+assistée n'a été retenue sans exécution : elle est passée par les portes de la chaîne de livraison
+puis par une vérification en conditions réelles. Les deux changements de périmètre significatifs ---
+abandon du quatrième projet cloud d'amorçage (\cref{sec:env-travail}) et fédération d'identité
+simplifiée (\cref{subsec:wif}) --- ont été documentés au moment de leur décision.
+
+\subsection{Difficultés rencontrées}
+\label{subsec:incidents}
+
+Chacun des cinq incidents ci-dessous a produit une correction et une leçon transférable.
+
+\textbf{Indisponibilité liée au démarrage à froid.} Le service d'encodage, réduit à zéro instance
+hors traitement, doit démarrer et charger le modèle lorsqu'une requête arrive après une période
+d'inactivité. Les mesures rapportées début août ont établi une durée moyenne d'environ vingt-sept
+secondes, avec un pic à quatre-vingt-quatorze secondes (\cref{graph:coldstart}) --- un tout autre
+ordre de grandeur que l'estimation initiale, conservée avec la mesure qui la contredit plutôt que
+corrigée discrètement. Le budget de la sonde de disponibilité a été porté au-dessus du pic observé ;
+maintenir une instance active en permanence aurait supprimé le problème, pour un coût
+disproportionné.
+
+\textbf{Blocage collectif par la limitation de débit.} Le mécanisme initial, un seuil unique par
+adresse IP, bloquait des utilisateurs légitimes : le tableau de bord et l'API partageant une
+adresse de sortie commune, l'activité normale de quelques analystes suffisait à franchir le seuil.
+La correction a introduit la limitation à deux niveaux décrite au \cref{ch:conception}, complétée côté
+applicatif par le compteur indexé sur le défi (\cref{subsec:authent-dashboard}).
+
+\textbf{État divergent après une application partiellement échouée.} Le 08/08/2026, une modification
+d'infrastructure appliquée sur la recette s'est terminée en échec partiel : une contrainte du
+fournisseur, non évaluée à la planification, a refusé une partie des changements. L'état local a
+pourtant enregistré une configuration jamais appliquée, si bien que la planification suivante ne
+signalait plus aucune différence alors que l'infrastructure réelle en présentait une. L'écart a été
+détecté par comparaison explicite entre l'état enregistré et les valeurs lues chez le fournisseur,
+puis corrigé par resynchronisation. Le constat à retenir est factuel : un échec partiel peut laisser
+l'état local différent de l'état réel, et la planification suivante hérite de cette erreur.
+
+\textbf{Porte SAST en faux vert.} L'action Semgrep utilisée par la chaîne échouait en interne sur
+une incompatibilité de sévérité, tandis que l'étape apparaissait verte : le 16/08/2026, toutes les
+tâches de la chaîne étaient en succès alors qu'aucune règle n'avait été évaluée malgré la porte
+annoncée. Le 19/08/2026, l'action a été remplacée par un appel direct à l'outil en ligne de
+commande, avec propagation du code de sortie ; la première exécution réelle, numéro 32264602112, a
+analysé 439 fichiers avec 612 règles, produit 74 constats et terminé avec le code 1. La chaîne en
+échec prouve ici le rétablissement du contrôle ; elle ne prouve pas la remédiation des 74 constats,
+dont le triage reste nécessaire.
+
+\begin{figure}[!htbp]
+\centering
+\IfFileExists{figures/K23.png}{%
+  \setlength{\fboxrule}{0.4pt}\setlength{\fboxsep}{0pt}%
+  \fcolorbox{black!30}{white}{\includegraphics[width=0.86\textwidth]{figures/K23.png}}%
+}{%
+  \begin{minipage}{0.86\textwidth}
+  \begin{extraitconf}[breakable=false, fontupper=\footnotesize,
+      title={Capture K23 : spécification de prise}]
+  \textbf{Vue :} historique des exécutions de la chaîne de livraison applicative, filtré sur le flux
+  qui porte la porte d'analyse statique, cadré sur deux lignes voisines et l'en-tête de colonnes.
+  \textbf{Dates portées par la capture :} 16/08/2026 et 19/08/2026, preuve d'archive.\par\smallskip
+  \textbf{Contenu probant :} la seule chose que ce chapitre ne peut pas écrire ---
+  \emph{qu'une porte inerte a l'air de fonctionner}. Ligne du 16/08 : toutes les tâches en succès,
+  alors qu'aucune règle n'a été évaluée. Ligne du 19/08 : la même chaîne en échec après remise en
+  service, exécution 32264602112.\par\smallskip
+  \textbf{Masquage :} nom du dépôt et de l'organisation, courriels des auteurs de
+  \emph{commit}.
+  \end{extraitconf}
+  \end{minipage}%
+}
+\caption[Porte d'analyse statique : le faux vert du 16/08 et l'échec du 19/08]{Historique des
+exécutions de la chaîne de livraison applicative. À y lire, sur deux lignes voisines : le
+16/08/2026, toutes les tâches en succès alors que la porte d'analyse statique n'évaluait aucune
+règle ; le 19/08/2026, la même chaîne en échec après remise en service. Le vert de la première
+ligne est l'objet de la preuve : c'est lui, et non un journal, qui montre qu'un contrôle inerte est
+indiscernable d'un contrôle qui passe.}
+\label{fig:capture-K23}
+\end{figure}
+
+\textbf{Une règle de sortie qui n'aurait rien gouverné.} Le refus par défaut en sortie figurait au
+plan de correction bien avant d'être posé, et la lecture croisée de la topologie et du paramétrage
+des charges a montré qu'il aurait été \emph{sans effet}, pour la raison analysée en
+\cref{subsec:reseau-cible} : le trafic ne passait pas là où la règle se serait appliquée. La
+correction a donc consisté à déplacer d'abord le trafic, puis à l'observer sept jours, et à
+n'interdire qu'ensuite (\cref{subsec:migration-reseau}). La leçon est transférable telle quelle :
+\textbf{un contrôle qui ne voit pas passer le trafic n'est pas un contrôle, c'est une
+déclaration} --- avant de mesurer l'efficacité d'une règle, il faut établir qu'elle est sur le
+chemin.
+
+\subsection{Planning de travail}
+\label{sec:planning-travail}
+
+La période de stage s'étend du \datedebutstage{} au \datefinstage{}, et la \cref{fig:gantt} la couvre
+intégralement. Faute de journal quotidien avant le 29/07/2026, ses barres n'affichent pas une fausse
+précision au jour près ; les losanges M1 à M7 renvoient à des jalons datés par une trace
+technique.
+
+% Placement [p] : la norme ESPRIT demande que le planning occupe une page
+% complète, en fin de description du travail. Le spécificateur de page de
+% flottant est ce qui le garantit, sans laisser de page blanche avant lui.
+\begin{figure}[p]
+\centering
+\begin{tikzpicture}[x=0.0625cm, y=0.72cm, font=\footnotesize,
+  phase/.style={anchor=east, xshift=-4mm, text width=3.15cm, align=right,
+    font=\scriptsize},
+  % Trois teintes seulement, correspondant aux trois familles de phases :
+  % cadrage, construction, validation et cloture. Le degrade code une famille.
+  analyse/.style={draw=menalencre, thick, rounded corners=1pt, fill=menalplanA},
+  conception/.style={draw=menalencre, thick, rounded corners=1pt, fill=menalplanA},
+  realisation/.style={draw=menalencre, thick, rounded corners=1pt, fill=menalplanB},
+  validation/.style={draw=menalencre, thick, rounded corners=1pt, fill=menalplanC},
+  documentation/.style={draw=menalencre, thick, rounded corners=1pt, fill=menalplanC},
+  mois/.style={font=\scriptsize\bfseries},
+  jalon/.style={diamond, aspect=1.1, draw=menalencre, fill=menalplanC, thick,
+    inner sep=0pt, minimum width=2.4mm, minimum height=2.4mm},
+  repere/.style={anchor=north, font=\scriptsize}
+]
+  % En-tête mensuel : abscisse exprimée en jours depuis le 03/03/2026.
+  % Les deux derniers mois sont fusionnés en une cellule pour éviter que
+  % « sept. » ne déborde d'une cellule de six jours.
+  \foreach \a/\b/\nom in {0/29/mars,29/59/avril,59/90/mai,90/120/juin,
+    120/151/juillet,151/188/{août -- sept.}}{
+    \draw[fill=black!5, draw=black!35] (\a,8.75) rectangle (\b,9.35);
+    \node[mois] at ({(\a+\b)/2},9.05) {\nom};
+    \draw[black!18] (\a,0.55) -- (\a,8.75);
+  }
+  \draw[black!18] (188,0.55) -- (188,8.75);
+
+  % Les sept verticales de jalon ont ete retirees : sept traits coupant huit
+  % barres formaient une trame parasite sans rien ajouter, les jalons etant
+  % portes par les losanges de l'axe et dates un a un dans la legende.
+
+  \node[phase] at (0,8.15) {PH0 --- Immersion\\et cadrage};
+  \draw[analyse] (0,7.83) rectangle (24,8.47);
+  \node[font=\scriptsize, anchor=west] at (26,8.15) {03/03 -- 27/03};
+
+  \node[phase] at (0,7.15) {PH1 --- Étude\\de l'existant};
+  \draw[analyse] (13,6.83) rectangle (148,7.47);
+  \node[font=\scriptsize] at (80.5,7.15) {analyse progressive jusqu'à l'audit figé};
+
+  \node[phase] at (0,6.15) {PH2 --- Risques\\et exigences};
+  \draw[conception] (59,5.83) rectangle (150,6.47);
+  \node[font=\scriptsize] at (104.5,6.15) {mai -- juillet};
+
+  \node[phase] at (0,5.15) {PH3 --- Architecture\\Zero Trust};
+  \draw[conception] (90,4.83) rectangle (153,5.47);
+  \node[font=\scriptsize] at (121.5,5.15) {juin -- début août};
+
+  \node[phase] at (0,4.15) {PH4 --- IaC et\\chaînes de livraison};
+  \draw[realisation] (120,3.83) rectangle (168,4.47);
+  \node[font=\scriptsize] at (144,4.15) {juillet -- 18/08};
+
+  \node[phase] at (0,3.15) {PH5 --- Détection\\et enrichissement};
+  \draw[realisation] (139,2.83) rectangle (175,3.47);
+  \node[font=\scriptsize] at (157,3.15) {20/07 -- 25/08};
+
+  \node[phase] at (0,2.15) {PH6 --- Validation\\et corrections};
+  \draw[validation] (153,1.83) rectangle (182,2.47);
+  \node[font=\scriptsize] at (167.5,2.15) {03/08 -- 31/08};
+
+  \node[phase] at (0,1.15) {PH7 --- Rapport,\\transfert et clôture};
+  \draw[documentation] (168,0.83) rectangle (188,1.47);
+  \node[font=\scriptsize, anchor=east] at (166,1.15) {18/08 -- 07/09};
+
+  % Jalons exactement datés : losanges posés sur l'axe, sans étiquette en
+  % place — les jalons couvrent neuf jours et sont regroupés sous l'axe,
+  % chaque date étant donnée dans la légende ci-dessous.
+  \foreach \x in {148,151,153,157,169,175,188}{\node[jalon] at (\x,0.55) {};}
+  \node[repere] at (152,0.28) {M1--M4};
+  \node[repere] at (172,0.28) {M5--M6};
+  \node[repere, anchor=north east] at (190,0.28) {M7};
+\end{tikzpicture}
+
+\vspace{4pt}
+\begin{minipage}[t]{0.48\textwidth}\scriptsize
+\textbf{M1 --- 29/07 :} audit statique de l'existant figé.\\
+\textbf{M2 --- 01/08 :} export int8 rejeté, fp32 conservé.\\
+\textbf{M3 --- 03/08 :} restauration chronométrée.\\
+\textbf{M4 --- 07/08 :} accueil du locataire ELSON.
+\end{minipage}\hfill
+\begin{minipage}[t]{0.48\textwidth}\scriptsize
+\textbf{M5 --- 19/08 :} correctifs et scénario de bout en bout.\\
+\textbf{M6 --- 25/08 :} date de référence et consolidation des preuves.\\
+\textbf{M7 --- 07/09 :} fin du stage et transfert des livrables.
+\end{minipage}
+\caption[Planning consolidé du stage, du \datedebutstage{} au \datefinstage{}]{Planning consolidé
+du stage, du \datedebutstage{} au \datefinstage{}. Les trois teintes de barre distinguent le
+cadrage (PH0--PH3), la construction (PH4--PH5) et la validation et la clôture (PH6--PH7). Les
+barres sont une reconstruction macroscopique ; les losanges signalent les jalons exactement datés,
+dont la légende donne la date une à une.}
+\label{fig:gantt}
+\end{figure}
+
+
+\section*{Conclusion du chapitre}
+\addcontentsline{toc}{section}{Conclusion du chapitre}
+
+L'infrastructure est décrite en code, et la frontière de ce principe est énoncée par six exceptions
+nommées plutôt que par une revendication d'exhaustivité. La chaîne de livraison compte trois portes
+bloquantes, cinq familles de contrôles réalisées et trois arbitrages assortis de leur condition de
+réévaluation ; une seule famille voit son résultat quitter la chaîne, ce qui rend la boucle F6
+possible. La chaîne de provisionnement s'arrête volontairement avant l'application, dont
+l'automatisation exigerait une concentration de privilège que le \cref{ch:conception} refuse, et le tableau de
+bord ne détient aucune autorisation propre. L'accueil du second locataire isole l'identité, les
+secrets, les données et, depuis la migration du 11 au \dateref, le réseau ; le stockage reste
+partagé, faute qu'une seconde migration soit soutenable dans la même quinzaine par un opérateur
+unique. Deux limites restent assumées : deux charges conservent une sortie managée hors du pare-feu
+(T14, non conforme), et \textbf{l'enrichissement n'alimente pas le score d'incident}.

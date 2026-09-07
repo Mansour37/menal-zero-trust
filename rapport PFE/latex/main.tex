@@ -1,0 +1,107 @@
+% =============================================================
+% main.tex — Assemblage du rapport PFE MENAL
+% Compilation : XeLaTeX (obligatoire, pour Times New Roman) puis
+% Biber, puis XeLaTeX deux fois de plus (voir README.md).
+% Structure conforme à plan/PLAN_DETAILLE_DEFINITIF.md (40 pages de
+% corps hors annexes) et plan/NORME_ESPRIT_parametres_et_conformite.md.
+% =============================================================
+\documentclass[12pt,twoside,openany]{report}
+
+% --- Configuration ---
+\input{config/packages}
+\input{config/formatting}
+\input{config/commands}
+\input{config/metadata}
+
+\addbibresource{bibliography/references.bib}
+
+\begin{document}
+
+\raggedbottom
+
+% ===================== PAGE DE GARDE ======================
+\input{frontmatter/cover}
+
+% ===================== PAGES LIMINAIRES ====================
+\pagenumbering{roman}
+
+% La dédicace est facultative ; elle est ici rédigée, donc imprimée dans
+% les deux versions (auparavant réservée au brouillon tant qu'elle était
+% vide, pour ne pas laisser une page blanche à la remise).
+\input{frontmatter/dedicace}
+\input{frontmatter/remerciements}
+\input{frontmatter/resume}
+\input{frontmatter/abstract}
+\input{frontmatter/acronyms}
+\input{frontmatter/conventions}
+
+% Les trois listes sont composées à interligne simple : l'interligne 1,15 de la
+% norme porte sur le texte courant, non sur des listes de renvois. Sans ce
+% réglage, la table des matières déborde d'une ligne sur une troisième page.
+\begingroup
+\small
+\setstretch{1.0}
+\setlength{\parskip}{0pt}
+\tableofcontents
+% Les deux listes comptent 30 figures et 56 tableaux. Le blanc de 10 pt que
+% report.cls insère entre les groupes de chapitre (huit groupes, soit sept
+% lignes de blanc à lui seul) est ramené à 2 pt : la liste des tableaux passe
+% ainsi de dix lignes débordantes à trois. Elle reste sur deux pages ; la
+% réduire à une exigerait de descendre à 8 pt, ce qui a été écarté.
+\let\origaddvspace\addvspace
+\renewcommand{\addvspace}[1]{\origaddvspace{2pt}}
+\listoffigures
+\listoftables
+\let\addvspace\origaddvspace
+\endgroup
+
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% ===================== CORPS DU RAPPORT =====================
+% Structure à six chapitres, cf. plan/PLAN_DETAILLE_DEFINITIF.md.
+% Chaque chapitre : introduction, développement, conclusion de
+% transition ; sous-titre italique centré hors numérotation.
+
+\input{chapters/final/intro_generale}
+\input{chapters/final/ch1_cadre_existant}
+\input{chapters/final/ch2_etat_art}
+\input{chapters/final/ch3_besoins_menaces}
+\input{chapters/final/ch4_conception}
+\input{chapters/final/ch5_realisation}
+\input{chapters/final/ch6_validation}
+\input{chapters/final/conclusion_generale}
+
+% ===================== BIBLIOGRAPHIE =====================
+% Section unique, intitulé imposé (norme ESPRIT §E.1).
+\printbibliography[title=Bibliographie/Netographie,heading=bibintoc]
+
+% ===================== ANNEXES =====================
+% Cinq annexes A à E, chacune appelée depuis le corps (cf. plan détaillé
+% §VI). Le document ne compte pas d'annexe G ni d'annexe H : les deux
+% fichiers correspondants restent dans appendices/ avec, en tête, la
+% raison écrite de leur mise hors document. Ne pas les rétablir sans
+% rouvrir le budget de pages des annexes (cf. RAPPORT_EXEC_ANNEXES.md).
+\appendix
+\renewcommand{\thechapter}{\Alph{chapter}}
+
+\input{appendices/annexe_a_etudes_comparatives}
+\input{appendices/annexe_b_extraits_realisation}
+\input{appendices/annexe_c_modele_menaces}
+\input{appendices/annexe_d_conception_detaillee}
+\input{appendices/annexe_e_protocoles_tests}
+% L'ex-annexe F est devenue la derniere section de l'annexe E : le jeu
+% d'evaluation est une piece du dossier de validation, pas une annexe a part
+% entiere (plan de restructuration, budget des annexes).
+\input{appendices/annexe_f_evaluation_semantique}
+
+% ===================== FORMULAIRE DE DÉPÔT =====================
+% Placé en toute dernière page à la demande explicite de l'auteur.
+% NB : le modèle ESPRIT (rapport PFE/rapport inspiree/Page Garde
+% Rapport Stage Fr.docx) demande dans son propre texte d'insérer ce
+% formulaire juste après la page de garde, pas en fin de document —
+% écart assumé, à signaler à l'encadrant si besoin.
+\input{frontmatter/formulaire_depot}
+
+\end{document}

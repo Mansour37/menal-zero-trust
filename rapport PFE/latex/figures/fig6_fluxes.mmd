@@ -1,0 +1,83 @@
+---
+title: "Figure 6 — Vue dynamique : les sept flux F1 à F7"
+---
+graph TB
+    %% Actors
+    USER["👤 Utilisateurs\nexternes"]
+    ANALYST["🔍 Analyste\nsécurité"]
+    ADMIN["⚙️ Administrateur"]
+    DEV["💻 Développeur"]
+    CI["🤖 Chaîne CI"]
+    AUTO["🔄 Tâches\nautomatisées"]
+
+    %% Layers
+    subgraph EDGE["L1 — EDGE"]
+        ARMOR["Cloud Armor\nWAF + Rate Limit"]
+    end
+
+    subgraph WL["L3 — Charges de travail"]
+        APP["app-elson"]
+        API["api-platform"]
+        DASH["dash-secu"]
+    end
+
+    subgraph NET["L4 — Réseau privé"]
+        VPC["VPC · PSA · NAT"]
+    end
+
+    subgraph ML["L6 — ML / Enrichissement"]
+        ML_EMB["ml-embed"]
+        EJ["enrich-job"]
+    end
+
+    subgraph DATA["L5 — Données"]
+        SQL["Cloud SQL"]
+        BQ["BigQuery\n(SIEM)"]
+    end
+
+    subgraph OBS["L7 — Observabilité"]
+        LOG["Cloud Logging"]
+    end
+
+    %% F1: User access
+    USER -->|"F1"| ARMOR
+    ANALYST -->|"F1"| DASH
+    ARMOR --> APP
+    ARMOR --> DASH
+
+    %% F2: Data flow
+    APP -->|"F2"| VPC
+    API -->|"F2"| VPC
+    VPC --> SQL
+
+    %% F3: CI/CD deploy
+    DEV -->|"F3"| CI
+    CI -->|"F3"| APP
+    CI -->|"F3"| ML_EMB
+
+    %% F4: Log collection
+    ARMOR -.->|"F4"| LOG
+    APP -.->|"F4"| LOG
+    VPC -.->|"F4"| LOG
+    LOG --> BQ
+
+    %% F5: Detection + Enrichment
+    AUTO -->|"F5"| EJ
+    EJ -->|"F5"| ML_EMB
+    EJ -->|"F5"| BQ
+    BQ -->|"F5"| SQL
+
+    %% F6: Feedback loop
+    BQ -->|"F6"| DASH
+    DASH -.->|"F6"| CI
+
+    %% F7: Infrastructure
+    ADMIN -->|"F7"| CI
+    CI -->|"F7"| VPC
+
+    %% Styling
+    classDef actor fill:#F3E5F5,stroke:#6A1B9A,color:#4A148C
+    classDef layer fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
+
+    class USER,ANALYST,ADMIN,DEV,CI,AUTO actor
+    class EDGE,WL,NET,ML,DATA,OBS layer

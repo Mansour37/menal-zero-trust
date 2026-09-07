@@ -1,0 +1,64 @@
+% =============================================================
+% acronyms.tex — Liste des abréviations
+% Uniquement des sigles réellement employés dans les documents
+% projet MENAL (HLD/LLD/méthodologie) ou introduits au chapitre 2.
+% Compléter au fil de la rédaction — ne pas ajouter un sigle non
+% utilisé ailleurs dans le rapport.
+% =============================================================
+\chapter*{Liste des acronymes}
+\addcontentsline{toc}{chapter}{Liste des acronymes}
+\thispagestyle{plain}
+
+\begin{longtable}{|P{3cm}|P{12.4cm}|}
+\hline
+\textbf{Sigle} & \textbf{Signification} \\
+\hline
+\endhead
+ADR & Architecture Decision Record --- registre de décisions d'architecture \\ \hline
+ALB & Application Load Balancer \\ \hline
+API & Application Programming Interface \\ \hline
+BQ & BigQuery (service d'entrepôt de données GCP) \\ \hline
+CI/CD & Continuous Integration / Continuous Deployment \\ \hline
+CIS & Center for Internet Security --- référentiel de configuration sécurisée \\ \hline
+CMEK & Customer-Managed Encryption Keys \\ \hline
+CVE & Common Vulnerabilities and Exposures \\ \hline
+DevSecOps & Development, Security and Operations \\ \hline
+DNS & Domain Name System \\ \hline
+EBIOS RM & Expression des besoins et identification des objectifs de sécurité --- Risk Manager, méthode d'analyse de risque orientée métier \\ \hline
+GCP & Google Cloud Platform \\ \hline
+GKE & Google Kubernetes Engine \\ \hline
+HA & Haute disponibilité (High Availability) \\ \hline
+IaC & Infrastructure as Code \\ \hline
+IAM & Identity and Access Management \\ \hline
+JWT & JSON Web Token \\ \hline
+KMS & Key Management Service \\ \hline
+NAT & Network Address Translation \\ \hline
+NIST & National Institute of Standards and Technology \\ \hline
+OIDC & OpenID Connect \\ \hline
+ONNX & Open Neural Network Exchange \\ \hline
+OWASP & Open Worldwide Application Security Project \\ \hline
+PITR & Point-In-Time Recovery \\ \hline
+PSA & Private Service Access \\ \hline
+RBAC & Role-Based Access Control \\ \hline
+RGPD & Règlement général sur la protection des données \\ \hline
+SA & Service Account (compte de service) \\ \hline
+SAST & Static Application Security Testing \\ \hline
+SCA & Software Composition Analysis --- analyse de composition logicielle \\ \hline
+SIEM & Security Information and Event Management \\ \hline
+SLO & Service Level Objective \\ \hline
+SLSA & Supply-chain Levels for Software Artifacts --- cadre de provenance \\ \hline
+STRIDE & Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege --- méthode de dérivation de menaces par flux \\ \hline
+TLS & Transport Layer Security \\ \hline
+VPC & Virtual Private Cloud \\ \hline
+VPC-SC & VPC Service Controls \\ \hline
+WAF & Web Application Firewall \\ \hline
+WIF & Workload Identity Federation \\ \hline
+ZTA & Zero Trust Architecture \\
+\hline
+\end{longtable}
+% Le tableau des acronymes est hors numérotation (norme ESPRIT, C26).
+% longtable incrémente le compteur "table" même sans \caption : on le rend.
+\addtocounter{table}{-1}
+
+\textit{Les familles d'identifiants employées dans le corps du mémoire --- exigences, flux,
+décisions, écarts, règles de détection, tests --- sont récapitulées à la page suivante.}

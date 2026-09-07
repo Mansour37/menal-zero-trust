@@ -1,0 +1,64 @@
+\babel@toc {french}{}\relax 
+\babel@toc {english}{}\relax 
+\babel@toc {french}{}\relax 
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {1}{\ignorespaces Objectifs et critères de succès du projet.}}{8}{table.1.1}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2}{\ignorespaces Approches d'association alerte $\rightarrow $ technique ATT\&CK}}{15}{table.2.2}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3}{\ignorespaces Acteurs légitimes et hostiles du modèle}}{19}{table.3.3}%
+\contentsline {table}{\numberline {4}{\ignorespaces Besoins fonctionnels}}{20}{table.3.4}%
+\contentsline {table}{\numberline {5}{\ignorespaces Besoins non fonctionnels}}{21}{table.3.5}%
+\contentsline {table}{\numberline {6}{\ignorespaces Synthèse valeur métier, biens supports et sources de risque}}{22}{table.3.6}%
+\contentsline {table}{\numberline {7}{\ignorespaces Matrice de traçabilité menace $\rightarrow $ exigence $\rightarrow $ contrôle $\rightarrow $ test}}{24}{table.3.7}%
+\contentsline {table}{\numberline {8}{\ignorespaces Rattachement des exigences aux référentiels}}{26}{table.3.8}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {9}{\ignorespaces Chemin réseau effectif des flux, reconstitué depuis le code d'infrastructure.}}{29}{table.caption.17}%
+\contentsline {table}{\numberline {10}{\ignorespaces Les sept flux de l'architecture.}}{30}{table.caption.18}%
+\contentsline {table}{\numberline {11}{\ignorespaces Matrice des identités et des droits.}}{33}{table.caption.21}%
+\contentsline {table}{\numberline {12}{\ignorespaces Registre synthétique des décisions d'architecture (justification complète en annexe~\ref {ann:conception-detaillee}).}}{35}{table.caption.23}%
+\contentsline {table}{\numberline {13}{\ignorespaces Écarts entre conception et implémentation.}}{36}{table.caption.24}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {14}{\ignorespaces Modèle de données de l'entrepôt de supervision : dix tables, un écrivain chacune}}{44}{table.caption.31}%
+\contentsline {table}{\numberline {15}{\ignorespaces État d'avancement de la couche d'enrichissement sémantique}}{46}{table.caption.33}%
+\contentsline {table}{\numberline {16}{\ignorespaces Caractérisation quantifiée des deux logiciels écrits, dépôt vérifié le 25/08/2026.}}{49}{table.caption.36}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {17}{\ignorespaces Synthèse de la campagne de vingt tests}}{56}{table.6.17}%
+\contentsline {table}{\numberline {18}{\ignorespaces Causes connues de non-couverture}}{60}{table.caption.48}%
+\contentsline {table}{\numberline {19}{\ignorespaces Restauration de la base de données --- test réel exécuté le 3 août 2026}}{64}{table.caption.52}%
+\contentsline {table}{\numberline {20}{\ignorespaces Constats de coût datés, statut à la date de la dernière mesure}}{65}{table.caption.53}%
+\contentsline {table}{\numberline {21}{\ignorespaces Postes de coût et dimensionnement déclaré (reconstitution, non facturation)}}{66}{table.caption.54}%
+\contentsline {table}{\numberline {22}{\ignorespaces Correspondance entre les preuves du scénario et les sections du rapport}}{67}{table.caption.57}%
+\contentsline {table}{\numberline {23}{\ignorespaces Limites du dispositif de mesure et de l'évaluation sémantique}}{68}{table.caption.58}%
+\contentsline {table}{\numberline {24}{\ignorespaces Réponse aux six objectifs mesurables du projet}}{69}{table.6.24}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {25}{\ignorespaces Grille complète des 41 critères de préparation au déploiement, par catégorie.}}{76}{table.caption.61}%
+\contentsline {table}{\numberline {26}{\ignorespaces Positionnement complet des trois modèles sur quinze critères.}}{76}{table.A.26}%
+\contentsline {table}{\numberline {27}{\ignorespaces Les sept principes du NIST SP 800-207 et leur traduction pour le projet}}{78}{table.caption.62}%
+\contentsline {table}{\numberline {28}{\ignorespaces Rôle et limite des référentiels retenus}}{78}{table.caption.63}%
+\contentsline {table}{\numberline {29}{\ignorespaces Familles de contrôles automatisés de sécurité}}{79}{table.caption.64}%
+\contentsline {table}{\numberline {30}{\ignorespaces Comparaison détaillée des cinq options de supervision}}{79}{table.A.30}%
+\contentsline {table}{\numberline {31}{\ignorespaces Comparaison des trois modes d'exécution étudiés}}{80}{table.caption.65}%
+\contentsline {table}{\numberline {32}{\ignorespaces Comparaison des six options d'hébergement sur dix critères}}{80}{table.caption.66}%
+\contentsline {table}{\numberline {33}{\ignorespaces Briques techniques retenues, critère décisif et prix payé}}{81}{table.A.33}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {34}{\ignorespaces Sécurité du fichier d'état d'infrastructure}}{85}{table.caption.67}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {35}{\ignorespaces Échelle de gravité}}{86}{table.caption.68}%
+\contentsline {table}{\numberline {36}{\ignorespaces Échelle de vraisemblance}}{87}{table.caption.69}%
+\contentsline {table}{\numberline {37}{\ignorespaces Scénarios opérationnels}}{87}{table.C.37}%
+\contentsline {table}{\numberline {38}{\ignorespaces Cartographie du risque avant traitement}}{89}{table.caption.70}%
+\contentsline {table}{\numberline {39}{\ignorespaces Décisions de traitement du risque}}{89}{table.caption.71}%
+\contentsline {table}{\numberline {40}{\ignorespaces Formulation complète des exigences de sécurité}}{90}{table.C.40}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {41}{\ignorespaces Topologie et règles de filtrage réellement déclarées.}}{93}{table.caption.72}%
+\contentsline {table}{\numberline {42}{\ignorespaces Prise en charge des exigences par la conception et état de validation}}{98}{table.D.42}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {43}{\ignorespaces Conditions de mesure de la campagne}}{99}{table.caption.73}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {44}{\ignorespaces Spécification du jeu d'évaluation}}{103}{table.caption.74}%
+\contentsline {table}{\numberline {45}{\ignorespaces Méthodes de rattachement comparées}}{104}{table.caption.75}%
+\contentsline {table}{\numberline {46}{\ignorespaces Résultats détaillés par méthode --- cellules non mesurées à ce jour, cf. note}}{104}{table.caption.76}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {47}{\ignorespaces Captures à produire au rejeu des protocoles}}{108}{table.H.47}%

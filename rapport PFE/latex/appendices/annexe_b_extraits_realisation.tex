@@ -1,0 +1,356 @@
+% =============================================================
+% Annexe B — Extraits techniques vérifiés dans le dépôt
+% =============================================================
+\chapter{Extraits techniques de la réalisation}
+\label{ann:extraits-realisation}
+
+Cette annexe rassemble les extraits de code que le \cref{ch:realisation} commente sans les
+reproduire : courts, localisés, issus du dépôt vérifié le \dateref, et sans aucun secret ni
+identifiant de projet réel.
+
+\section{Dépôt d'infrastructure et protection des ressources}
+
+\begin{extraitconf}[boxsep=1pt, left=3pt, right=3pt, top=2pt, bottom=2pt]
+terraform/\\
+├── environments/\\
+│\ \ \ ├── dev/\ \ \ \ \ \ \ \ \ \ \ \ configuration appliquée\\
+│\ \ \ ├── staging/\ \ \ \ \ \ \ configuration appliquée, second locataire\\
+│\ \ \ └── prod/\ \ \ \ \ \ \ \ \ \ \ cible vide (\texttt{.gitkeep})\\
+└── modules/\\
+\ \ \ \ ├── app-service, cloud-run, dashboard, workflow\\
+\ \ \ \ ├── vpc, load-balancer, cloud-sql, artifact-registry\\
+\ \ \ \ ├── iam, kms, audit, logging, monitoring\\
+\ \ \ \ └── bigquery, detection, ml-pipeline
+\end{extraitconf}
+
+Le découpage transpose les niveaux L1--L7 en modules techniques sans correspondance bijective,
+plusieurs contrôles traversant plusieurs modules : \texttt{app-service} crée les ressources propres
+à une application, \texttt{iam} porte la fédération, \texttt{bigquery} et \texttt{detection} les
+données et les règles, \texttt{ml-pipeline} l'encodage et l'enrichissement. L'état que ce dépôt
+produit cartographie le système entier, et c'est à ce titre une donnée sensible : le
+\cref{tab:ann-securite-etat} récapitule les cinq protections qui lui sont appliquées.
+
+\begin{table}[!htbp]
+\caption{Sécurité du fichier d'état d'infrastructure}
+\label{tab:ann-securite-etat}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{|P{2.7cm}|P{5.9cm}|P{6.4cm}|}
+\hline
+\textbf{Élément} & \textbf{Mise en œuvre} & \textbf{Raison} \\
+\hline
+Emplacement & Stockage objet dédié, versionné et non public & L'état cartographie le système \\ \hline
+Séparation & Un préfixe d'état par environnement & Limiter le rayon d'impact d'une erreur \\ \hline
+Accès & Identité de la chaîne d'infrastructure et administration & Moindre privilège \\ \hline
+Verrouillage & Verrou natif du stockage & Éviter deux applications concurrentes \\ \hline
+Secrets & Conteneurs créés en code ; valeurs injectées séparément & Éviter les valeurs sensibles dans l'état \\
+\hline
+\end{tabular}
+\end{table}
+
+Ces cinq mesures réduisent l'exposition de l'état ; leur résistance à une identité non autorisée
+est éprouvée par le protocole T17, conforme le 20/08/2026 et rejoué à la cadence du plan de
+validation continue (\cref{sec:plan-validation}).
+
+
+\textbf{Prévention de l'accès public au média.} L'extrait suivant provient de
+\texttt{terraform/modules/app-service/main.tf}, lignes 133--143. La protection est imposée sur la
+ressource ; elle ne dépend pas d'une politique d'organisation.
+
+\begin{extraitconf}[boxsep=1pt, left=3pt, right=3pt, top=2pt, bottom=2pt]
+resource "google\_storage\_bucket" "media" \{\\
+\ \ name\ \ \ \ \ = "\$\{var.project\_id\}-\$\{var.app\_name\}-media"\\
+\ \ project\ \ = var.project\_id\\[0.4em]
+\ \ uniform\_bucket\_level\_access = true\\
+\ \ public\_access\_prevention\ \ \ = "enforced"\\
+\}
+\end{extraitconf}
+
+\section{Détection, livraison et fédération d'identité}
+
+\textbf{Fenêtre et cadence de la règle R2.} L'extrait de
+\texttt{terraform/\allowbreak modules/\allowbreak detection/\allowbreak main.tf}, lignes
+103--114, montre la fenêtre SQL utilisée pour
+compter les refus du filtrage applicatif.
+
+\begin{extraitconf}[boxsep=1pt, left=3pt, right=3pt, top=2pt, bottom=2pt]
+SELECT\\
+\ \ JSON\_VALUE(json\_payload, "\$.httpRequest.remoteIp") AS src\_ip,\\
+\ \ resource\_name AS service, COUNT(*) AS waf\_blocks\\
+FROM \textasciigrave\$\{local.project\}.\$\{local.dataset\}.raw\_logs\textasciigrave\\
+WHERE timestamp >= TIMESTAMP\_SUB(CURRENT\_TIMESTAMP(),\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ INTERVAL 15 MINUTE)\\
+\ \ AND log\_source = "armor"\\
+\ \ AND UPPER(JSON\_VALUE(json\_payload,\\
+\ \ \ \ \ \ \ \ \ \ "\$.enforcedSecurityPolicy.outcome")) = "DENY"\\
+GROUP BY src\_ip, service\\
+WHERE f.waf\_blocks > 10 AND f.src\_ip IS NOT NULL
+\end{extraitconf}
+
+La ressource de requête planifiée fixe séparément \texttt{schedule = "every 5 minutes"} à la
+ligne 410 : la fenêtre de quinze minutes n'est donc pas la cadence d'exécution.
+
+\textbf{Déclenchement et permissions de la chaîne de livraison.} Le déclenchement filtré par
+chemins et la déclaration des permissions figurent en tête du descripteur de la chaîne, et portent
+deux décisions commentées au \cref{ch:realisation}.
+
+\begin{extraitconf}[boxsep=1pt, left=3pt, right=3pt, top=2pt, bottom=2pt]
+on:\\
+\ \ push:\\
+\ \ \ \ branches: [main]\\
+\ \ \ \ paths: ["api/**", "dashboard/**", "frontend/**",\\
+\ \ \ \ \ \ \ \ \ \ \ \ "scripts/**", "tests/**",\\
+\ \ \ \ \ \ \ \ \ \ \ \ ".github/workflows/ci.yml"]\\
+\ \ pull\_request:\\
+\ \ \ \ branches: [main]\\[0.4em]
+permissions:\\
+\ \ contents: read\ \ \ \ \ \ \# lecture du depot uniquement\\
+\ \ id-token: write\ \ \ \ \ \# federation d'identite : aucune cle
+\end{extraitconf}
+
+\textbf{Condition d'attribut de la fédération d'identité.} L'extrait suivant provient du module
+\texttt{iam}. La condition porte \emph{à la fois} sur le dépôt et sur la référence de branche :
+sans le second membre, toute branche du dépôt obtenait l'identité de déploiement
+(\cref{subsec:wif}).
+
+\begin{extraitconf}[boxsep=1pt, left=3pt, right=3pt, top=2pt, bottom=2pt]
+attribute\_mapping = \{\\
+\ \ "google.subject"\ \ \ \ \ \ \ = "assertion.sub"\\
+\ \ "attribute.repository" = "assertion.repository"\\
+\ \ "attribute.ref"\ \ \ \ \ \ \ \ = "assertion.ref"\\
+\}\\[0.4em]
+attribute\_condition = <<-EOT\\
+\ \ assertion.repository == "\$\{var.github\_owner\}/\$\{var.repo\}"\\
+\ \ \&\& assertion.ref == "\$\{var.allowed\_deploy\_ref\}"\\
+EOT
+\end{extraitconf}
+
+\textbf{Discipline des exclusions d'analyse statique.} L'analyse statique est invoquée par appel
+direct à l'outil, avec une version épinglée et une propagation fidèle du code de sortie. Les sept
+exclusions sont nominatives et chacune porte, dans le descripteur, une justification ancrée sur un
+fichier et une ligne. L'élision en tête d'identifiant remplace le préfixe d'espace de noms :
+\texttt{...path-join-resolve-traversal} vaut pour
+\texttt{javascript.\allowbreak lang.\allowbreak security.\allowbreak audit.\allowbreak
+path-traversal.\allowbreak path-join-resolve-traversal}.
+
+\begin{extraitconf}[boxsep=1pt, left=3pt, right=3pt, top=2pt, bottom=2pt]
+pip install semgrep==1.173.0\\
+semgrep scan --config=p/default --error \textbackslash\\
+\ \ --exclude-rule=...express-path-join-resolve-traversal \textbackslash\\
+\ \ --exclude-rule=...path-join-resolve-traversal \textbackslash\\
+\ \ --exclude-rule=...detect-non-literal-regexp \textbackslash\\
+\ \ --exclude-rule=...unsafe-formatstring \textbackslash\\
+\ \ --exclude-rule=...dynamic-urllib-use-detected \textbackslash\\
+\ \ --exclude-rule=...gcp-sql-database-ssl-insecure-value \textbackslash\\
+\ \ --exclude-rule=...github-actions-mutable-action-tag\\[0.4em]
+\# La regle bypass-tls-verification n'est PAS exclue :\\
+\# chaque occurrence assumee porte une annotation nominative\\
+\# nosemgrep sur sa propre ligne. Toute NOUVELLE occurrence\\
+\# ailleurs fait echouer la chaine.
+\end{extraitconf}
+
+\section{Provisionnement, isolation et tableau de bord}
+
+\textbf{Contrôles de la chaîne de provisionnement.} Le descripteur de la chaîne d'infrastructure
+déclare la seule permission de lecture du dépôt : il ne peut structurellement pas s'authentifier
+auprès du fournisseur cloud, et la validation s'exécute donc sans accès distant.
+
+\begin{extraitconf}[boxsep=1pt, left=3pt, right=3pt, top=2pt, bottom=2pt]
+permissions:\\
+\ \ contents: read\ \ \ \ \ \ \# pas de id-token : aucun acces GCP\\[0.4em]
+- run: terraform fmt -check -recursive\ \ \ \ \# bloquant\\
+- run: for env in dev staging; do cd terraform/environments/\$env;\\
+\ \ \ \ \ \ terraform init -backend=false -input=false; terraform validate; done\\[0.4em]
+- uses: aquasecurity/trivy-action@v0.36.0\\
+\ \ with:\\
+\ \ \ \ scan-type: config\\
+\ \ \ \ scan-ref:\ \ terraform/\\
+\ \ \ \ severity:\ \ CRITICAL\\
+\ \ \ \ exit-code: 1\ \ \ \ \ \ \ \ \ \ \ \ \ \ \# porte bloquante
+\end{extraitconf}
+
+\textbf{Isolation logique entre locataires.} Les comptes de base créés par le fournisseur héritent
+d'un rôle privilégié : sans les ordres suivants, chaque application lit la base de l'autre.
+L'extrait est partiel --- huit ordres, dont les six révocations qui portent le cloisonnement, quand
+le corps en dénombre dix pour l'accueil complet du second locataire.
+
+\begin{extraitconf}[boxsep=1pt, left=3pt, right=3pt, top=2pt, bottom=2pt]
+REVOKE CONNECT ON DATABASE menal\_db FROM PUBLIC;\\
+REVOKE CONNECT ON DATABASE menal\_db FROM app2\_user;\\
+REVOKE CONNECT ON DATABASE app2\_db\ \ FROM PUBLIC;\\
+REVOKE CONNECT ON DATABASE app2\_db\ \ FROM api\_user;\\
+GRANT\ \ CONNECT ON DATABASE app2\_db\ \ TO\ \ \ app2\_user;\\
+GRANT\ \ ALL ON SCHEMA public TO app2\_user;\\
+REVOKE cloudsqlsuperuser FROM app2\_user;\ \ -- sinon l'acces\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ -- croise persiste\\
+REVOKE cloudsqlsuperuser FROM api\_user;\ \ \ -- et de meme\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ -- dans l'autre sens
+\end{extraitconf}
+
+Les deux dernières révocations sont celles qui comptent : sans elles, l'accès croisé subsiste par
+héritage, et leur symétrie n'est pas décorative. Omettre la seconde produirait une isolation
+\textbf{à sens unique} --- la plateforme lirait la base du locataire sans la réciproque --- et c'est
+la direction qui porte le risque : la base du locataire contient un identifiant national, celle de
+la plateforme seulement des empreintes de mots de passe et un secret de second facteur chiffré.
+
+\textbf{Chaîne de données d'une vue du tableau de bord.} Le motif suivant est identique dans les
+dix éléments rendus au serveur : lecture du jeton dans le témoin de connexion, appel de l'API,
+aucun accès direct à une source de données.
+
+\begin{extraitconf}[boxsep=1pt, left=3pt, right=3pt, top=2pt, bottom=2pt]
+// app/detections/page.tsx --- composant rendu au serveur\\
+const token = cookies().get("token")?.value;\\
+const data\ = await getDetections(token, 24, 200, tenant);\\[0.4em]
+// lib/api.ts --- unique point de sortie HTTP\\
+fetch(\textasciigrave\$\{apiUrl()\}\$\{path\}\textasciigrave, \{\\
+\ \ headers: \{ Authorization: \textasciigrave Bearer \$\{token\}\textasciigrave{} \},\\
+\ \ cache: "no-store",\\
+\});
+\end{extraitconf}
+
+Aucun client d'entrepôt de données ni de base relationnelle ne figure parmi les dépendances de
+production du tableau de bord : la propriété énoncée au \cref{ch:realisation} est donc
+vérifiable par simple inventaire.
+
+\section{Tableaux de référence de la réalisation}
+\label{ann:tableaux-realisation}
+
+Ces quatre tableaux sont des tableaux de \emph{consultation} : le \cref{ch:realisation} les
+appelle sans les lire ligne à ligne.
+
+{\scriptsize
+\setlength{\tabcolsep}{3pt}%
+\begin{longtable}{|P{3.05cm}|P{5.95cm}|P{5.80cm}|}
+\caption[Familles de contrôles de la chaîne de livraison applicative]{Les huit familles de
+contrôles de la chaîne de livraison applicative, dépôt vérifié le \dateref.}
+\label{tab:familles-controles}\\
+\hline
+\textbf{Famille} & \textbf{État, outil et caractère bloquant} & \textbf{Destination du résultat} \\
+\hline
+\endfirsthead
+\caption[]{Les huit familles de contrôles de la chaîne de livraison applicative (suite)} \\
+\hline
+\textbf{Famille} & \textbf{État, outil et caractère bloquant} & \textbf{Destination du résultat} \\
+\hline
+\endhead
+Recherche de secrets versionnés & Réalisée --- détecteur de secrets, jeu de règles par défaut,
+\textbf{bloquant} & Journaux d'exécution de la chaîne \\ \hline
+Analyse statique du code & Réalisée --- analyseur statique, version épinglée, sept exclusions
+nominatives, \textbf{bloquant} & Journaux d'exécution de la chaîne \\ \hline
+Analyse de la description d'infrastructure & Réalisée --- analyseur de configuration,
+\textbf{bloquant} sur gravité critique & Journaux d'exécution de la chaîne \\ \hline
+Analyse de vulnérabilité des images & Réalisée --- analyseur d'image, quatre images,
+\textbf{bloquant} sur gravité critique corrigeable & Journaux \textbf{et entrepôt de supervision}
+(table des vulnérabilités) --- seule famille dont le résultat quitte la chaîne \\ \hline
+Tests automatisés & Réalisée --- cadre Python (31 tests) et cadre JavaScript, \textbf{bloquant}
+sur échec, non bloquant sur couverture & Rapport de test conservé 7~jours \\ \hline
+Analyse de composition logicielle (dépendances) & \textbf{Arbitrée} & Risque capté en aval par
+l'analyse d'image, qui inventorie les paquets de l'artefact livré ; ce chemin ne couvre ni les
+dépendances de développement, ni les avis sans correctif amont, écartés par configuration.
+Réévaluation : la première dépendance directe hors image \\ \hline
+Test dynamique du service déployé & \textbf{Arbitrée} & La vérification post-déploiement établit
+la disponibilité par le domaine public, jamais l'absence de vulnérabilité ; la validation dynamique
+du filtrage applicatif est portée par les protocoles du \cref{ch:validation}. Réévaluation : une
+homologation par un tiers \\ \hline
+Signature d'artefact, provenance et nomenclature logicielle & \textbf{Arbitrée} (décision D07) &
+Traçabilité atteinte par un chemin moins coûteux --- étiquette liée à l'empreinte du commit,
+registre unique --- qui ne prouve pas que l'artefact déployé vient de la chaîne attendue.
+Réévaluation : l'ouverture du socle à un éditeur tiers \\
+\hline
+\end{longtable}
+}
+
+\begin{table}[htbp]
+\caption[Modèle de données de l'entrepôt de supervision]{Modèle de données de l'entrepôt de
+supervision : dix tables, un écrivain chacune}
+\label{tab:modele-donnees}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{|P{2.95cm}|P{3.55cm}|P{2.05cm}|P{3.75cm}|P{2.56cm}|}
+\hline
+\textbf{Table} & \textbf{Contenu} & \textbf{Partition et rétention} & \textbf{Écrivain autorisé} & \textbf{Clé d'application} \\
+\hline
+Journaux d'accès\newline \gcprod{access\_logs} & Une ligne par requête HTTP applicative & Jour · 90~j & Normalisation F4 (identité de déploiement) & \gcprod{service} \\ \hline
+Journaux bruts\newline \gcprod{raw\_logs} & Charge JSON des quatre sources collectées & Jour · 90~j & Normalisation F4 & \gcprod{resource\_name} \\ \hline
+Détections\newline \gcprod{detections} & Alertes R1--R7, tactique et technique ATT\&CK & Jour · \textbf{sans expiration} & Requêtes planifiées R1--R7 & \gcprod{service} \\ \hline
+Événements de sécurité\newline \gcprod{security\_events} & Blocages du filtrage applicatif, déjà mitigés & Jour · \textbf{sans expiration} & Normalisation F4 & \textbf{absente} \\ \hline
+Enrichissement\newline \gcprod{alert\_enrichment} & Technique rattachée, similarité, candidats de rang 2--3 & Jour · \textbf{sans expiration} & Tâche F5 --- droit limité à cette seule table & \textbf{absente} \\ \hline
+Métriques\newline \gcprod{api\_metrics} & Agrégat horaire : volume, erreurs, latence, blocages & Jour · \textbf{sans expiration} & Normalisation F4 & \textbf{absente} \\ \hline
+Verdicts\newline \gcprod{analyst\_verdicts} & Jugement humain, ajout seul, jamais de mise à jour & Jour · \textbf{sans expiration} & API de supervision --- cette seule table, rôle administrateur & \textbf{absente} \\ \hline
+Vulnérabilités\newline \gcprod{cve\_findings} & CVE du dernier scan, catalogue d'exploitation, score EPSS & Jour · \textbf{sans expiration} & Chaîne d'intégration --- cette seule table, réécriture totale & sans objet \\ \hline
+Vecteurs de référence\newline \gcprod{attack\_embeddings} & 872 vecteurs de 768 dimensions, catalogue ATT\&CK & Aucune & Chargement hors ligne, identité d'opérateur & sans objet \\ \hline
+File d'attente ML\newline \gcprod{pending\_embeddings} & \textbf{Déclarée, jamais écrite ni lue} : vestige de F5 ; retrait décidé le \dateref, non appliqué & Aucune & Aucun & sans objet \\
+\hline
+\end{tabular}
+\end{table}
+
+{\scriptsize
+\setlength{\tabcolsep}{3pt}%
+\begin{longtable}{|P{2.60cm}|P{10.55cm}|P{1.65cm}|}
+\caption[Cartographie des vues du tableau de bord]{Cartographie des vues du tableau de bord :
+douze éléments rendus, dont dix au serveur, dépôt vérifié le \dateref.}
+\label{tab:vues-dashboard}\\
+\hline
+\textbf{Vue} & \textbf{Apport à l'analyste et point d'entrée appelé} & \textbf{Filtre locataire} \\
+\hline
+\endfirsthead
+\caption[]{Cartographie des vues du tableau de bord (suite)} \\
+\hline
+\textbf{Vue} & \textbf{Apport à l'analyste et point d'entrée appelé} & \textbf{Filtre locataire} \\
+\hline
+\endhead
+Vue d'ensemble & Cinq indicateurs, répartition par gravité, courbe des requêtes, dix dernières
+requêtes --- journaux, alertes et synthèse en parallèle & Partiel --- synthèse seule \\ \hline
+Journal d'audit & Cent dernières requêtes reçues par l'API --- journaux & Non \\ \hline
+Alertes & Requêtes en erreur, gravité dérivée du code de retour --- alertes, filtrées & Non \\ \hline
+Détections & Deux cents détections des règles R1--R7 sur vingt-quatre heures --- détections & \textbf{Oui} \\ \hline
+Incidents & Entités agrégées, score de tri, verdict posé --- incidents & \textbf{Oui} \\ \hline
+Fiche d'incident & Jauge de score, tactiques rattachées, chronologie --- incident par entité,
+200~lignes & \textbf{Oui} \\ \hline
+Couverture ATT\&CK & Matrice de couverture par tactique --- couverture & \textbf{Oui} \\ \hline
+Vulnérabilités & Priorisées : exploitation connue, observation, score de probabilité ---
+vulnérabilités & Non \\ \hline
+Santé des règles & Rendement et taux de faux positifs des sept règles --- santé des règles & Non \\ \hline
+Enveloppe de mise en page & Navigation, bandeau, bascule de thème, indicateur de fraîcheur ---
+aucun appel & Sans objet \\ \hline
+Connexion \textit{(cliente)} & Formulaire en deux temps, mot de passe puis code temporel ---
+relais de connexion puis de vérification & Sans objet \\ \hline
+Sécurité du compte \textit{(cliente)} & Enrôlement et retrait du second facteur --- relais du
+second facteur & Sans objet \\
+\hline
+\end{longtable}
+}
+
+\begin{table}[htbp]
+\caption[Caractérisation quantifiée des deux logiciels écrits]{Caractérisation quantifiée des deux
+logiciels écrits, dépôt vérifié le \dateref.}
+\label{tab:logiciel-ecrit}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.10}
+\begin{tabular}{|P{3.05cm}|P{6.10cm}|P{6.05cm}|}
+\hline
+ & \textbf{API de supervision} & \textbf{Tableau de bord} \\
+\hline
+Langage et cadre & Python 3.12, cadre applicatif asynchrone à validation typée &
+TypeScript, cadre à rendu serveur \\ \hline
+Volume écrit & 1\,855~lignes, 20~modules & 3\,408~lignes, 40~fichiers \\ \hline
+Points d'entrée & 21, dont 9 pour la supervision & douze vues, dont dix rendues au serveur et
+deux clientes, et sept routes serveur \\ \hline
+Modèle de données & 4 tables, 3 migrations, 22 schémas de validation & 16 types partagés avec
+l'API \\ \hline
+Tests automatisés & 31 tests, exécutés à chaque livraison & 22 tests unitaires exécutés ;
+22 tests de parcours écrits mais jamais exécutés par la chaîne \\ \hline
+Couverture mesurée & non mesurée par la chaîne : l'outil est installé, l'option de mesure ne
+l'est pas & \textbf{3,00~\% des lignes} --- 11~lignes couvertes sur 367, 22 fichiers
+instrumentés --- pour un seuil de 70~\% déclaré et non appliqué \\ \hline
+Dette assumée & aucune version portée par les points d'entrée : un client ne peut pas se lier
+à un contrat stable & 375~lignes d'une interface antérieure, non déployée, conservées au
+dépôt \\
+\hline
+\end{tabular}
+\end{table}

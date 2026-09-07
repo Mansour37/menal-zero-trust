@@ -1,0 +1,102 @@
+% =============================================================
+% Annexe E, section 4 (ex-annexe F) — Jeu d'évaluation de l'enrichissement sémantique
+% Alimentée depuis Ch.6 (§6.3.4).
+% Condensation vague 3 : spécification du jeu et méthodes comparées ramenées
+% en prose (deux tableaux supprimés) ; empreinte du catalogue ATT&CK renvoyée
+% au ch.6 plutôt que redite ; porte de qualité int8 ramenée à un paragraphe.
+% =============================================================
+\section{Jeu d'évaluation de l'enrichissement sémantique}
+\label{ann:evaluation-semantique}
+
+Cette section donne le détail de l'évaluation condensée au \cref{ch:validation} :
+constitution du jeu de test, méthodes comparées, grandeurs relevées et condition de publication de
+chacune.
+
+\medskip
+\noindent\textbf{Jeu d'évaluation et méthodes comparées.} Le jeu est prélevé sur les alertes produites par le système durant une période d'observation
+définie : \textbf{100 alertes visées, 50 au minimum}, tirées aléatoirement parmi les alertes
+distinctes afin d'éviter la sur-représentation des règles bruyantes. Chaque alerte est rattachée
+à la main à la technique attendue, ou à l'étiquette \og aucune technique applicable \fg{}, dans le
+catalogue ATT\&CK Entreprise chargé dans l'entrepôt --- instantané non épinglé, identifié par
+l'empreinte publiée en \cref{sec:eval-detection}. Une personne réalise l'annotation initiale et une
+seconde réannote le sous-ensemble de contrôle : c'est cette seconde annotation qui conditionne la
+publication.
+
+Trois méthodes de rattachement sont mises en regard sur ce même jeu. \textbf{M0}, correspondance
+par mots-clés adossée à une table écrite à la main entre termes fréquents et techniques, sert de
+référence basse. \textbf{M1}, représentation statistique du texte et similarité cosinus contre les
+descriptions de techniques, sert de référence intermédiaire, sans apprentissage de domaine.
+\textbf{M2}, modèle de représentation spécialisé retenu par le projet
+\cite{securebert2022,smet2023}, est la méthode évaluée.
+
+Une annotation réalisée par une seule personne, également auteure du système évalué, introduit un
+biais que le protocole traite plutôt que de l'ignorer (\cref{sec:limites}) : ce sont les deux
+atténuations exigées --- annoter \emph{avant} de consulter les sorties du modèle, et faire réannoter
+un sous-ensemble par une seconde personne --- et non le temps disponible, qui commandent la
+publication d'un chiffre comparatif. Une exactitude au premier rang produite par un annotateur
+unique confondu avec l'auteur du système ne mesurerait pas la qualité du rattachement, mais un
+accord de l'auteur avec lui-même.
+
+\medskip
+\noindent\textbf{Grandeurs relevées et conditions de publication.} Quatre grandeurs de qualité sont définies avant tout relevé. L'\textbf{exactitude au premier rang}
+est la part des alertes dont la technique attendue est proposée en première position ;
+l'\textbf{exactitude aux trois premiers rangs} étend le compte aux trois propositions ; le
+\textbf{taux d'abstention} est la part des alertes laissées sans rattachement, sous le seuil de
+similarité ; le \textbf{taux d'erreur silencieuse} est la part des alertes rattachées à une
+technique \emph{incorrecte} avec un score supérieur au seuil --- la métrique la plus importante et
+la moins souvent rapportée. Une abstention est visible et sans danger, l'analyste sachant que le
+système ne sait pas ; un rattachement erroné présenté avec un score élevé oriente vers la mauvaise
+procédure. \textbf{Un système qui s'abstient souvent mais se trompe rarement est préférable à
+l'inverse}, et cette préférence doit rester visible dans la mesure.
+
+Le protocole ne publie aucune valeur avant que ses conditions de validité ne soient réunies, et ces
+conditions sont écrites à l'avance plutôt que constatées après coup
+(\cref{tab:resultats-methodes}). Les six grandeurs sont relevées pour les trois méthodes sur le
+\emph{même} échantillon, en une seule exécution, faute de quoi la comparaison porterait sur des
+jeux différents et ne mesurerait rien.
+
+\begin{table}[htbp]
+\caption{Grandeurs relevées et condition de publication de chacune}
+\label{tab:resultats-methodes}
+\centering
+\scriptsize
+\begin{tabular}{|P{3.7cm}|P{4.7cm}|P{6.9cm}|}
+\hline
+\textbf{Grandeur} & \textbf{Relevée pour} & \textbf{Condition de publication} \\
+\hline
+Exactitude au premier rang & M0, M1, M2 & Jeu de 50 à 100 alertes annotées, échantillonné
+aléatoirement parmi les alertes distinctes \\ \hline
+Exactitude aux trois premiers rangs & M1, M2 (sans objet pour M0, qui ne classe pas) & Idem \\ \hline
+Taux d'abstention & M0, M1, M2 & Seuil de similarité déclaré et identique pour les trois
+méthodes \\ \hline
+Taux d'erreur silencieuse & M0, M1, M2 & Annotation réalisée \emph{avant} consultation des
+sorties du modèle \\ \hline
+Latence par alerte & M1, M2 & Relevée sur la même machine et le même lot \\ \hline
+Coût pour mille alertes & M2 & Rapporté au dimensionnement déclaré du composant d'encodage \\ \hline
+\textbf{Toutes} & --- & \textbf{Taux d'accord inter-annotateurs calculé sur un sous-ensemble
+réannoté par une seconde personne} \\
+\hline
+\end{tabular}
+\end{table}
+
+La dernière ligne est la condition dominante : c'est la seule qui ne dépende pas de la machine mais
+d'un tiers, d'où sa formulation comme exigence de méthode et non comme étape de calendrier. Trois
+questions guident ensuite l'interprétation, quelle que soit la direction du résultat : le gain de
+M2 sur M1 existe-t-il --- un résultat négatif est admis par avance au titre de l'objectif O5 et
+serait rapporté tel quel ; ce gain justifie-t-il le coût d'un composant supplémentaire, que
+mesurent la latence et le coût du \cref{tab:resultats-methodes} ; et sur quel type d'alerte se
+concentre-t-il, une analyse par type étant plus informative qu'un chiffre global.
+
+Une porte de qualité distincte a déjà été exécutée sur M2 lui-même, avant son emploi en recette :
+la bascule vers un export quantifié (int8), comparée aux rapprochements du modèle de référence
+(fp32) sur cinq requêtes de type SOC le 1\textsuperscript{er} août 2026, a rendu 0~correspondance
+de premier rang sur 5, ce qui a fait rejeter cet export et conserver le format non quantifié au
+prix d'une empreinte mémoire plus élevée (\cref{sec:eval-enrichissement}). Ce test ne se substitue
+pas à la comparaison M0/M1/M2 : il montre que cet export int8 précis n'est pas acceptable sur le
+petit échantillon retenu, il ne valide pas la qualité générale de fp32.
+
+% --- Rétablissement des blancs par défaut autour des flottants : le formulaire de dépôt
+%     qui suit n'appartient pas au périmètre de cette équipe. ---
+\setlength{\textfloatsep}{20pt plus 2pt minus 4pt}
+\setlength{\intextsep}{12pt plus 2pt minus 2pt}
+\setlength{\floatsep}{12pt plus 2pt minus 2pt}

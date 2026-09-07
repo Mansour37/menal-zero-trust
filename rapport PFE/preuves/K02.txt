@@ -1,0 +1,22 @@
+==================================================================
+ PREUVE K02
+ Porte d analyse statique du 19/08/2026 — 612 regles, 439 fichiers, 74 constats
+ ---
+ genere le : 2026-08-28 11:15:18 UTC
+ projet    : menal-zero-trust-staging
+ dataset   : menal_security_staging
+==================================================================
+
+Execution CI : 32265394559 (19/08/2026, « CI - Build & Deploy », en echec)
+Source : journaux de la forge logicielle
+
+Security Scans  UNKNOWN STEP  2026-08-19T14:40:44.9668042Z   Scanning 439 files tracked by git with 1074 Code rules:
+Security Scans  UNKNOWN STEP  2026-08-19T14:40:58.9982056Z │ Scan Summary │
+Security Scans  UNKNOWN STEP  2026-08-19T14:40:58.9982972Z  • Findings: 74 (74 blocking)
+Security Scans  UNKNOWN STEP  2026-08-19T14:40:58.9986524Z Ran 612 rules on 439 files: 74 findings.
+Security Scans  UNKNOWN STEP  2026-08-19T14:40:59.6135252Z ##[error]Process completed with exit code 1.
+
+------------------------------------------------------------------
+ code de retour : 0
+ fin            : 2026-08-28 11:15:19 UTC
+------------------------------------------------------------------

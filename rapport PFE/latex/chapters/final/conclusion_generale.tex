@@ -1,0 +1,97 @@
+% =============================================================
+% Conclusion générale (~2 pages) — sans numérotation de section.
+% Cinq points imposés (note pédagogique ESPRIT) : récapitulation,
+% résultats chiffrés, problèmes rencontrés, apports (entreprise et
+% élève-ingénieur), perspectives.
+% Aucun chiffre de cette page n'est nouveau : tous sont repris du
+% corps, avec leur date.
+% =============================================================
+\chapter*{Conclusion générale}
+\addcontentsline{toc}{chapter}{Conclusion générale}
+\markboth{Conclusion générale}{Conclusion générale}
+
+\textbf{Récapitulation.} Ce mémoire a présenté la conception, la réalisation et la validation
+d'un socle d'hébergement cloud Zero Trust pour une entreprise émergente. Le point de départ
+était une application fonctionnelle, mais hébergée sur un serveur unique, avec confiance
+implicite entre tous ses composants, sans reproductibilité et sans détection de sécurité. Le
+point d'arrivée est un socle entièrement décrit en code, organisé en sept niveaux L1--L7, soit
+cinq couches et deux plans transversaux. Il comporte deux chaînes de livraison à portes
+bloquantes, une chaîne de détection enrichie par un modèle de représentation sémantique, et un
+tableau de bord destiné à l'analyste.
+
+\textbf{Résultats chiffrés.} Le socle fonctionne avec deux environnements réels, développement
+et recette ; la production reste une cible non provisionnée, et l'infrastructure durable du
+périmètre est décrite en code avec ses décisions et ses écarts datés. La restauration de la base
+de données, mesurée le 03/08/2026 sur la configuration zonale antérieure au passage en haute
+disponibilité régionale du 08/08/2026, a demandé 32~min~45~s pour 314~lignes restaurées sur 314
+au point demandé, sans perte de données. Deux retours arrière applicatifs ont pris 11,6~s et
+16,5~s le 07/08/2026 ; le démarrage à froid du service d'encodage est de 27~s en moyenne et de
+94~s au pic. Le 19/08/2026, un scénario de bout en bout a produit treize~requêtes malveillantes,
+toutes bloquées, agrégées en une alerte environ quinze~minutes plus tard. La campagne de
+validation établit \textbf{sept résultats conformes, onze partiellement conformes et deux
+non-conformités assumées} : les vingt protocoles portent une preuve nommée, et six d'entre eux
+une cadence de rejeu au plan de validation continue, dont le premier relevé est daté.
+
+Trois de ces relevés sont postérieurs à la migration du réseau --- un refus de sortie réellement
+opposé et journalisé, un refus croisé entre locataires, et la non-conformité du composant
+d'inférence, dont la sortie échappe encore au pare-feu. Le compte est volontairement sévère :
+n'est déclaré
+conforme qu'un critère couvert intégralement, le plus souvent par un refus réellement observé.
+La couche sémantique, elle, produit des candidats de rattachement au positionnement
+informationnel : sa précision comparative et l'effet de la boucle F6 sur l'ordre de priorité
+relèvent du même plan. La seconde moitié de la problématique attend donc encore sa mesure --- le
+prix payé en faux positifs et en latence de détection demande une période d'observation sous
+trafic réel, et c'est la première des perspectives.
+
+\textbf{Problèmes rencontrés.} \textbf{Cinq} incidents d'ingénierie ont été documentés au
+\cref{ch:realisation}. Le premier est une indisponibilité liée au démarrage à froid. Le deuxième est un
+blocage collectif d'utilisateurs légitimes par la limitation de débit. Le troisième est un état
+local divergent après une application partiellement échouée. Le quatrième est une porte
+d'analyse statique restée verte sans évaluer aucune règle. Le cinquième est une règle de sortie
+qui n'aurait rien gouverné : inscrite au plan de correction, elle eût été sans effet, le trafic
+ne passant pas là où elle se serait appliquée --- d'où l'ordre de la migration réseau, déplacer
+le trafic, l'observer sept~jours, n'interdire qu'ensuite. Chacun a produit une correction et une
+leçon transférable ; la dernière est la plus générale, \textbf{un contrôle qui ne voit pas passer
+le trafic n'est pas un contrôle, c'est une déclaration}.
+
+Deux limites sont énoncées avec leur condition de levée. Le contrôle dynamique des sorties réseau
+a été mesuré les 24 et 25/08/2026 :
+il refuse ce qu'il gouverne, et deux charges de travail détachées du sous-réseau lui échappent
+encore par une sortie managée --- non-conformité T14 du 25/08/2026. Surtout, l'enrichissement
+sémantique occupe un positionnement informationnel assumé : il n'alimente pas le score
+d'incident, et sa condition d'intégration est nommée --- une clé d'entité dans le schéma
+d'enrichissement, une règle de décision, et la mesure comparative qui l'autorise.
+
+\textbf{Apports.} Pour l'entreprise, le socle fournit une base interne réutilisable, éprouvée
+partiellement par l'accueil d'un second locataire le 07/08/2026. L'identité, les secrets et les
+données --- et désormais le réseau, le refus croisé ayant été réellement opposé le 24/08/2026 ---
+sont séparés par locataire ; l'instance de base de données et le jeu de tables de supervision,
+eux, restent partagés. Pour ma part, ce projet a mobilisé l'ensemble des compétences d'un
+ingénieur en cybersécurité cloud, sans répartition d'équipe : audit, dérivation des exigences,
+conception de l'architecture, écriture de l'infrastructure en code, construction des deux chaînes
+de livraison et de la chaîne de détection, puis conduite de la campagne de validation. J'y ai
+appris à documenter un écart au moment où il apparaît plutôt qu'à le refermer discrètement, et
+à préférer une mesure défavorable à une estimation flatteuse --- le démarrage à froid mesuré à
+27~s contre une estimation initiale de quelques secondes, et la porte d'analyse statique
+découverte en faux vert, en sont les deux exemples les plus formateurs. J'y ai appris enfin qu'un
+contrôle correctement conçu peut produire un effet non prévu en exploitation, comme cette
+limitation de débit qui bloquait des utilisateurs légitimes partageant une même adresse.
+
+\textbf{Perspectives.} Quatre axes d'amélioration sont identifiés. Le premier est
+l'\textbf{isolation des données par locataire}, conçue, chiffrée et ordonnancée au \cref{ch:conception}
+sous la décision D16 : ce qui reste est l'application, non l'instruction --- et la raison de
+l'ordonnancement est écrite, deux migrations d'infrastructure dans la même quinzaine n'étant pas
+soutenables par un opérateur unique. La segmentation réseau qui l'accompagnait, elle, a été
+\textbf{appliquée du 11 au 25/08/2026} en douze étapes, et mesurée : le protocole T20 est
+conforme au 24/08/2026 sur un refus croisé entre locataires réellement opposé et journalisé. Le
+deuxième axe est l'intégration contrôlée de l'enrichissement au score d'incident, avec clé
+d'entité, règle de décision et mesure comparative. Le troisième est la signature des images par
+chaîne de provenance. Le quatrième est l'écriture de tests unitaires par règle de détection,
+vérifiant que chaque règle produit l'alerte attendue sur des données de test. Le gain de
+l'enrichissement sémantique, une fois mesuré, justifiera-t-il son coût ? C'est la question
+ouverte du \cref{ch:etat-art}, et elle reste ouverte.
+
+Ce travail ne produit pas un service commercialisable en l'état : il produit un socle
+reproductible et mesuré, dont les limites sont chiffrées et dont le chemin vers un engagement
+contractuel est identifié et estimé. C'est précisément parce que ces limites sont écrites que ce
+chemin est crédible.
