@@ -54,7 +54,7 @@ EOF
     TARGET="gitleaks detect — historique complet" ; JOB="2 · Recherche de secrets (Gitleaks)" ;;
   sast)
     cp "$HERE/poison/sast.py.tmpl" api/app/_gate_sast.py
-    TARGET="semgrep scan — 612 règles, diff-aware" ; JOB="3 · Analyse du code (Semgrep)" ;;
+    TARGET="semgrep scan — jeu de règles p/default, diff-aware" ; JOB="3 · Analyse du code (Semgrep)" ;;
   pytest)
     cp "$HERE/poison/test_gate.py.tmpl" api/tests/test_gate_block.py
     TARGET="pytest — unitaires + contrat d'API" ; JOB="4 · Tests automatisés — API (pytest)" ;;
