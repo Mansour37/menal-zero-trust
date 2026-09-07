@@ -1,9 +1,10 @@
 name: App Delivery
 
-# Filtre paths (07/08) : avant, TOUT push sur main — y compris un commit
-# purement Elson ou de la doc — reconstruisait ET redeployait MENAL staging.
-# Perimetre MENAL uniquement ; Elson a son propre workflow (elson-ci.yml),
-# l infra a le sien (terraform.yml, paths terraform/**).
+# Chaine de livraison alignee sur les 2 diagrammes du rapport :
+#   Phase 1 (PR)   : Portes d'analyse (Gitleaks, Semgrep) + Tests + Build & scan image (Trivy)
+#                    -> AUCUNE publication, AUCUN deploiement, AUCUNE auth cloud.
+#   Phase 2 (main) : publication au registre + Deploiement PAR DIGEST sha256 (WIF, sans cle)
+#                    + smoke test a travers le WAF.
 on:
   push:
     branches: [main]
@@ -24,11 +25,6 @@ on:
       - "tests/**"
       - ".github/workflows/app-delivery.yml"
 
-# STAGING est l environnement de reference du pipeline : c est lui que le
-# CI-SEC-CD construit, scanne, deploie et teste en E2E. Dev sert aux essais
-# manuels (terraform apply / hotfix locaux). Toutes les valeurs projet /
-# registre / domaines viennent des variables GitHub du depot : basculer
-# d environnement = changer les variables, pas ce fichier.
 env:
   REGION: ${{ vars.GCP_REGION }}
   PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
@@ -36,8 +32,8 @@ env:
   DASHBOARD_SERVICE_NAME: ${{ vars.DASHBOARD_SERVICE_NAME }}
   ARTIFACT_REGISTRY: ${{ vars.ARTIFACT_REGISTRY_URL }}
   BQ_DATASET: ${{ vars.BQ_DATASET }}
-  # Fix BLOB_UNKNOWN (b19259f, reporte depuis elson-ci) : la DB Trivy est tiree
-  # de ghcr.io — le mirror gcr.io repondait BLOB_UNKNOWN par intermittence.
+  # Fix BLOB_UNKNOWN : la DB Trivy est tiree de ghcr.io (le mirror gcr.io repondait
+  # BLOB_UNKNOWN par intermittence).
   TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2
 
 permissions:
@@ -45,31 +41,27 @@ permissions:
   id-token: write
 
 jobs:
-  security:
-    name: Security Scans
+  # ============================================================================
+  # PORTES D'ANALYSE (source) : secrets + SAST
+  # ============================================================================
+  analyse-secrets-sast:
+    name: Portes d'analyse — Gitleaks & Semgrep
     runs-on: ubuntu-latest
     steps:
-      # fetch-depth: 0 — gitleaks scanne le RANGE de commits du push
-      # (before^..after) : avec le clone shallow par defaut, ces revisions
-      # n existent pas localement et le scan echoue en "unknown revision".
+      # fetch-depth: 0 : gitleaks scanne le range de commits ; semgrep diff-aware
+      # a besoin de la baseline (merge-base sur PR / commit precedent sur push).
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Portes bloquantes : un secret detecte ou un finding SAST fait ECHOUER
-      # le pipeline. Sans cela, ces scans etaient du theatre (continue-on-error).
       - name: Gitleaks - Secret Scanning
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # semgrep/semgrep-action@v1 est DEPRECIE : sa version figee plantait sur les
-      # regles p/default recentes (severite MEDIUM) TOUT EN PASSANT AU VERT
-      # (faux-vert : la porte SAST ne bloquait plus rien). On utilise le CLI
-      # semgrep a jour en mode "ci" : DIFF-AWARE (bloque les NOUVEAUX findings
-      # d'une PR, pas la dette pre-existante deja triee) -> une vraie faille
-      # introduite echoue la porte, sans rejouer les 74 findings historiques.
-      # fetch-depth: 0 (checkout du job) fournit l'historique necessaire au diff.
+      # semgrep/semgrep-action@v1 (deprecie) plantait sur les regles p/default
+      # recentes (severite MEDIUM) TOUT EN PASSANT AU VERT (faux-vert). CLI a jour,
+      # DIFF-AWARE : bloque les NOUVEAUX findings d'une PR sans rejouer la dette triee.
       - name: Semgrep - SAST
         run: |
           python3 -m pip install --quiet semgrep
@@ -82,36 +74,57 @@ jobs:
             semgrep scan --config p/default --baseline-commit "$BASE" --error --metrics=off
           fi
 
-  test:
-    name: Unit Tests
+  # ============================================================================
+  # PORTES DE TESTS
+  # ============================================================================
+  tests-api:
+    name: Tests API (pytest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Install dependencies
         run: |
           pip install -r api/requirements.txt
           pip install pytest pytest-cov httpx   # httpx : requis par fastapi TestClient
-
       - name: Run API unit tests
         working-directory: api
         run: pytest tests/ -v
 
-  build:
-    # Phase 1 (PR)  : construit l'image et la SCANNE (Trivy) — sans pousser ni deployer.
-    # Phase 2 (main): pousse l'image et deploie la revision PAR DIGEST (sha256).
-    name: Build & Deploy API
-    needs: [security, test]
+  tests-dashboard:
+    name: Tests dashboard (jest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - name: Install dependencies
+        working-directory: dashboard
+        run: npm ci
+      - name: Run dashboard unit tests
+        working-directory: dashboard
+        run: npm test
 
-      # --- Phase 1 + 2 : on construit et on scanne l'image qu'on deploiera ---
+  # ============================================================================
+  # PORTE D'ANALYSE (image) — API : build + scan Trivy (PR + main),
+  # puis publication PAR DIGEST sur main uniquement.
+  # ============================================================================
+  build-scan-api:
+    name: Build & scan image API (Trivy)
+    needs: [analyse-secrets-sast, tests-api]
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.push.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Build image (local)
         id: build
         run: |
@@ -119,10 +132,9 @@ jobs:
           docker build -t "$IMAGE_LOCAL" ./api
           echo "local=$IMAGE_LOCAL" >> "$GITHUB_OUTPUT"
 
-      # Porte bloquante (PR incluse) : une CVE CRITICAL corrigeable fait echouer.
-      # On scanne AVANT tout push : jamais d'image non scannee publiee, et on
-      # scanne exactement les bits qu'on deploiera. ignore-unfixed : pas de
-      # blocage sur des CVE sans correctif amont (sinon porte desactivee).
+      # Porte bloquante (PR incluse) : CVE CRITICAL corrigeable => echec. On scanne
+      # AVANT tout push (jamais d'image non scannee publiee). ignore-unfixed : pas
+      # de blocage sur des CVE sans correctif amont.
       - name: Trivy - CVE Scan (bloquant sur CRITICAL)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -132,7 +144,6 @@ jobs:
           severity: CRITICAL
           ignore-unfixed: true
 
-      # Rapport informatif HIGH : visible dans les journaux, non bloquant.
       - name: Trivy - rapport HIGH (informatif)
         if: always()
         uses: aquasecurity/trivy-action@v0.36.0
@@ -143,7 +154,7 @@ jobs:
           severity: HIGH
           ignore-unfixed: true
 
-      # --- Phase 2 (fusion main) uniquement : WIF, publication, deploiement ---
+      # ---- Phase 2 (main) : publication PAR DIGEST + alimentation SIEM ----
       - id: auth
         name: Authenticate to GCP
         if: github.ref == 'refs/heads/main'
@@ -160,8 +171,6 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
-      # Publication + resolution du DIGEST : on deploie l'empreinte sha256 du
-      # CONTENU (pas un tag mutable). Le tag github.sha reste pour la tracabilite.
       - name: Push image + resolve digest (sha256)
         id: push
         if: github.ref == 'refs/heads/main'
@@ -171,7 +180,7 @@ jobs:
           docker push "$IMAGE_TAG"
           DIGEST_REF=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_TAG")
           echo "image=$DIGEST_REF" >> "$GITHUB_OUTPUT"
-          echo "Deploiement par digest : $DIGEST_REF"
+          echo "Publie par digest : $DIGEST_REF"
 
       # Boucle F6 : le scan alimente le SIEM (page /siem/vulnerabilities).
       - name: Trivy - rapport JSON pour le SIEM
@@ -194,74 +203,12 @@ jobs:
             --report trivy-findings.json \
             --image-digest "${{ github.sha }}"
 
-      - name: Deploy to Cloud Run (par digest)
-        id: deploy
-        if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ env.SERVICE_NAME }}
-          image: ${{ steps.push.outputs.image }}
-          region: ${{ env.REGION }}
-
-      - name: Tag as latest
-        if: github.ref == 'refs/heads/main'
-        run: |
-          gcloud artifacts docker tags add \
-            ${{ env.ARTIFACT_REGISTRY }}/menal-api:${{ github.sha }} \
-            ${{ env.ARTIFACT_REGISTRY }}/menal-api:latest || true
-
-      # DNS + certificat manages etant en place, le smoke test passe par le
-      # domaine REEL (validation TLS incluse) : il couvre DNS, certificat,
-      # LB, Cloud Armor et le service — pas seulement l IP.
-      - name: Smoke Test (API via LB)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
-            https://${{ vars.LB_DOMAIN }}/health || echo "000")
-          echo "HTTP status: $HTTP_STATUS"
-          case "$HTTP_STATUS" in
-            200|302) echo "SUCCESS: service operationnel" ;;
-            000)     echo "ECHEC: LB injoignable (DNS/SSL)"; exit 1 ;;
-            *)       echo "ECHEC: statut inattendu $HTTP_STATUS"; exit 1 ;;
-          esac
-
-  dashboard-test:
-    name: Dashboard Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: dashboard/package-lock.json
-
-      - name: Install dependencies
-        working-directory: dashboard
-        run: npm ci
-
-      # `npm test` (pas `test:coverage`) : fait echouer le pipeline sur un test
-      # QUI ECHOUE, sans faire respecter le seuil de couverture 70 % declare
-      # dans jest.config.js — la couverture reelle mesuree le 08/08 est de
-      # 2,99 %, l activer maintenant bloquerait tout deploiement legitime pour
-      # une dette deja connue plutot que pour une regression introduite ici.
-      # Fermer cet ecart-la est une decision d equipe a part, pas un effet de
-      # bord de ce changement. Le vrai gap comble ici est ailleurs : avant, la
-      # CI n executait ABSOLUMENT AUCUN test dashboard, echec ou pas.
-      - name: Run dashboard unit tests
-        working-directory: dashboard
-        run: npm test
-
-  dashboard:
-    name: Build & Deploy Dashboard
-    needs: [security, test, dashboard-test]
+  deploy-api:
+    name: Déploiement API (WIF, digest)
+    needs: [build-scan-api]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
-
       - id: auth
         name: Authenticate to GCP
         uses: google-github-actions/auth@v2
@@ -272,39 +219,115 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
-
-      - name: Build & Push Image
-        id: build
-        run: |
-          IMAGE_TAG="${{ env.ARTIFACT_REGISTRY }}/menal-dashboard:${{ github.sha }}"
-          docker build -t $IMAGE_TAG ./dashboard
-          docker push $IMAGE_TAG
-          echo "image=$IMAGE_TAG" >> $GITHUB_OUTPUT
-
-      # Meme porte que pour l API : le dashboard est expose publiquement via
-      # le LB, une CVE CRITICAL corrigeable dans son image bloque la livraison.
-      - name: Trivy - CVE Scan (bloquant sur CRITICAL)
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ steps.build.outputs.image }}
-          format: table
-          exit-code: 1
-          severity: CRITICAL
-          ignore-unfixed: true
-
-      - name: Deploy to Cloud Run
+      - name: Deploy to Cloud Run (par digest)
         uses: google-github-actions/deploy-cloudrun@v2
         with:
-          service: ${{ env.DASHBOARD_SERVICE_NAME }}
-          image: ${{ steps.build.outputs.image }}
+          service: ${{ env.SERVICE_NAME }}
+          image: ${{ needs.build-scan-api.outputs.image }}
           region: ${{ env.REGION }}
 
       - name: Tag as latest
         run: |
           gcloud artifacts docker tags add \
-            ${{ steps.build.outputs.image }} \
+            ${{ env.ARTIFACT_REGISTRY }}/menal-api:${{ github.sha }} \
+            ${{ env.ARTIFACT_REGISTRY }}/menal-api:latest || true
+
+      # Smoke test par le domaine REEL : couvre DNS, certificat, LB, Cloud Armor, service.
+      - name: Smoke Test (API via LB)
+        run: |
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
+            https://${{ vars.LB_DOMAIN }}/health || echo "000")
+          echo "HTTP status: $HTTP_STATUS"
+          case "$HTTP_STATUS" in
+            200|302) echo "SUCCESS: service operationnel" ;;
+            000)     echo "ECHEC: LB injoignable (DNS/SSL)"; exit 1 ;;
+            *)       echo "ECHEC: statut inattendu $HTTP_STATUS"; exit 1 ;;
+          esac
+
+  # ============================================================================
+  # PORTE D'ANALYSE (image) — Dashboard : build + scan Trivy (PR + main),
+  # puis publication PAR DIGEST sur main uniquement.
+  # ============================================================================
+  build-scan-dashboard:
+    name: Build & scan image dashboard (Trivy)
+    needs: [analyse-secrets-sast, tests-dashboard]
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.push.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image (local)
+        id: build
+        run: |
+          IMAGE_LOCAL="menal-dashboard:${{ github.sha }}"
+          docker build -t "$IMAGE_LOCAL" ./dashboard
+          echo "local=$IMAGE_LOCAL" >> "$GITHUB_OUTPUT"
+
+      - name: Trivy - CVE Scan (bloquant sur CRITICAL)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.build.outputs.local }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL
+          ignore-unfixed: true
+
+      # ---- Phase 2 (main) : publication PAR DIGEST ----
+      - id: auth
+        name: Authenticate to GCP
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER_NAME }}
+          service_account: ${{ vars.CICD_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        if: github.ref == 'refs/heads/main'
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Push image + resolve digest (sha256)
+        id: push
+        if: github.ref == 'refs/heads/main'
+        run: |
+          IMAGE_TAG="${{ env.ARTIFACT_REGISTRY }}/menal-dashboard:${{ github.sha }}"
+          docker tag "${{ steps.build.outputs.local }}" "$IMAGE_TAG"
+          docker push "$IMAGE_TAG"
+          DIGEST_REF=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_TAG")
+          echo "image=$DIGEST_REF" >> "$GITHUB_OUTPUT"
+          echo "Publie par digest : $DIGEST_REF"
+
+  deploy-dashboard:
+    name: Déploiement dashboard (WIF, digest)
+    needs: [build-scan-dashboard]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - id: auth
+        name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER_NAME }}
+          service_account: ${{ vars.CICD_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run (par digest)
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.DASHBOARD_SERVICE_NAME }}
+          image: ${{ needs.build-scan-dashboard.outputs.image }}
+          region: ${{ env.REGION }}
+
+      - name: Tag as latest
+        run: |
+          gcloud artifacts docker tags add \
+            ${{ env.ARTIFACT_REGISTRY }}/menal-dashboard:${{ github.sha }} \
             ${{ env.ARTIFACT_REGISTRY }}/menal-dashboard:latest || true
 
       - name: Smoke Test (dashboard via LB)
@@ -317,9 +340,12 @@ jobs:
             *)       echo "ECHEC: statut inattendu $HTTP_STATUS"; exit 1 ;;
           esac
 
+  # ============================================================================
+  # TESTS DE BOUT EN BOUT (apres deploiement)
+  # ============================================================================
   e2e:
-    name: E2E Tests
-    needs: [build, dashboard]
+    name: Tests E2E
+    needs: [deploy-api, deploy-dashboard]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -341,13 +367,10 @@ jobs:
             --junit-xml=e2e-results.xml
         env:
           E2E_API_URL: https://${{ vars.LB_DOMAIN }}
-          # Le dashboard est en ingress LB-only : il faut le tester via son domaine
+          # Le dashboard est en ingress LB-only : on le teste via son domaine
           # public (LB + Cloud Armor), pas via l URL .run.app (bloquee par design).
           E2E_DASHBOARD_URL: https://${{ vars.DASH_DOMAIN }}
           E2E_API_RUN_URL: ${{ vars.API_RUN_URL }}
-          # Sans cette variable, T3 (ml-embed injoignable depuis internet)
-          # s ignorait silencieusement : une frontiere de securite qui n etait
-          # jamais verifiee, ce qui se lit comme un succes dans un rapport.
           E2E_ML_EMBED_URL: ${{ vars.ML_EMBED_URL }}
 
       - name: Upload test results
@@ -359,17 +382,13 @@ jobs:
           retention-days: 7
 
   e2e-gcp:
-    name: E2E Tests (pipeline reel, marques gcp/slow)
-    needs: [build, dashboard]
+    name: Tests E2E (pipeline reel, marques gcp/slow)
+    needs: [deploy-api, deploy-dashboard]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    # continue-on-error : premiere execution automatisee de T13/T14, jamais
-    # verifiees en CI jusqu ici (seul "not slow and not gcp" tournait, cf.
-    # job e2e ci-dessus). Ne bloque pas le deploiement (deja fait par build/
-    # dashboard) le temps de mesurer leur stabilite reelle en continu -
-    # T13/T14 pollent jusqu a 12-20 min et dependent de la cadence des
-    # schedulers BigQuery, pas seulement du code. A retirer une fois une
-    # fenetre de reference observee (cf. 06_ECARTS_IMPLEMENTATION.md).
+    # continue-on-error : sonde de bout en bout sur trafic reel (BigQuery live),
+    # informative, jamais bloquante. T13/T14 pollent 12-20 min et dependent de la
+    # cadence des schedulers, pas seulement du code.
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
