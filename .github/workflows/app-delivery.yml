@@ -63,10 +63,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # semgrep/semgrep-action@v1 est DEPRECIE : sa version figee plantait sur les
+      # regles p/default recentes (severite MEDIUM) TOUT EN PASSANT AU VERT
+      # (faux-vert : la porte SAST ne bloquait plus rien). On utilise le CLI
+      # semgrep a jour, en mode BLOQUANT (--error : sortie != 0 si findings).
       - name: Semgrep - SAST
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: p/default
+        run: |
+          python3 -m pip install --quiet semgrep
+          semgrep scan --config p/default --error --metrics=off
 
   test:
     name: Unit Tests
