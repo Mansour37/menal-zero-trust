@@ -1,165 +1,145 @@
-# Guide de tournage — Partie DevSecOps (chaîne 1)
+# Guide de tournage — DevSecOps : la chaîne de livraison `app-delivery.yml`
 
-> Segment vidéo **0:15 → 1:00** du script global. Objectif : prouver une **livraison
-> sécurisée à portes bloquantes**, un **déploiement sans clé** (fédération WIF), et que
-> **sur une PR rien ne s'authentifie au cloud**. Tout est vérifié en réel le 07/09 sur
-> `menal-zero-trust-staging` / dépôt `Mansour37/menal-zero-trust`.
+> Suit **exactement les 2 diagrammes de séquence du rapport** :
+> - **Phase 1 — demande de fusion (PR)** : contrôles **+ build + scan**, **aucune publication,
+>   aucun déploiement, aucune authentification cloud**.
+> - **Phase 2 — fusion sur `main`** : **publication au registre + déploiement par digest sha256**
+>   (WIF, sans clé) + smoke test à travers le WAF.
+>
+> **Une seule chaîne** : `.github/workflows/app-delivery.yml`. Tout est **vérifié en réel** le 07/09
+> sur `menal-zero-trust-staging` / dépôt `Mansour37/menal-zero-trust`.
 
 ---
 
-## 0. Ce que tu prouves (la thèse, en une phrase)
+## 0. Ce que tu prouves
 
-« Le code ne part en production que s'il **franchit des portes de sécurité** ; s'il en
-échoue **une seule**, la chaîne **arrête tout et ne déploie rien** ; et quand elle déploie,
-elle le fait **sans aucune clé stockée**, par identité fédérée de courte durée. »
+« Le code ne part en production que s'il **franchit toutes les portes** ; **chaque** porte
+**arrête réellement** la chaîne face à une vraie faille ; et quand ça déploie, c'est **sans aucune
+clé**, sur l'**empreinte sha256** exacte de l'image scannée. »
 
-Les **portes réelles** du workflow `ci.yml` (dans l'ordre) :
+Portes réelles (`app-delivery.yml`) — **612 règles Semgrep**, alignées sur le diagramme :
 
-| # | Porte | Outil | Job | Bloquant ? |
+| # | Porte | Outil | Phase | Bloquant |
 |---|---|---|---|---|
-| 1 | Secrets | **Gitleaks** | Security Scans | oui |
-| 2 | SAST (code) | **Semgrep** | Security Scans | oui |
-| 3 | Tests API | **pytest** | Unit Tests | oui |
-| 4 | Tests dashboard | **jest** (`npm test`) | Dashboard Unit Tests | oui |
-| 5 | CVE image | **Trivy** (CRITICAL) | Build & Deploy API | oui *(sur main)* |
-| → | Déploiement | **WIF** (sans clé) → Cloud Run | Build & Deploy | seulement sur `main` |
+| 1 | Secrets | **Gitleaks** | 1 (PR) + 2 | oui |
+| 2 | SAST | **Semgrep** (`semgrep`, diff-aware) | 1 (PR) + 2 | oui |
+| 3 | Tests API | **pytest** | 1 (PR) + 2 | oui |
+| 4 | Tests dashboard | **jest** | 1 (PR) + 2 | oui |
+| 5 | CVE image | **Trivy** (CRITICAL, `--ignore-unfixed`) | **1 (PR) + 2** | oui |
+| → | Publication + déploiement **par digest** | Artifact Registry + Cloud Run (WIF) | **2 (main)** | — |
 
 ---
 
-## 1. Préparer 2 onglets navigateur AVANT de filmer
+## 1. Les runs réels à ouvrir (onglets)
 
-> **Une seule chaîne de livraison** (`ci.yml`). Les deux onglets ci-dessous ne sont **pas
-> deux chaînes** : ce sont **deux exécutions de la MÊME chaîne**, avec deux issues (bloquée /
-> réussie). C'est le message à tenir : *« voici ma chaîne quand une porte échoue, et la voici
-> quand tout passe »*. (Les autres fichiers `.github/workflows/` ne sont pas des chaînes de
-> livraison concurrentes : `terraform.yml` = infrastructure, `e2e.yml` = tests, `elson-ci.yml`
-> = CI propre à l'app Elson. La livraison du socle, c'est **`ci.yml`, une seule**.)
+| Onglet | Run | Montre |
+|---|---|---|
+| **A — Phase 1 : tout passe, rien n'est déployé** | [`34156599935`](https://github.com/Mansour37/menal-zero-trust/actions/runs/34156599935) (PR) | Gitleaks ✅ Semgrep ✅ pytest ✅ jest ✅ + **Build image ✅ + Trivy ✅** → **Authenticate/Push/Deploy/Smoke = skipped** |
+| **B — Phase 2 : déploiement par digest** | [`34156759064`](https://github.com/Mansour37/menal-zero-trust/actions/runs/34156759064) (main) | **Authenticate to GCP (WIF)** → **Push + resolve digest (sha256)** → **Deploy to Cloud Run (par digest)** → **Smoke Test** — tous ✅ |
+| **C — chaque porte bloque** | tableau §3 | 5 runs rouges, une vraie faille par porte |
 
-**Onglet A — la porte qui BLOQUE (le run rouge) :**
-`https://github.com/Mansour37/menal-zero-trust/actions/runs/32725635226`
-→ Tu dois voir : **Security Scans = ❌ (Semgrep - SAST)**, et en dessous
-**Build & Deploy API = ⏭️ skipped**, **Build & Deploy Dashboard = ⏭️ skipped**.
-C'est **la preuve maîtresse** : une porte a échoué → le déploiement n'a **jamais** eu lieu.
-
-**Onglet B — le run VERT (déploiement réussi) :**
-`https://github.com/Mansour37/menal-zero-trust/actions/runs/34140119577`
-→ Toutes les portes vertes → **Build & Deploy** exécuté. (C'est ton propre commit récent :
-« le pipeline n'est pas raconté, il a tourné sur ce travail même ».)
-
-> Astuce cadrage : dans l'onglet A, déplie le job **Security Scans** pour montrer la ligne
-> rouge **Semgrep - SAST**, puis scrolle pour montrer les 2 jobs **skipped**. C'est le plan
-> le plus parlant de tout le segment.
+> Onglet A = le job **Build & Deploy API** : déplie-le pour montrer *Build image ✅*, *Trivy ✅*,
+> puis les étapes *Authenticate / Push / Deploy / Smoke* **toutes grises (skipped)** → sur une PR,
+> **on construit et on scanne, mais on ne publie ni ne déploie, et on ne s'authentifie jamais au cloud**.
 
 ---
 
-## 2. Le déroulé filmé — démonstration sur les DEUX runs de la même chaîne
+## 2. Déroulé filmé (calqué sur les 2 diagrammes)
 
-> Idée : on montre la chaîne **quand tout valide** (chaque porte au vert), puis la **même
-> chaîne quand une porte bloque**. Les portes de sécurité sont exactement les mêmes ; seule
-> l'issue change.
+### PHASE 1 — Demande de fusion : contrôles + build + scan, rien n'est déployé
+`[ÉCRAN : Onglet A — run 34156599935]`
+« Sur une demande de fusion, ma chaîne exécute ses portes — secrets, analyse statique,
+tests — **et** elle construit puis **scanne l'image** (Trivy). Tout est vert. Mais regardez le
+bas : les étapes d'**authentification, de publication et de déploiement sont ignorées**. Sur une
+PR, la chaîne **contrôle sans jamais déployer, ni même s'authentifier au cloud**. »
 
-### (a) 0:15–0:38 — Le run VERT : **toutes les portes valident** (onglet B)
-`[ÉCRAN : Onglet B — run vert 34140119577, vue d'ensemble des jobs, puis on déplie]`
-« Voici ma chaîne de livraison sur un vrai commit. Elle passe par toutes ses portes, et
-**chacune est au vert** :
-- recherche de **secrets** — Gitleaks : rien de compromis ;
-- **analyse statique** du code — Semgrep : aucune faille ;
-- **tests** — API et dashboard : au vert ;
-- **analyse de l'image** — Trivy : aucune vulnérabilité critique.
-Et **seulement parce que tout est vert**, la chaîne construit puis déploie. »
+### PHASE 2 — Fusion sur `main` : publication + déploiement par digest
+`[ÉCRAN : Onglet B — run 34156759064, job "Build & Deploy API"]`
+« À la fusion sur la branche principale, et seulement là :
+1. **Authenticate to GCP** — jeton OIDC signé par GitHub (vérifié pour ce dépôt **et** cette
+   branche) → identité de courte durée `sa-cicd` : la **fédération WIF**, aucune clé.
+2. **Push + resolve digest** — l'image est publiée puis **résolue en empreinte sha256** :
+   `menal-api@sha256:33a6b5fd…`.
+3. **Deploy to Cloud Run (par digest)** — la révision est épinglée à **ce digest exact** (pas un
+   tag mutable) ; le trafic bascule.
+4. **Smoke Test** — la chaîne interroge le service **par le domaine public**, donc **à travers le
+   WAF** → **200**. Livraison confirmée de bout en bout. »
 
-`[déplier "Security Scans" → montrer Gitleaks ✓ et Semgrep ✓ ; puis "Build & Deploy API"
-→ montrer "Trivy - CVE Scan (bloquant sur CRITICAL) ✓" puis "Deploy to Cloud Run ✓"]`
+> **Rollback (diagramme, opt)** : « en cas d'échec de la sonde, l'admin rebascule le trafic sur la
+> révision précédente en une commande » — à mentionner.
 
-> ⚠️ **Le ❌ que le jury va voir, à assumer en UNE phrase** : le dernier job,
-> *« E2E Tests (pipeline réel, gcp/slow) »*, est **rouge**. C'est **voulu** : il est marqué
-> `continue-on-error: true` dans `ci.yml` — c'est une sonde **de bout en bout sur le trafic
-> réel** (BigQuery live), **informative, jamais bloquante**. Le déploiement ne dépend que de
-> `security`, `test` et `dashboard-test` (voir les `needs:` dans `ci.yml`). Donc **un ❌ sur
-> cette sonde ne peut pas laisser passer un déploiement** : les vraies portes, elles, sont vertes.
-> Dis-le toi-même avant qu'on te le demande — ça te cote « honnête et maître de son pipeline ».
-
-### (b) 0:38–0:52 — Le run ROUGE : **la même chaîne quand une porte bloque** (onglet A)
-`[ÉCRAN : Onglet A — run rouge 32725635226]`
-« Voici la **même** chaîne, sur un commit où l'analyse statique **Semgrep** détecte un
-problème. Le job de sécurité échoue — et regardez : **Build & Deploy** est **ignoré**,
-en gris. Rien n'est parti en production. La porte a réellement arrêté la chaîne. »
-
-`[déplier "Security Scans" → Semgrep - SAST ❌ ; montrer "Build & Deploy API/Dashboard = skipped"]`
-
-### (c) 0:52–1:05 — Le déploiement sans clé + preuve « 0 clé / 8 comptes » (LIVE)
-`[ÉCRAN : rester sur le run vert, "Build & Deploy API" → étape "Authenticate to GCP", puis terminal]`
-« Et ce déploiement se fait **sans aucune clé** : la chaîne présente un jeton signé par GitHub,
-vérifié pour ce dépôt **et** cette branche, et reçoit une identité de courte durée — la
-**fédération d'identité**. Je le prouve en direct : sur les huit comptes de service du projet,
-l'inventaire des clés gérées par l'utilisateur renvoie **zéro** partout. »
-
+### PREUVE LIVE — 0 clé / 8 comptes `[ÉCRAN : terminal]`
 ```bash
-# Preuve live : 0 clé user-managed sur les 8 comptes de service
 export CLOUDSDK_CORE_DISABLE_PROMPTS=1
 for sa in $(gcloud iam service-accounts list --project=menal-zero-trust-staging --format="value(email)"); do
   n=$(gcloud iam service-accounts keys list --iam-account="$sa" --managed-by=user --format="value(name)" | wc -l)
   printf "%s clé(s)   %s\n" "$n" "$sa"
 done
 ```
-**Sortie attendue (8 lignes, toutes à 0) :**
-```
-0 clé(s)   110809493492-compute@developer.gserviceaccount.com
-0 clé(s)   sa-enrich-job@menal-zero-trust-staging.iam.gserviceaccount.com
-0 clé(s)   sa-pipeline@menal-zero-trust-staging.iam.gserviceaccount.com
-0 clé(s)   sa-cicd@menal-zero-trust-staging.iam.gserviceaccount.com
-0 clé(s)   sa-api@menal-zero-trust-staging.iam.gserviceaccount.com
-0 clé(s)   sa-dashboard-staging@menal-zero-trust-staging.iam.gserviceaccount.com
-0 clé(s)   sa-elson@menal-zero-trust-staging.iam.gserviceaccount.com
-0 clé(s)   sa-ml-embed@menal-zero-trust-staging.iam.gserviceaccount.com
-```
+→ **8 lignes, toutes à 0** (dont `sa-cicd@…`, le compte de la chaîne).
 
 ---
 
-## 3. Le point fort à ne pas oublier (PR vs main)
+## 3. Chaque porte bloque une VRAIE faille (prouvé)
 
-Dans `ci.yml`, les jobs de déploiement portent `if: github.ref == 'refs/heads/main'`.
-**Conséquence défendable :** sur une **PR**, la chaîne exécute toutes les portes mais **ne
-s'authentifie jamais au cloud** — l'identité fédérée n'existe qu'à la fusion. Donc un
-contributeur (ou un attaquant qui ouvrirait une PR) ne peut **rien** déployer, même en vert.
-C'est exactement ce que montrent les 2 jobs **skipped** de l'onglet A.
+Le kit [`demo/gate-tests/`](demo/gate-tests/) injecte une vraie faille par porte via une PR jetable.
+**Les 5 portes ont été testées : toutes bloquent** (runs consultables) :
+
+| Porte | Faille injectée | Job rouge | Run bloqué |
+|---|---|---|---|
+| **Secrets** (Gitleaks) | clé secrète haute entropie | Security Scans | [34156975237](https://github.com/Mansour37/menal-zero-trust/actions/runs/34156975237) |
+| **SAST** (Semgrep) | `eval()` + `subprocess(shell=True)` | Security Scans | [34157964162](https://github.com/Mansour37/menal-zero-trust/actions/runs/34157964162) |
+| **Tests API** (pytest) | `assert 1 == 2` | Unit Tests | [34156988890](https://github.com/Mansour37/menal-zero-trust/actions/runs/34156988890) |
+| **Tests dashboard** (jest) | `expect(1).toBe(2)` | Dashboard Unit Tests | [34157004008](https://github.com/Mansour37/menal-zero-trust/actions/runs/34157004008) |
+| **CVE image** (Trivy) | `PyYAML==5.3.1` (CVE-2020-14343 CRITICAL) | Build & Deploy API | [34157018479](https://github.com/Mansour37/menal-zero-trust/actions/runs/34157018479) |
+
+Reproduire en direct :
+```bash
+bash demo/gate-tests/run-gate-test.sh sast     # (ou secret | pytest | jest | trivy)
+# ... la porte visée passe au rouge, Build/Deploy ne se produit jamais
+bash demo/gate-tests/run-gate-test.sh clean <branche-affichée>
+```
+
+> **Point d'honnêteté FORT (à raconter toi-même)** : ce test a révélé que la porte **Semgrep**
+> était **silencieusement cassée** (l'action dépréciée `semgrep-action@v1` plantait sur les règles
+> récentes **tout en passant au vert** — un « faux-vert »). Je l'ai **réparée** (mode diff-aware :
+> bloque les **nouveaux** findings sans rejouer la dette déjà triée). Montrer qu'on **teste ses
+> propres portes et qu'on corrige** vaut plus, devant un jury, qu'un pipeline « parfait ».
 
 ---
 
-## 4. Pièges du jury (et la bonne réponse, honnête)
+## 4. Pièges du jury (réponse honnête)
 
-| Piège probable | Réponse |
+| Piège | Réponse |
 |---|---|
-| « Vos portes bloquent **vraiment** ? » | Oui : run **32725635226**, **Semgrep** rouge → déploiement **skipped**. Blocage **réel et non provoqué**. |
-| « Déploiement par **tag mutable**, pas digest ? » | Assumer : l'image porte **l'empreinte du commit** ; dire « empreinte du commit », **jamais** « digest immuable ». |
-| « Trivy laisse passer des CVE ? » | Oui, `--ignore-unfixed` (CVE sans correctif amont) ; **bloquant sur CRITICAL corrigeable**. Honnête et documenté. |
-| « Couverture de tests ? » | Basse côté dashboard (~3 %) — assumée ; les tests **existent et sont bloquants** (pytest + jest). Le sujet du projet est le **socle**, pas la couverture applicative. |
-| « Il y a un job **rouge** sur votre run vert ! » | C'est `e2e-gcp`, marqué **`continue-on-error: true`** dans `ci.yml` : sonde de bout en bout sur trafic réel (BigQuery live), **informative, jamais bloquante**. Le déploiement dépend de `needs: [security, test, dashboard-test]` — pas d'elle. Un ❌ dessus **ne peut pas** laisser passer un déploiement. |
-| « e2e bloquant ? » | Non — `continue-on-error: true`. Les **vraies** portes bloquantes sont Gitleaks, Semgrep, pytest, jest, Trivy CRITICAL. |
-
-> **Règle d'or :** ne survends pas. « Portes bloquantes + 0 clé + PR qui ne déploie pas » est
-> déjà fort **et** vrai. Chaque limite ci-dessus, tu l'assumes en une phrase — c'est ça qui te
-> cote « solide » devant un jury.
+| « Vos portes bloquent **vraiment** ? » | Oui, **les cinq** — un run rouge par porte (§3), une vraie faille chacune. |
+| « Déploiement par **tag mutable** ? » | Non : **déploiement par digest** `menal-api@sha256:…` (run 34156759064). L'empreinte du commit sert de tag de traçabilité. |
+| « Trivy sur la PR ? » | Oui : on **construit et scanne dès la PR** ; on ne publie qu'une image déjà scannée. |
+| « Semgrep, 0 finding, c'est louche ? » | Non : **612 règles** tournent ; la chaîne est **diff-aware** (bloque les nouveaux findings) et **74 findings historiques** sont triés/baseline. Une nouvelle faille, elle, bloque (prouvé). |
+| « Trivy laisse passer des CVE ? » | `--ignore-unfixed` (CVE sans correctif) ; **bloquant sur CRITICAL corrigeable**. |
+| « Job **rouge** e2e sur le run main ? » | `e2e-gcp`, `continue-on-error: true` : sonde trafic réel, informative, jamais bloquante. |
+| « Un contributeur peut-il déployer ? » | Non : sur une PR, `if: main` est faux → **aucune auth cloud**, aucun déploiement. |
 
 ---
 
-## 5. Checklist pré-tournage (2 min)
+## 5. Checklist pré-tournage
 
 ```bash
-# 1) Les 2 runs s'ouvrent bien (rouge + vert)
-gh run view 32725635226 --json conclusion -q .conclusion   # -> failure
-gh run view 34140119577 --json conclusion -q .conclusion   # -> success
+# Phase 1 : tout passe, rien déployé (build+Trivy verts, deploy skipped)
+gh run view 34156599935 --json jobs \
+  -q '.jobs[] | select(.name=="Build & Deploy API") | .steps[] | "\(.conclusion)  \(.name)"'
+# attendu : Build image + Trivy = success ; Authenticate/Push/Deploy/Smoke = skipped
 
-# 2) La preuve 0 clé passe (copie la commande du §2c) -> 8 lignes à 0
+# Phase 2 : déploiement par digest
+gh run view 34156759064 --json conclusion -q .conclusion         # -> success
 
-# 3) reconfirmer la porte rouge (run rouge : Semgrep bloque)
-gh run view 32725635226 --json jobs -q '.jobs[] | select(.name=="Security Scans") | .conclusion'  # -> failure
+# Chaque porte bloque (doit afficher failure pour chacune)
+for r in 34156975237 34157964162 34156988890 34157004008 34157018479; do
+  echo "$r -> $(gh run view $r --json conclusion -q .conclusion)"
+done
 
-# 4) run VERT : toutes les portes BLOQUANTES vertes (le seul non-vert doit être e2e-gcp)
-gh run view 34140119577 --json jobs \
-  -q '.jobs[] | select(.name|test("Security Scans|Unit Tests|Dashboard Unit Tests|Build & Deploy")) | "\(.conclusion)  \(.name)"'
-# attendu : "success" sur Security Scans, Unit Tests, Dashboard Unit Tests, Build & Deploy API, Build & Deploy Dashboard
+# Preuve 0 clé : la commande du §2 -> 8 lignes à 0
 ```
 
-Si tout passe : **la partie DevSecOps est prête à filmer** — une seule chaîne, montrée verte
-(toutes portes valident) puis rouge (une porte bloque), + preuve live 0 clé.
+Si tout passe : **DevSecOps prêt à filmer** — une chaîne `app-delivery.yml`, Phase 1 (contrôle+scan
+sans déployer) / Phase 2 (déploiement sans clé, par digest), et **chaque porte prouvée bloquante**.

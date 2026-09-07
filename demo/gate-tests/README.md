@@ -34,6 +34,16 @@ bash demo/gate-tests/run-gate-test.sh secret      # (ou sast | pytest | jest | t
 bash demo/gate-tests/run-gate-test.sh clean gate-test/secret-XXduring   # (l'URL/branche est affichée)
 ```
 
-## Runs de blocage capturés (référence démo)
-<!-- RUNS_CAPTURES -->
-_(à compléter après le premier passage : une URL de run rouge par porte)_
+## Runs de blocage capturés (référence démo, 07/09)
+
+| Porte | Run rouge |
+|---|---|
+| Secrets (Gitleaks) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34156975237 |
+| SAST (Semgrep) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34157964162 |
+| Tests API (pytest) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34156988890 |
+| Tests dashboard (jest) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34157004008 |
+| CVE image (Trivy) | https://github.com/Mansour37/menal-zero-trust/actions/runs/34157018479 |
+
+> Note : le test **SAST a révélé que la porte Semgrep était cassée** (action dépréciée qui plantait
+> en vert). Réparée dans `app-delivery.yml` (Semgrep diff-aware). Le run ci-dessus est celui d'APRÈS
+> réparation : Semgrep bloque bien le poison.
