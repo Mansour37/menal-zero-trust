@@ -1,4 +1,4 @@
-name: CI - Build & Deploy
+name: App Delivery
 
 # Filtre paths (07/08) : avant, TOUT push sur main — y compris un commit
 # purement Elson ou de la doc — reconstruisait ET redeployait MENAL staging.
@@ -13,7 +13,7 @@ on:
       - "frontend/**"
       - "scripts/**"
       - "tests/**"
-      - ".github/workflows/ci.yml"
+      - ".github/workflows/app-delivery.yml"
   pull_request:
     branches: [main]
     paths:
@@ -22,7 +22,7 @@ on:
       - "frontend/**"
       - "scripts/**"
       - "tests/**"
-      - ".github/workflows/ci.yml"
+      - ".github/workflows/app-delivery.yml"
 
 # STAGING est l environnement de reference du pipeline : c est lui que le
 # CI-SEC-CD construit, scanne, deploie et teste en E2E. Dev sert aux essais
@@ -89,41 +89,30 @@ jobs:
         run: pytest tests/ -v
 
   build:
+    # Phase 1 (PR)  : construit l'image et la SCANNE (Trivy) — sans pousser ni deployer.
+    # Phase 2 (main): pousse l'image et deploie la revision PAR DIGEST (sha256).
     name: Build & Deploy API
     needs: [security, test]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
 
-      - id: auth
-        name: Authenticate to GCP
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ vars.WIF_PROVIDER_NAME }}
-          service_account: ${{ vars.CICD_SA_EMAIL }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
-
-      - name: Build & Push Image
+      # --- Phase 1 + 2 : on construit et on scanne l'image qu'on deploiera ---
+      - name: Build image (local)
         id: build
         run: |
-          IMAGE_TAG="${{ env.ARTIFACT_REGISTRY }}/menal-api:${{ github.sha }}"
-          docker build -t $IMAGE_TAG ./api
-          docker push $IMAGE_TAG
-          echo "image=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          IMAGE_LOCAL="menal-api:${{ github.sha }}"
+          docker build -t "$IMAGE_LOCAL" ./api
+          echo "local=$IMAGE_LOCAL" >> "$GITHUB_OUTPUT"
 
-      # Porte bloquante : une CVE CRITICAL corrigeable fait echouer le build.
-      # ignore-unfixed evite de bloquer sur des CVE sans correctif disponible
-      # (sinon la porte serait desactivee a la premiere alerte non actionnable).
+      # Porte bloquante (PR incluse) : une CVE CRITICAL corrigeable fait echouer.
+      # On scanne AVANT tout push : jamais d'image non scannee publiee, et on
+      # scanne exactement les bits qu'on deploiera. ignore-unfixed : pas de
+      # blocage sur des CVE sans correctif amont (sinon porte desactivee).
       - name: Trivy - CVE Scan (bloquant sur CRITICAL)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ steps.build.outputs.image }}
+          image-ref: ${{ steps.build.outputs.local }}
           format: table
           exit-code: 1
           severity: CRITICAL
@@ -134,27 +123,55 @@ jobs:
         if: always()
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ steps.build.outputs.image }}
+          image-ref: ${{ steps.build.outputs.local }}
           format: table
           exit-code: 0
           severity: HIGH
           ignore-unfixed: true
 
-      # Boucle F6 : le scan alimente le SIEM. Sans cette etape, cve_findings
-      # restait vide et la page /siem/vulnerabilities du dashboard n affichait
-      # rien — le pipeline scannait sans que personne ne voie le resultat.
+      # --- Phase 2 (fusion main) uniquement : WIF, publication, deploiement ---
+      - id: auth
+        name: Authenticate to GCP
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER_NAME }}
+          service_account: ${{ vars.CICD_SA_EMAIL }}
+
+      - name: Set up Cloud SDK
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        if: github.ref == 'refs/heads/main'
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      # Publication + resolution du DIGEST : on deploie l'empreinte sha256 du
+      # CONTENU (pas un tag mutable). Le tag github.sha reste pour la tracabilite.
+      - name: Push image + resolve digest (sha256)
+        id: push
+        if: github.ref == 'refs/heads/main'
+        run: |
+          IMAGE_TAG="${{ env.ARTIFACT_REGISTRY }}/menal-api:${{ github.sha }}"
+          docker tag "${{ steps.build.outputs.local }}" "$IMAGE_TAG"
+          docker push "$IMAGE_TAG"
+          DIGEST_REF=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_TAG")
+          echo "image=$DIGEST_REF" >> "$GITHUB_OUTPUT"
+          echo "Deploiement par digest : $DIGEST_REF"
+
+      # Boucle F6 : le scan alimente le SIEM (page /siem/vulnerabilities).
       - name: Trivy - rapport JSON pour le SIEM
-        if: always()
+        if: github.ref == 'refs/heads/main'
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ steps.build.outputs.image }}
+          image-ref: ${{ steps.build.outputs.local }}
           format: json
           exit-code: 0
           severity: CRITICAL,HIGH,MEDIUM
           output: trivy-findings.json
 
       - name: Charger les CVE dans BigQuery
-        if: always()
+        if: github.ref == 'refs/heads/main'
         run: |
           pip install --quiet google-cloud-bigquery
           python scripts/load_cve_findings.py \
@@ -163,24 +180,27 @@ jobs:
             --report trivy-findings.json \
             --image-digest "${{ github.sha }}"
 
-      - name: Deploy to Cloud Run
+      - name: Deploy to Cloud Run (par digest)
         id: deploy
+        if: github.ref == 'refs/heads/main'
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
-          image: ${{ steps.build.outputs.image }}
+          image: ${{ steps.push.outputs.image }}
           region: ${{ env.REGION }}
 
       - name: Tag as latest
+        if: github.ref == 'refs/heads/main'
         run: |
           gcloud artifacts docker tags add \
-            ${{ steps.build.outputs.image }} \
+            ${{ env.ARTIFACT_REGISTRY }}/menal-api:${{ github.sha }} \
             ${{ env.ARTIFACT_REGISTRY }}/menal-api:latest || true
 
       # DNS + certificat manages etant en place, le smoke test passe par le
       # domaine REEL (validation TLS incluse) : il couvre DNS, certificat,
       # LB, Cloud Armor et le service — pas seulement l IP.
       - name: Smoke Test (API via LB)
+        if: github.ref == 'refs/heads/main'
         run: |
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 \
             https://${{ vars.LB_DOMAIN }}/health || echo "000")
