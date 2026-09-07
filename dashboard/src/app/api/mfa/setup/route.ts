@@ -6,9 +6,12 @@ export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // POST sans corps : le Google Front End (Cloud Run) rejette en 411 Length
+  // Required un POST dépourvu d'en-tête Content-Length. On le force à 0 — sinon
+  // l'enrôlement MFA échoue avant même d'atteindre l'API (le QR ne s'affiche pas).
   const res = await fetch(`${apiUrl()}/auth/mfa/setup`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}`, "Content-Length": "0" },
   });
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
