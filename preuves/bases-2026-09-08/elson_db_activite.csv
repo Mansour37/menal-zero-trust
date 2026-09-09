@@ -1,0 +1,11 @@
+audit_log,login,2,2026-08-23,2026-08-23
+audit_log,register_collision,2,2026-08-23,2026-08-23
+audit_log,register,1,2026-08-22,2026-08-22
+audit_log,register_rejected_fraud,1,2026-09-08,2026-09-08
+competition_config,cles de configuration,29,"",""
+email_verifications,code emis,2,2026-08-23,2026-08-23
+otp_codes,register,1,2026-08-22,2026-08-22
+tags,context,5,"",""
+tags,region,5,"",""
+tags,register,4,"",""
+user_events,login,2,2026-08-23,2026-08-23

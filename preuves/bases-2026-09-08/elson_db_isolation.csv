@@ -1,0 +1,6 @@
+elson_user,elson_db,t
+elson_user,menal_db,f
+api_user,menal_db,t
+api_user,elson_db,f
+api_user,EST cloudsqlsuperuser,f
+elson_user,EST cloudsqlsuperuser,f

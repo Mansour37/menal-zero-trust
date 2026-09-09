@@ -1,0 +1,3 @@
+# Audio de test : regenerable a l identique via la graine du generateur.
+# python scripts/generer-jeu-test-elson.py --n 25 --seed 42 --with-audio
+audio/

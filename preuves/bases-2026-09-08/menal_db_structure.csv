@@ -1,0 +1,5 @@
+alembic_version,version_num
+api_keys,"id, name, key_hash, user_id, is_active, expires_at, last_used_at, created_at"
+audit_logs,"id, user_id, action, resource, ip_address, user_agent, status_code, created_at"
+roles,"id, name, description, is_active, created_at"
+users,"id, email, hashed_password, is_active, role_id, created_at, updated_at, mfa_secret, mfa_enabled"

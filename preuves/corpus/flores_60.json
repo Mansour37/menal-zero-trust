@@ -1,0 +1,424 @@
+{
+ "phrases": [
+  {
+   "source_text": "The sun rises in the east and sets in the west.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0001",
+   "category": "general",
+   "difficulty": 1
+  },
+  {
+   "source_text": "Le soleil se leve a l'est et se couche a l'ouest.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0001",
+   "category": "general",
+   "difficulty": 1
+  },
+  {
+   "source_text": "تشرق الشمس من الشرق وتغرب في الغرب.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0001",
+   "category": "general",
+   "difficulty": 1
+  },
+  {
+   "source_text": "Water is essential for all forms of life on Earth.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0002",
+   "category": "science",
+   "difficulty": 1
+  },
+  {
+   "source_text": "L'eau est essentielle a toutes les formes de vie sur Terre.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0002",
+   "category": "science",
+   "difficulty": 1
+  },
+  {
+   "source_text": "الماء ضروري لجميع أشكال الحياة على الأرض.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0002",
+   "category": "science",
+   "difficulty": 1
+  },
+  {
+   "source_text": "Education is the most powerful weapon to change the world.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0003",
+   "category": "education",
+   "difficulty": 2
+  },
+  {
+   "source_text": "L'education est l'arme la plus puissante pour changer le monde.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0003",
+   "category": "education",
+   "difficulty": 2
+  },
+  {
+   "source_text": "التعليم هو أقوى سلاح يمكنك استخدامه لتغيير العالم.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0003",
+   "category": "education",
+   "difficulty": 2
+  },
+  {
+   "source_text": "The doctor examined the patient carefully before prescribing medicine.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0004",
+   "category": "health",
+   "difficulty": 2
+  },
+  {
+   "source_text": "Le medecin a examine le patient attentivement avant de prescrire le medicament.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0004",
+   "category": "health",
+   "difficulty": 2
+  },
+  {
+   "source_text": "فحص الطبيب المريض بعناية قبل وصف الدواء.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0004",
+   "category": "health",
+   "difficulty": 2
+  },
+  {
+   "source_text": "The children played happily in the garden while their parents prepared dinner.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0005",
+   "category": "daily_life",
+   "difficulty": 1
+  },
+  {
+   "source_text": "Les enfants jouaient joyeusement dans le jardin pendant que leurs parents preparaient le diner.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0005",
+   "category": "daily_life",
+   "difficulty": 1
+  },
+  {
+   "source_text": "لعب الأطفال بسعادة في الحديقة بينما كان آباؤهم يعدون العشاء.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0005",
+   "category": "daily_life",
+   "difficulty": 1
+  },
+  {
+   "source_text": "The government announced new economic reforms to reduce poverty.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0006",
+   "category": "politics",
+   "difficulty": 2
+  },
+  {
+   "source_text": "Le gouvernement a annonce de nouvelles reformes economiques pour reduire la pauvrete.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0006",
+   "category": "politics",
+   "difficulty": 2
+  },
+  {
+   "source_text": "أعلنت الحكومة عن إصلاحات اقتصادية جديدة للحد من الفقر والبطالة.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0006",
+   "category": "politics",
+   "difficulty": 2
+  },
+  {
+   "source_text": "Traditional music and dance are important parts of our cultural heritage.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0007",
+   "category": "culture",
+   "difficulty": 1
+  },
+  {
+   "source_text": "La musique et la danse traditionnelles sont des elements importants de notre patrimoine culturel.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0007",
+   "category": "culture",
+   "difficulty": 1
+  },
+  {
+   "source_text": "الموسيقى والرقص التقليديان جزءان مهمان من تراثنا الثقافي.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0007",
+   "category": "culture",
+   "difficulty": 1
+  },
+  {
+   "source_text": "Climate change poses a serious threat to biodiversity around the world.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0008",
+   "category": "environment",
+   "difficulty": 3
+  },
+  {
+   "source_text": "Le changement climatique constitue une menace serieuse pour la biodiversite dans le monde.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0008",
+   "category": "environment",
+   "difficulty": 3
+  },
+  {
+   "source_text": "يشكل تغير المناخ تهديداً خطيراً للتنوع البيولوجي في جميع أنحاء العالم.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0008",
+   "category": "environment",
+   "difficulty": 3
+  },
+  {
+   "source_text": "The market was full of fresh fruits, vegetables, and spices from the region.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0009",
+   "category": "daily_life",
+   "difficulty": 1
+  },
+  {
+   "source_text": "Le marche etait plein de fruits frais, de legumes et d'epices de la region.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0009",
+   "category": "daily_life",
+   "difficulty": 1
+  },
+  {
+   "source_text": "كان السوق مليئاً بالفواكه الطازجة والخضروات والتوابل من المنطقة.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0009",
+   "category": "daily_life",
+   "difficulty": 1
+  },
+  {
+   "source_text": "Scientists have discovered a new species of fish in the depths of the ocean.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0010",
+   "category": "science",
+   "difficulty": 2
+  },
+  {
+   "source_text": "Les scientifiques ont decouvert une nouvelle espece de poisson dans les profondeurs de l'ocean.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0010",
+   "category": "science",
+   "difficulty": 2
+  },
+  {
+   "source_text": "اكتشف العلماء نوعاً جديداً من الأسماك في أعماق المحيط.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0010",
+   "category": "science",
+   "difficulty": 2
+  },
+  {
+   "source_text": "The old woman told stories to her grandchildren every evening under the stars.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0011",
+   "category": "culture",
+   "difficulty": 1
+  },
+  {
+   "source_text": "La vieille femme racontait des histoires a ses petits-enfants chaque soir sous les etoiles.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0011",
+   "category": "culture",
+   "difficulty": 1
+  },
+  {
+   "source_text": "كانت المرأة العجوز تروي القصص لأحفادها كل مساء تحت النجوم.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0011",
+   "category": "culture",
+   "difficulty": 1
+  },
+  {
+   "source_text": "New technology allows farmers to monitor their crops using mobile phones.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0012",
+   "category": "technology",
+   "difficulty": 2
+  },
+  {
+   "source_text": "La nouvelle technologie permet aux agriculteurs de surveiller leurs cultures avec des telephones.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0012",
+   "category": "technology",
+   "difficulty": 2
+  },
+  {
+   "source_text": "تتيح التكنولوجيا الجديدة للمزارعين مراقبة محاصيلهم باستخدام الهواتف المحمولة.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0012",
+   "category": "technology",
+   "difficulty": 2
+  },
+  {
+   "source_text": "The fishermen returned to the village at dawn with a large catch of fish.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0013",
+   "category": "daily_life",
+   "difficulty": 1
+  },
+  {
+   "source_text": "Les pecheurs sont rentres au village a l'aube avec une grande prise de poissons.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0013",
+   "category": "daily_life",
+   "difficulty": 1
+  },
+  {
+   "source_text": "عاد الصيادون إلى القرية عند الفجر بصيد كبير من الأسماك.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0013",
+   "category": "daily_life",
+   "difficulty": 1
+  },
+  {
+   "source_text": "The university opened a new research center for renewable energy.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0014",
+   "category": "education",
+   "difficulty": 2
+  },
+  {
+   "source_text": "L'universite a ouvert un nouveau centre de recherche sur les energies renouvelables.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0014",
+   "category": "education",
+   "difficulty": 2
+  },
+  {
+   "source_text": "افتتحت الجامعة مركز أبحاث جديداً لدراسات الطاقة المتجددة.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0014",
+   "category": "education",
+   "difficulty": 2
+  },
+  {
+   "source_text": "The camel caravan crossed the desert in three days despite the sandstorm.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0015",
+   "category": "culture",
+   "difficulty": 2
+  },
+  {
+   "source_text": "La caravane de chameaux a traverse le desert en trois jours malgre la tempete de sable.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0015",
+   "category": "culture",
+   "difficulty": 2
+  },
+  {
+   "source_text": "عبرت قافلة الإبل الصحراء في ثلاثة أيام على الرغم من العاصفة الرملية.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0015",
+   "category": "culture",
+   "difficulty": 2
+  },
+  {
+   "source_text": "The price of basic goods has increased significantly due to inflation.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0016",
+   "category": "economy",
+   "difficulty": 2
+  },
+  {
+   "source_text": "Le prix des produits de base a considerablement augmente en raison de l'inflation.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0016",
+   "category": "economy",
+   "difficulty": 2
+  },
+  {
+   "source_text": "ارتفعت أسعار السلع الأساسية بشكل كبير بسبب التضخم.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0016",
+   "category": "economy",
+   "difficulty": 2
+  },
+  {
+   "source_text": "The mother breastfed her baby while sitting under the shade of a large tree.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0017",
+   "category": "health",
+   "difficulty": 1
+  },
+  {
+   "source_text": "La mere allaitait son bebe assise a l'ombre d'un grand arbre.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0017",
+   "category": "health",
+   "difficulty": 1
+  },
+  {
+   "source_text": "أرضعت الأم طفلها وهي جالسة تحت ظل شجرة كبيرة.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0017",
+   "category": "health",
+   "difficulty": 1
+  },
+  {
+   "source_text": "The young man traveled to the capital city to find work and support his family.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0018",
+   "category": "daily_life",
+   "difficulty": 1
+  },
+  {
+   "source_text": "Le jeune homme a voyage vers la capitale pour trouver du travail et subvenir aux besoins de sa famille.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0018",
+   "category": "daily_life",
+   "difficulty": 1
+  },
+  {
+   "source_text": "سافر الشاب إلى العاصمة للبحث عن عمل وإعالة أسرته.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0018",
+   "category": "daily_life",
+   "difficulty": 1
+  },
+  {
+   "source_text": "Students organized a competition to promote reading in local languages.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0019",
+   "category": "education",
+   "difficulty": 2
+  },
+  {
+   "source_text": "Les etudiants ont organise un concours pour promouvoir la lecture dans les langues locales.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0019",
+   "category": "education",
+   "difficulty": 2
+  },
+  {
+   "source_text": "نظم الطلاب مسابقة لتعزيز القراءة والكتابة باللغات المحلية.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0019",
+   "category": "education",
+   "difficulty": 2
+  },
+  {
+   "source_text": "The mosque was beautifully decorated during the celebration of Ramadan.",
+   "source_lang": "en",
+   "hassaniya_reference": "f0020",
+   "category": "culture",
+   "difficulty": 1
+  },
+  {
+   "source_text": "La mosquee etait magnifiquement decoree pendant la celebration du Ramadan.",
+   "source_lang": "fr",
+   "hassaniya_reference": "f0020",
+   "category": "culture",
+   "difficulty": 1
+  },
+  {
+   "source_text": "كان المسجد مزيناً بشكل جميل خلال الاحتفال بشهر رمضان المبارك.",
+   "source_lang": "ar",
+   "hassaniya_reference": "f0020",
+   "category": "culture",
+   "difficulty": 1
+  }
+ ]
+}

@@ -1,0 +1,7 @@
+propriete,valeur
+emplacement,EUROPE-WEST1
+versioning,True
+acces uniforme (UBLA),True
+blocage acces public,enforced
+cle CMEK,aucune (chiffrement gere par Google)
+suppression differee,7 jours

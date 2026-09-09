@@ -1,0 +1,408 @@
+{
+ "_avertissement": "JEU DE TEST SYNTHETIQUE — aucune personne reelle. E-mails en @example.com (RFC 2606, non routable), NNI prefixes 99 (reserves, aucune collision possible avec un NNI reel), telephones en +222 9X (indicatif non alloue). Ne jamais presenter comme des utilisateurs.",
+ "_genere_par": "scripts/generer-jeu-test-elson.py",
+ "_seed": 42,
+ "_nombre": 25,
+ "personas": [
+  {
+   "firstName": "Ahmed",
+   "lastName": "Ould Sidina",
+   "username": "ahmed_ould_sidina",
+   "email": "ahmed.ould.sidina@example.com",
+   "nni": "9936913810",
+   "whatsapp": "+22294108603",
+   "birthdate": "1990-01-05",
+   "sourceLang": "fr",
+   "password": "Test!2719583",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_001.wav",
+    "duree_ms": 4171
+   }
+  },
+  {
+   "firstName": "Baba",
+   "lastName": "Ould Ahmed",
+   "username": "baba_ould_ahmed",
+   "email": "baba.ould.ahmed@example.com",
+   "nni": "9979254563",
+   "whatsapp": "+22297078673",
+   "birthdate": "1981-06-04",
+   "sourceLang": "fr",
+   "password": "Test!2571945",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_002.wav",
+    "duree_ms": 2295
+   }
+  },
+  {
+   "firstName": "Nebghouha",
+   "lastName": "Mint Mohamed",
+   "username": "nebghouha_mint_mohamed",
+   "email": "nebghouha.mint.mohamed@example.com",
+   "nni": "9975329037",
+   "whatsapp": "+22293335942",
+   "birthdate": "2004-06-11",
+   "sourceLang": "ar",
+   "password": "Test!4698379",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_003.wav",
+    "duree_ms": 3239
+   }
+  },
+  {
+   "firstName": "Ahmed",
+   "lastName": "Ould Taleb",
+   "username": "ahmed_ould_taleb",
+   "email": "ahmed.ould.taleb@example.com",
+   "nni": "9921429110",
+   "whatsapp": "+22297090293",
+   "birthdate": "1995-04-06",
+   "sourceLang": "fr",
+   "password": "Test!3608513",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_004.wav",
+    "duree_ms": 2281
+   }
+  },
+  {
+   "firstName": "Bakar",
+   "lastName": "Ould Ahmed",
+   "username": "bakar_ould_ahmed",
+   "email": "bakar.ould.ahmed@example.com",
+   "nni": "9912448136",
+   "whatsapp": "+22296374122",
+   "birthdate": "1984-05-03",
+   "sourceLang": "fr",
+   "password": "Test!6770619",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_005.wav",
+    "duree_ms": 3872
+   }
+  },
+  {
+   "firstName": "Fatimetou",
+   "lastName": "Mint Sidina",
+   "username": "fatimetou_mint_sidina",
+   "email": "fatimetou.mint.sidina@example.com",
+   "nni": "9961662963",
+   "whatsapp": "+22298996414",
+   "birthdate": "1985-08-07",
+   "sourceLang": "ar",
+   "password": "Test!2322047",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_006.wav",
+    "duree_ms": 3661
+   }
+  },
+  {
+   "firstName": "Toutou",
+   "lastName": "Mint Hamoud",
+   "username": "toutou_mint_hamoud",
+   "email": "toutou.mint.hamoud@example.com",
+   "nni": "9948537831",
+   "whatsapp": "+22299686361",
+   "birthdate": "1988-08-16",
+   "sourceLang": "fr",
+   "password": "Test!1768805",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_007.wav",
+    "duree_ms": 4108
+   }
+  },
+  {
+   "firstName": "Zeinabou",
+   "lastName": "Mint Ahmed",
+   "username": "zeinabou_mint_ahmed",
+   "email": "zeinabou.mint.ahmed@example.com",
+   "nni": "9931244663",
+   "whatsapp": "+22291694522",
+   "birthdate": "1997-01-18",
+   "sourceLang": "fr",
+   "password": "Test!8606962",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_008.wav",
+    "duree_ms": 4003
+   }
+  },
+  {
+   "firstName": "Mohameden",
+   "lastName": "Ould Cheikh",
+   "username": "mohameden_ould_cheikh",
+   "email": "mohameden.ould.cheikh@example.com",
+   "nni": "9947683626",
+   "whatsapp": "+22293514944",
+   "birthdate": "1991-12-23",
+   "sourceLang": "fr",
+   "password": "Test!3871230",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_009.wav",
+    "duree_ms": 3587
+   }
+  },
+  {
+   "firstName": "Mohameden",
+   "lastName": "Ould Moctar",
+   "username": "mohameden_ould_moctar",
+   "email": "mohameden.ould.moctar@example.com",
+   "nni": "9950929647",
+   "whatsapp": "+22294528972",
+   "birthdate": "1989-11-07",
+   "sourceLang": "fr",
+   "password": "Test!1938483",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_010.wav",
+    "duree_ms": 2338
+   }
+  },
+  {
+   "firstName": "Bakar",
+   "lastName": "Ould Ely",
+   "username": "bakar_ould_ely",
+   "email": "bakar.ould.ely@example.com",
+   "nni": "9935935572",
+   "whatsapp": "+22291110460",
+   "birthdate": "1989-06-18",
+   "sourceLang": "en",
+   "password": "Test!6279418",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_011.wav",
+    "duree_ms": 2270
+   }
+  },
+  {
+   "firstName": "Hamoud",
+   "lastName": "Ould Sneiba",
+   "username": "hamoud_ould_sneiba",
+   "email": "hamoud.ould.sneiba@example.com",
+   "nni": "9986282117",
+   "whatsapp": "+22297698256",
+   "birthdate": "1986-05-29",
+   "sourceLang": "fr",
+   "password": "Test!3342608",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_012.wav",
+    "duree_ms": 2410
+   }
+  },
+  {
+   "firstName": "Baba",
+   "lastName": "Ould Boubacar",
+   "username": "baba_ould_boubacar",
+   "email": "baba.ould.boubacar@example.com",
+   "nni": "9978461803",
+   "whatsapp": "+22297187926",
+   "birthdate": "1997-11-30",
+   "sourceLang": "fr",
+   "password": "Test!4679591",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_013.wav",
+    "duree_ms": 1966
+   }
+  },
+  {
+   "firstName": "Sidi",
+   "lastName": "Ould Taleb",
+   "username": "sidi_ould_taleb",
+   "email": "sidi.ould.taleb@example.com",
+   "nni": "9906323852",
+   "whatsapp": "+22291839607",
+   "birthdate": "1986-11-09",
+   "sourceLang": "fr",
+   "password": "Test!8082668",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_014.wav",
+    "duree_ms": 3842
+   }
+  },
+  {
+   "firstName": "Lalla",
+   "lastName": "Mint Hamoud",
+   "username": "lalla_mint_hamoud",
+   "email": "lalla.mint.hamoud@example.com",
+   "nni": "9962820592",
+   "whatsapp": "+22298877065",
+   "birthdate": "1991-04-12",
+   "sourceLang": "ar",
+   "password": "Test!1192619",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_015.wav",
+    "duree_ms": 4186
+   }
+  },
+  {
+   "firstName": "Baba",
+   "lastName": "Ould Taleb",
+   "username": "baba_ould_taleb",
+   "email": "baba.ould.taleb@example.com",
+   "nni": "9935812670",
+   "whatsapp": "+22295707197",
+   "birthdate": "1985-01-01",
+   "sourceLang": "fr",
+   "password": "Test!8294150",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_016.wav",
+    "duree_ms": 2047
+   }
+  },
+  {
+   "firstName": "Moctar",
+   "lastName": "Ould Brahim",
+   "username": "moctar_ould_brahim",
+   "email": "moctar.ould.brahim@example.com",
+   "nni": "9923978249",
+   "whatsapp": "+22298517485",
+   "birthdate": "1984-10-09",
+   "sourceLang": "fr",
+   "password": "Test!9517169",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_017.wav",
+    "duree_ms": 3894
+   }
+  },
+  {
+   "firstName": "Salka",
+   "lastName": "Mint Taleb",
+   "username": "salka_mint_taleb",
+   "email": "salka.mint.taleb@example.com",
+   "nni": "9921682744",
+   "whatsapp": "+22299049278",
+   "birthdate": "2003-10-16",
+   "sourceLang": "fr",
+   "password": "Test!6438436",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_018.wav",
+    "duree_ms": 3401
+   }
+  },
+  {
+   "firstName": "Coumba",
+   "lastName": "Mint Cheikh",
+   "username": "coumba_mint_cheikh",
+   "email": "coumba.mint.cheikh@example.com",
+   "nni": "9941273847",
+   "whatsapp": "+22294017343",
+   "birthdate": "1982-08-07",
+   "sourceLang": "fr",
+   "password": "Test!2321324",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_019.wav",
+    "duree_ms": 1750
+   }
+  },
+  {
+   "firstName": "Sidi",
+   "lastName": "Ould Taleb",
+   "username": "sidi_ould_taleb",
+   "email": "sidi.ould.taleb2@example.com",
+   "nni": "9971498611",
+   "whatsapp": "+22292109911",
+   "birthdate": "1985-10-04",
+   "sourceLang": "ar",
+   "password": "Test!3770370",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_020.wav",
+    "duree_ms": 2485
+   }
+  },
+  {
+   "firstName": "Dahi",
+   "lastName": "Ould Ely",
+   "username": "dahi_ould_ely",
+   "email": "dahi.ould.ely@example.com",
+   "nni": "9928427073",
+   "whatsapp": "+22299047886",
+   "birthdate": "1989-01-08",
+   "sourceLang": "fr",
+   "password": "Test!7693979",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_021.wav",
+    "duree_ms": 4151
+   }
+  },
+  {
+   "firstName": "Abdallahi",
+   "lastName": "Ould Sneiba",
+   "username": "abdallahi_ould_sneiba",
+   "email": "abdallahi.ould.sneiba@example.com",
+   "nni": "9969467853",
+   "whatsapp": "+22297574680",
+   "birthdate": "1985-06-05",
+   "sourceLang": "fr",
+   "password": "Test!4769795",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_022.wav",
+    "duree_ms": 1662
+   }
+  },
+  {
+   "firstName": "Nebghouha",
+   "lastName": "Mint Brahim",
+   "username": "nebghouha_mint_brahim",
+   "email": "nebghouha.mint.brahim@example.com",
+   "nni": "9930885476",
+   "whatsapp": "+22299872386",
+   "birthdate": "1989-11-17",
+   "sourceLang": "fr",
+   "password": "Test!2191066",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_023.wav",
+    "duree_ms": 3984
+   }
+  },
+  {
+   "firstName": "Mariem",
+   "lastName": "Mint Sneiba",
+   "username": "mariem_mint_sneiba",
+   "email": "mariem.mint.sneiba@example.com",
+   "nni": "9904216175",
+   "whatsapp": "+22295543670",
+   "birthdate": "1983-03-06",
+   "sourceLang": "ar",
+   "password": "Test!4993055",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_024.wav",
+    "duree_ms": 2540
+   }
+  },
+  {
+   "firstName": "Brahim",
+   "lastName": "Ould Brahim",
+   "username": "brahim_ould_brahim",
+   "email": "brahim.ould.brahim@example.com",
+   "nni": "9917758595",
+   "whatsapp": "+22299580513",
+   "birthdate": "2001-03-15",
+   "sourceLang": "fr",
+   "password": "Test!8935169",
+   "_jeu_de_test": true,
+   "audio": {
+    "fichier": "preuves/corpus/audio/contrib_025.wav",
+    "duree_ms": 3067
+   }
+  }
+ ]
+}

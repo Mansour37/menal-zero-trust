@@ -1,0 +1,15 @@
+GET,/siem/incidents,1046,1,13
+GET,/siem/detections,955,1,14
+GET,/siem/overview,689,1,17
+GET,/logs/,672,1,17
+GET,/alerts/,652,1,17
+GET,/fetch,188,0,3
+POST,/auth/token,132,0,8
+GET,/favicon.ico,95,0,34
+GET,/siem/incidents/41.188.116.214,92,1,1
+GET,/proxy,70,0,3
+GET,/login,58,0,23
+GET,/siem/incidents/41.188.115.52,42,1,1
+GET,/siem/coverage,41,1,13
+GET,/siem/incidents/41.188.115.124,32,1,1
+GET,/users/,31,1,6
